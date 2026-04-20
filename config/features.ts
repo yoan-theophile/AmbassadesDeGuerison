@@ -1,0 +1,6 @@
+export const FEATURES = {
+  EMAIL_NOTIFICATIONS: process.env.NEXT_PUBLIC_FEATURE_EMAIL_NOTIFICATIONS !== 'false',
+  PHOTOS: process.env.NEXT_PUBLIC_FEATURE_PHOTOS === 'true',
+  RATINGS: process.env.NEXT_PUBLIC_FEATURE_RATINGS === 'true',
+  ONBOARDING_VIDEOS: process.env.NEXT_PUBLIC_FEATURE_ONBOARDING_VIDEOS === 'true',
+} as const;

@@ -1,0 +1,68 @@
+name: Host Activations Check
+
+on:
+  schedule:
+    # Quotidien à 8h UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check host activations for upcoming events
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_ADMIN_EMAIL: ${{ secrets.RESEND_ADMIN_EMAIL }}
+        run: |
+          # Récupère les events dans les 48h suivantes
+          EVENTS=$(curl -s \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/events?select=id,title,event_date&event_date=gt.$(date -u +%Y-%m-%dT%H:%M:%SZ)&event_date=lt.$(date -u -d '+48 hours' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+48H +%Y-%m-%dT%H:%M:%SZ)")
+
+          echo "Upcoming events (48h): $EVENTS"
+
+          # Pour chaque event, vérifie le nombre d'activations
+          echo "$EVENTS" | python3 -c "
+          import sys, json, os, urllib.request
+
+          events = json.load(sys.stdin)
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SUPABASE_KEY']
+          app_url = os.environ.get('APP_URL', '')
+
+          for event in events:
+              req = urllib.request.Request(
+                  f\"{url}/rest/v1/host_activations?event_id=eq.{event['id']}&is_active=eq.true&select=id\",
+                  headers={'apikey': key, 'Authorization': f'Bearer {key}'}
+              )
+              with urllib.request.urlopen(req) as r:
+                  activations = json.loads(r.read())
+              count = len(activations)
+              print(f\"Event '{event['title']}': {count} activations\")
+              if count == 0:
+                  print(f\"ALERT: 0 activations for '{event['title']}'\")
+                  # Envoie alerte email via Resend
+                  resend_key = os.environ.get('RESEND_API_KEY', '')
+                  admin_email = os.environ.get('RESEND_ADMIN_EMAIL', '')
+                  from_email = os.environ.get('RESEND_FROM_EMAIL', '')
+                  if resend_key and admin_email:
+                      payload = json.dumps({
+                          'from': from_email,
+                          'to': [admin_email],
+                          'subject': f'⚠️ Alerte: 0 hôtes actifs pour \"{event[\"title\"]}\"',
+                          'html': f'<p>L\'événement <b>{event[\"title\"]}</b> ({event[\"event_date\"]}) n\'a aucun hôte actif.</p><p>Le trigger fn_auto_activate_hosts_for_event a peut-être échoué.</p><p><a href=\"{app_url}/admin/stats\">Vérifier dans l\'admin</a></p>'
+                      }).encode()
+                      req2 = urllib.request.Request(
+                          'https://api.resend.com/emails',
+                          data=payload,
+                          headers={'Authorization': f'Bearer {resend_key}', 'Content-Type': 'application/json'}
+                      )
+                      urllib.request.urlopen(req2)
+                      print('Alert email sent')
+          " || true
