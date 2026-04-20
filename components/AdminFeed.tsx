@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Mic, Check, X } from 'lucide-react';
 
 interface Signal {
   id: string;
@@ -57,16 +58,18 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-700">
+        <h2 className="font-semibold text-slate-700">
           Signaux en attente ({signals.length})
         </h2>
-        <span className="text-xs text-gray-400">Rafraîchissement auto toutes les 5s</span>
+        <span className="text-xs text-slate-400">Rafraîchissement auto toutes les 5s</span>
       </div>
 
       {signals.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">🎙️</p>
-          <p>Aucun signal en attente</p>
+        <div className="text-center py-16 text-slate-400">
+          <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Mic className="w-6 h-6 text-slate-400" />
+          </div>
+          <p className="text-sm">Aucun signal en attente</p>
         </div>
       )}
 
@@ -77,18 +80,18 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
           return (
             <div
               key={signal.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
+              className="bg-white rounded-xl shadow-sm border border-slate-100 p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-800">{hp.first_name}</span>
-                    <span className="text-xs text-gray-400">
+                    <span className="font-semibold text-slate-800">{hp.first_name}</span>
+                    <span className="text-xs text-slate-400">
                       {hp.city}, {hp.country}
                     </span>
                   </div>
-                  <p className="text-gray-700 text-sm">{signal.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-slate-700 text-sm">{signal.description}</p>
+                  <p className="text-xs text-slate-400 mt-1">
                     {new Date(signal.created_at).toLocaleTimeString('fr-FR')}
                   </p>
                 </div>
@@ -96,16 +99,18 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
                   <button
                     onClick={() => handleAction(signal.id, 'approve')}
                     disabled={isProcessing}
-                    className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50"
+                    className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                   >
-                    ✓ Approuver
+                    <Check className="w-3.5 h-3.5" />
+                    Approuver
                   </button>
                   <button
                     onClick={() => handleAction(signal.id, 'decline')}
                     disabled={isProcessing}
-                    className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-200 disabled:opacity-50"
+                    className="flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
                   >
-                    ✗ Refuser
+                    <X className="w-3.5 h-3.5" />
+                    Refuser
                   </button>
                 </div>
               </div>

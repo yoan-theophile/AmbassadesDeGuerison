@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
+import { CheckCircle2, Home, LogOut, Radio } from 'lucide-react';
+import Link from 'next/link';
 
 interface HostProfile {
   id: string;
@@ -111,18 +113,21 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-400 text-sm">Chargement…</div>
+      <main className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex items-center gap-2 text-slate-400 text-sm">
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+          Chargement…
+        </div>
       </main>
     );
   }
 
   if (!profile) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Aucun profil ambassadeur trouvé pour ce compte.</p>
-          <a href="/inscription" className="text-indigo-600 underline text-sm">S'inscrire</a>
+          <p className="text-slate-600 mb-4">Aucun profil ambassadeur trouvé pour ce compte.</p>
+          <Link href="/inscription" className="text-indigo-600 underline text-sm">S'inscrire</Link>
         </div>
       </main>
     );
@@ -135,61 +140,74 @@ export default function DashboardPage() {
     rejected: 'Refusé',
   };
   const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    active: 'bg-green-100 text-green-700',
-    inactive: 'bg-gray-100 text-gray-600',
-    rejected: 'bg-red-100 text-red-700',
+    pending: 'bg-amber-50 text-amber-700',
+    active: 'bg-emerald-50 text-emerald-700',
+    inactive: 'bg-slate-100 text-slate-500',
+    rejected: 'bg-red-50 text-red-700',
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <main className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <Home className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
+        </Link>
+        <button onClick={handleSignOut} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          <LogOut className="w-3.5 h-3.5" />
+          Déconnexion
+        </button>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Bonjour, {profile.first_name}</h1>
-            <p className="text-gray-500 text-sm">{profile.city}, {profile.country}</p>
+            <h1 className="text-xl font-semibold text-slate-800">Bonjour, {profile.first_name}</h1>
+            <p className="text-slate-500 text-sm">{profile.city}, {profile.country}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-gray-100'}`}>
-              {statusLabels[profile.status] ?? profile.status}
-            </span>
-            <button onClick={handleSignOut} className="text-xs text-gray-400 hover:text-gray-600">
-              Déconnexion
-            </button>
-          </div>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-slate-100'}`}>
+            {statusLabels[profile.status] ?? profile.status}
+          </span>
         </div>
 
         {profile.status === 'active' && (
           <div className="bg-indigo-600 text-white rounded-2xl p-5">
-            <p className="font-semibold mb-1">Module 7 — Signal de présence</p>
-            <p className="text-indigo-200 text-sm mb-4">
-              Envoyez un signal pour indiquer que vous êtes présent pendant le live en cours.
+            <div className="flex items-center gap-2 mb-1">
+              <Radio className="w-4 h-4 text-indigo-300" />
+              <p className="font-semibold">Signal de présence</p>
+            </div>
+            <p className="text-indigo-200 text-sm mb-4 ml-6">
+              Indiquez que vous êtes présent pendant le live en cours.
             </p>
             <button
               onClick={sendModule7Signal}
               disabled={signalLoading || signalSent}
-              className="bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60"
+              className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
             >
-              {signalSent ? '✓ Signal envoyé !' : signalLoading ? 'Envoi…' : 'Je suis présent'}
+              {signalSent ? (
+                <><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Signal envoyé !</>
+              ) : signalLoading ? 'Envoi…' : 'Je suis présent'}
             </button>
           </div>
         )}
 
         {activations.length > 0 && (
           <section>
-            <h2 className="font-semibold text-gray-800 mb-3">Mes lives</h2>
+            <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes lives</h2>
             <div className="space-y-3">
               {activations.map((a) => {
                 const ev = a.events;
                 return (
-                  <div key={a.id} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <div key={a.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-medium text-gray-900 text-sm">
+                        <p className="font-medium text-slate-900 text-sm">
                           {ev?.title ?? `Live ${a.event_id.slice(0, 8)}`}
                         </p>
                         {ev?.event_date && (
-                          <p className="text-gray-400 text-xs mt-0.5">
+                          <p className="text-slate-400 text-xs mt-0.5">
                             {new Date(ev.event_date).toLocaleDateString('fr-FR', {
                               day: 'numeric',
                               month: 'long',
@@ -199,7 +217,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="flex flex-col gap-2 shrink-0">
-                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                           <Toggle
                             value={a.is_active}
                             onChange={() => toggleActivation(a.id, a.is_active)}
@@ -207,7 +225,7 @@ export default function DashboardPage() {
                           {a.is_active ? "J'accueille" : 'Inactif'}
                         </label>
                         {a.is_active && (
-                          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                             <Toggle
                               value={a.is_full}
                               onChange={() => toggleFull(a.id, a.is_full)}
@@ -225,31 +243,31 @@ export default function DashboardPage() {
         )}
 
         <section>
-          <h2 className="font-semibold text-gray-800 mb-3">Demandes de contact</h2>
+          <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Demandes de contact</h2>
           {contactRequests.length === 0 ? (
-            <p className="text-gray-400 text-sm">Aucune demande pour l'instant.</p>
+            <p className="text-slate-400 text-sm">Aucune demande pour l'instant.</p>
           ) : (
             <div className="space-y-3">
               {contactRequests.map((r) => (
-                <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                <div key={r.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{r.visitor_name}</p>
-                      <p className="text-gray-500 text-xs">{r.visitor_email}</p>
+                      <p className="font-medium text-slate-900 text-sm">{r.visitor_name}</p>
+                      <p className="text-slate-500 text-xs">{r.visitor_email}</p>
                       {r.message && (
-                        <p className="text-gray-600 text-sm mt-1 italic">"{r.message}"</p>
+                        <p className="text-slate-600 text-sm mt-1 italic">"{r.message}"</p>
                       )}
-                      <p className="text-gray-400 text-xs mt-1">
+                      <p className="text-slate-400 text-xs mt-1">
                         {new Date(r.created_at).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                     <span
-                      className={`text-xs px-2 py-1 rounded-full shrink-0 ${
+                      className={`text-xs px-2.5 py-1 rounded-full shrink-0 font-medium ${
                         r.status === 'accepted'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-emerald-50 text-emerald-700'
                           : r.status === 'declined'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-amber-50 text-amber-700'
                       }`}
                     >
                       {r.status === 'accepted' ? 'Acceptée' : r.status === 'declined' ? 'Refusée' : 'En attente'}
@@ -271,7 +289,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
       type="button"
       onClick={onChange}
       className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-        value ? 'bg-indigo-600' : 'bg-gray-200'
+        value ? 'bg-indigo-600' : 'bg-slate-200'
       }`}
     >
       <span

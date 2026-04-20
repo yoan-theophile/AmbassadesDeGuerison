@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { AlertTriangle, Home, MapPin, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface ConsignesData {
   host_first_name: string;
@@ -35,7 +37,6 @@ export default function AccueilInvitePage() {
       const data: ConsignesData = await res.json();
       setConsignes(data);
       if (data.already_acknowledged) {
-        // Déjà lu — on redemande l'adresse directement
         await acknowledge();
       } else {
         setStep('consignes');
@@ -59,22 +60,30 @@ export default function AccueilInvitePage() {
 
   if (step === 'loading') {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Chargement…</p>
+      <main className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex items-center gap-2 text-slate-400 text-sm">
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+          Chargement…
+        </div>
       </main>
     );
   }
 
   if (step === 'error') {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4">
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-sm">
-          <div className="text-5xl mb-4">⚠️</div>
-          <h1 className="text-xl font-semibold text-gray-800 mb-2">Lien invalide ou expiré</h1>
-          <p className="text-gray-500 text-sm">{errorMsg}</p>
-          <p className="text-gray-400 text-xs mt-4">
-            Si vous avez reçu ce lien par email, il est valable 7 jours. Contactez l'organisateur si le problème persiste.
+          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-6 h-6 text-amber-500" />
+          </div>
+          <h1 className="text-lg font-semibold text-slate-800 mb-2">Lien invalide ou expiré</h1>
+          <p className="text-slate-500 text-sm mb-1">{errorMsg}</p>
+          <p className="text-slate-400 text-xs mt-3">
+            Ce lien est valable 7 jours. Contactez l'organisateur si le problème persiste.
           </p>
+          <Link href="/" className="mt-5 inline-block text-xs text-indigo-600 hover:underline">
+            Retour à la carte
+          </Link>
         </div>
       </main>
     );
@@ -82,68 +91,81 @@ export default function AccueilInvitePage() {
 
   if (step === 'consignes') {
     return (
-      <main className="min-h-screen bg-indigo-50 px-4 py-10">
+      <main className="min-h-screen bg-slate-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
-          <h1 className="text-2xl font-bold text-indigo-900 mb-2">
-            Bienvenue chez {consignes?.host_first_name} 🎉
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Votre demande a été acceptée. Avant de recevoir l'adresse, veuillez lire les informations ci-dessous.
-          </p>
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold text-slate-800 mb-1">
+              Bienvenue chez {consignes?.host_first_name}
+            </h1>
+            <p className="text-slate-500 text-sm">
+              Votre demande a été acceptée. Lisez les informations ci-dessous avant de recevoir l'adresse.
+            </p>
+          </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
-            <h2 className="font-semibold text-gray-800 mb-2">Informations générales</h2>
-            <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-              <li>Soyez ponctuel — le live commence à l'heure indiquée</li>
-              <li>Respectez le lieu d'accueil et les autres participants</li>
-              <li>Cette adresse est personnelle — ne la partagez pas publiquement</li>
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-3">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Règles générales</p>
+            <ul className="text-sm text-slate-600 space-y-2">
+              {[
+                "Soyez ponctuel — le live commence à l'heure indiquée",
+                'Respectez le lieu et les autres participants',
+                'Cette adresse est personnelle — ne la partagez pas',
+              ].map((rule) => (
+                <li key={rule} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  {rule}
+                </li>
+              ))}
             </ul>
           </div>
 
           {consignes?.consignes && (
-            <div className="bg-indigo-100 rounded-xl p-5 mb-6">
-              <h2 className="font-semibold text-indigo-900 mb-2">
+            <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5 mb-5">
+              <p className="text-xs font-medium text-indigo-400 uppercase tracking-wide mb-2">
                 Consignes de {consignes.host_first_name}
-              </h2>
-              <p className="text-sm text-indigo-800 whitespace-pre-wrap">{consignes.consignes}</p>
+              </p>
+              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{consignes.consignes}</p>
             </div>
           )}
 
           <button
             onClick={acknowledge}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold text-lg hover:bg-indigo-700 transition-colors"
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-indigo-700 transition-colors"
           >
-            J'ai bien pris note → Voir l'adresse
+            J'ai bien pris note — Voir l'adresse
           </button>
         </div>
       </main>
     );
   }
 
-  // step === 'address'
   return (
-    <main className="min-h-screen bg-green-50 px-4 py-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="max-w-lg mx-auto">
-        <div className="text-center mb-6">
-          <div className="text-5xl mb-2">🏠</div>
-          <h1 className="text-2xl font-bold text-green-900">
-            Adresse de l'ambassade
-          </h1>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
+            <Home className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-slate-800">Adresse de l'ambassade</h1>
+            <p className="text-slate-500 text-xs">Chez {address?.host_first_name}</p>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
-          <h2 className="text-sm font-medium text-gray-500 mb-1">Adresse</h2>
-          <p className="font-semibold text-gray-800 text-lg">
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-3">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5" /> Adresse
+          </p>
+          <p className="font-semibold text-slate-800">
             {address?.address ?? "Non renseignée — contactez l'hôte"}
           </p>
         </div>
 
         {address?.whatsapp && (
-          <div className="bg-white rounded-xl shadow-sm p-5 mb-4">
-            <h2 className="text-sm font-medium text-gray-500 mb-1">WhatsApp</h2>
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-3">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">WhatsApp</p>
             <a
               href={`https://wa.me/${address.whatsapp.replace(/\D/g, '')}`}
-              className="text-green-600 font-medium"
+              className="text-emerald-600 font-medium text-sm hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -153,11 +175,17 @@ export default function AccueilInvitePage() {
         )}
 
         {address?.consignes && (
-          <div className="bg-green-100 rounded-xl p-5">
-            <h2 className="font-semibold text-green-900 mb-2">Consignes de {address.host_first_name}</h2>
-            <p className="text-sm text-green-800 whitespace-pre-wrap">{address.consignes}</p>
+          <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5">
+            <p className="text-xs font-medium text-indigo-400 uppercase tracking-wide mb-2">
+              Consignes de {address.host_first_name}
+            </p>
+            <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{address.consignes}</p>
           </div>
         )}
+
+        <Link href="/" className="mt-5 inline-block text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          Retour à la carte
+        </Link>
       </div>
     </main>
   );
