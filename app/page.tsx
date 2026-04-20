@@ -1,26 +1,40 @@
 import Link from 'next/link';
 import MapWrapper from '@/components/MapWrapper';
+import { Home, UserPlus, LayoutDashboard } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <main className="flex flex-col h-screen">
-      <header className="bg-indigo-700 text-white px-4 py-3 flex items-center justify-between shadow">
-        <h1 className="text-lg font-semibold">Ambassades de Guérison</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/inscription" className="bg-white text-indigo-700 px-3 py-1 rounded-full font-medium hover:bg-indigo-50">
-            Devenir hôte
-          </Link>
-          <Link href="/dashboard" className="text-indigo-100 hover:text-white">
-            Mon espace
-          </Link>
+    <main className="flex flex-col h-screen bg-white">
+      <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0 z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <Home className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
         </div>
+        <nav className="flex items-center gap-1">
+          <Link
+            href="/inscription"
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Devenir hôte</span>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span className="hidden sm:inline">Mon espace</span>
+          </Link>
+        </nav>
       </header>
 
       <div className="flex-1 relative">
         <MapWrapper />
       </div>
 
-      <footer className="bg-white border-t px-4 py-2 text-xs text-gray-500 text-center">
+      <footer className="bg-white border-t border-slate-100 px-4 py-2 text-xs text-slate-400 text-center shrink-0">
         Lives de guérison avec David Thery — Trouvez une ambassade près de chez vous
       </footer>
     </main>

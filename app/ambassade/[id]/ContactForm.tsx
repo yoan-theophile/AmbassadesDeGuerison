@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckCircle2, Send } from 'lucide-react';
 
 interface Props {
   hostProfileId: string;
@@ -39,11 +40,13 @@ export default function ContactForm({ hostProfileId, hostName }: Props) {
 
   if (done) {
     return (
-      <div className="text-center py-4">
-        <div className="text-3xl mb-2">✅</div>
-        <p className="text-gray-700 font-medium">Demande envoyée !</p>
-        <p className="text-gray-500 text-sm mt-1">
-          {hostName} va recevoir votre demande et vous transmettra l'adresse si disponible.
+      <div className="text-center py-5">
+        <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+        </div>
+        <p className="text-slate-800 font-medium text-sm">Demande envoyée</p>
+        <p className="text-slate-500 text-xs mt-1">
+          {hostName} recevra votre demande et vous transmettra l'adresse si disponible.
         </p>
       </div>
     );
@@ -52,49 +55,30 @@ export default function ContactForm({ hostProfileId, hostName }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Votre prénom *</label>
-        <input
-          type="text"
-          value={form.visitor_name}
-          onChange={(e) => set('visitor_name', e.target.value)}
-          required
-          className={inputCls}
-          placeholder="Jean"
-        />
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom *</label>
+        <input type="text" value={form.visitor_name} onChange={(e) => set('visitor_name', e.target.value)} required className={inputCls} placeholder="Jean" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Votre e-mail *</label>
-        <input
-          type="email"
-          value={form.visitor_email}
-          onChange={(e) => set('visitor_email', e.target.value)}
-          required
-          className={inputCls}
-          placeholder="jean@exemple.com"
-        />
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail *</label>
+        <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Message (optionnel)</label>
-        <textarea
-          value={form.message}
-          onChange={(e) => set('message', e.target.value)}
-          rows={2}
-          className={inputCls}
-          placeholder="Je serai avec ma famille de 3 personnes…"
-        />
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
+        <textarea value={form.message} onChange={(e) => set('message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
       <button
         type="submit"
         disabled={loading || !form.visitor_name || !form.visitor_email}
-        className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
+        <Send className="w-4 h-4" />
         {loading ? 'Envoi…' : 'Envoyer la demande'}
       </button>
     </form>
   );
 }
 
-const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
+const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white';
