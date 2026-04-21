@@ -94,17 +94,19 @@ export default function MapPublique() {
       hosts
         .filter((h) => h.lat && h.lng)
         .forEach((host) => {
-          const fullBadge = host.is_full ? ' <span class="text-red-500">[Complet]</span>' : '';
+          const fullBadge = host.is_full
+            ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
+            : '';
           const popup = `
-            <div class="min-w-[180px]">
-              <p class="font-semibold">${host.first_name}</p>
-              <p class="text-sm text-gray-600">${host.city}, ${host.country}</p>
-              <p class="text-xs mt-1">Places : ${host.accepted_count ?? 0}/${host.capacity ?? '?'}${fullBadge}</p>
-              ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-green-600 text-xs mt-1 block">Rejoindre le groupe WhatsApp</a>` : ''}
-              ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-block text-indigo-600 text-sm font-medium">Contacter →</a>` : ''}
+            <div style="min-width:190px;padding:2px 0">
+              <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
+              <p class="text-xs text-slate-500 mt-1">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
+              ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
+              ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             </div>
           `;
-          L.marker([host.lat, host.lng]).addTo(mapRef.current!).bindPopup(popup);
+          L.marker([host.lat, host.lng]).addTo(mapRef.current!).bindPopup(popup, { maxWidth: 240 });
         });
     }
 
