@@ -67,7 +67,7 @@ export default function InscriptionPage() {
     return (
       <>
         <AppHeader />
-        <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <main className="flex-1 flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <CheckCircle2 className="w-7 h-7 text-emerald-600" />
@@ -94,7 +94,7 @@ export default function InscriptionPage() {
   return (
     <>
       <AppHeader />
-      <main className="min-h-screen bg-slate-50 px-4 py-8">
+      <main className="flex-1 bg-slate-50 px-4 py-8">
       <div className="max-w-lg mx-auto">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Retour à la carte
