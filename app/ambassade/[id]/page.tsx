@@ -15,24 +15,33 @@ export default async function AmbassadePage({ params }: Props) {
   const supabase = createServiceClient();
 
   const { data: host, error } = await supabase
-    .from('host_profiles_public')
-    .select('id, first_name, city, country, type, capacity, contact_mode, consignes, whatsapp_group_url')
+    .from('host_profiles')
+    .select('id, first_name, city, country, host_type, type, capacity, contact_mode, consignes, whatsapp_group_url')
     .eq('id', id)
+    .eq('status', 'active')
     .single();
 
   if (error || !host) notFound();
+
+  // Compatibilité : host_type (schéma DB) ou type (schéma migré)
+  const hostType = (host as any).type ?? (host as any).host_type ?? 'autre';
 
   const typeLabels: Record<string, string> = {
     domicile: 'Domicile',
     salle: 'Salle communautaire',
     eglise: "Église / lieu de culte",
     autre: "Lieu d'accueil",
+    individual: 'Domicile',
+    church: "Église / lieu de culte",
   };
 
   const contactLabels: Record<string, string> = {
     email: 'E-mail',
     whatsapp: 'WhatsApp',
     telephone: 'Téléphone',
+    public: 'Contact direct',
+    form: 'Formulaire',
+    approval: 'Sur approbation',
   };
 
   return (
@@ -55,12 +64,14 @@ export default async function AmbassadePage({ params }: Props) {
 
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
-              {typeLabels[host.type] ?? host.type}
+              {typeLabels[hostType] ?? hostType}
             </span>
-            <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
-              <Users className="w-3.5 h-3.5" />
-              {host.capacity} places
-            </span>
+            {host.capacity && (
+              <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
+                <Users className="w-3.5 h-3.5" />
+                {host.capacity} places
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
               <MessageCircle className="w-3.5 h-3.5" />
               {contactLabels[host.contact_mode] ?? host.contact_mode}
