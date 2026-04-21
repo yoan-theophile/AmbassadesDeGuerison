@@ -24,6 +24,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
   }
 
+  if (lat !== undefined && lat !== null) {
+    const latNum = Number(lat);
+    if (Number.isNaN(latNum) || latNum < -90 || latNum > 90) {
+      return NextResponse.json({ error: 'Latitude invalide (doit être entre -90 et 90).' }, { status: 400 });
+    }
+  }
+  if (lng !== undefined && lng !== null) {
+    const lngNum = Number(lng);
+    if (Number.isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+      return NextResponse.json({ error: 'Longitude invalide (doit être entre -180 et 180).' }, { status: 400 });
+    }
+  }
+  if ((lat == null) !== (lng == null)) {
+    return NextResponse.json({ error: 'lat et lng doivent être fournis ensemble.' }, { status: 400 });
+  }
+
   const supabase = createServiceClient();
 
   const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
