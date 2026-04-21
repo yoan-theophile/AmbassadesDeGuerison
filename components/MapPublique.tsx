@@ -78,6 +78,19 @@ export default function MapPublique() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles by <a href="https://www.openstreetmap.fr" target="_blank">OSM France</a>',
         maxZoom: 20,
       }).addTo(map);
+
+      const LocateControl = L.Control.extend({
+        onAdd() {
+          const btn = L.DomUtil.create('button') as HTMLButtonElement;
+          btn.title = 'Me localiser';
+          btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-opacity=".3"/></svg>`;
+          btn.style.cssText = 'background:white;border:none;border-radius:8px;padding:8px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;';
+          L.DomEvent.on(btn, 'click', () => map.locate({ setView: true, maxZoom: 7 }));
+          return btn;
+        },
+      });
+      new LocateControl({ position: 'bottomright' }).addTo(map);
+      map.on('locationerror', () => { /* permission refusée — silencieux */ });
     }
 
     initMap();
