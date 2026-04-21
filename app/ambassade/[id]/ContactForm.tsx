@@ -71,7 +71,7 @@ export default function ContactForm({ hostProfileId, hostName }: Props) {
 
       <button
         type="submit"
-        disabled={loading || !form.visitor_name || !form.visitor_email}
+        disabled={loading}
         className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         <Send className="w-4 h-4" />
