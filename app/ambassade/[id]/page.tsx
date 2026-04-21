@@ -47,7 +47,7 @@ export default async function AmbassadePage({ params }: Props) {
   return (
     <>
       <AppHeader />
-      <main className="min-h-screen bg-slate-50 px-4 py-8">
+      <main className="min-h-screen bg-slate-50 px-4 py-5">
       <div className="max-w-lg mx-auto">
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-4">
