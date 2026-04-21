@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import AppHeader from '@/components/AppHeader';
 
 const COUNTRIES = ['France', 'Belgique', 'Suisse', 'Canada', 'Luxembourg', 'Autre'];
 const TYPES = [
@@ -64,7 +65,9 @@ export default function InscriptionPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <>
+        <AppHeader />
+        <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <CheckCircle2 className="w-7 h-7 text-emerald-600" />
@@ -82,13 +85,16 @@ export default function InscriptionPage() {
           </Link>
         </div>
       </main>
+      </>
     );
   }
 
   const steps = ['Coordonnées', 'Lieu', 'Contact'];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
+    <>
+      <AppHeader />
+      <main className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="max-w-lg mx-auto">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Retour à la carte
@@ -216,6 +222,7 @@ export default function InscriptionPage() {
         </p>
       </div>
     </main>
+    </>
   );
 }
 

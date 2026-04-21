@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import ContactForm from './ContactForm';
-import BackLink from '@/components/ui/BackLink';
+import AppHeader from '@/components/AppHeader';
 import { Home, Users, MessageCircle, ExternalLink } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ export default async function AmbassadePage({ params }: Props) {
 
   const { data: host, error } = await supabase
     .from('host_profiles')
-    .select('id, first_name, city, country, host_type, type, capacity, contact_mode, consignes, whatsapp_group_url')
+    .select('id, first_name, city, country, host_type, capacity, contact_mode, consignes, whatsapp_group_url')
     .eq('id', id)
     .eq('status', 'active')
     .single();
@@ -45,9 +45,10 @@ export default async function AmbassadePage({ params }: Props) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8">
+    <>
+      <AppHeader />
+      <main className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="max-w-lg mx-auto">
-        <BackLink href="/" label="Retour à la carte" />
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-4">
           <div className="flex items-start gap-4 mb-5">
@@ -104,5 +105,6 @@ export default async function AmbassadePage({ params }: Props) {
         </div>
       </div>
     </main>
+    </>
   );
 }
