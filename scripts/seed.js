@@ -161,30 +161,29 @@ async function run() {
   });
   console.log(`  ✓ Event futur  : ${evtFutur.title}`);
 
-  // ── Activations event passé (manuel — le trigger n'est actif que sur INSERT) ──
-  // Le trigger a créé des activations pour l'event futur avec la bonne capacité.
-  // Pour l'event passé (il y a 21 jours), on crée les activations manuellement
-  // avec les comptages réels simulés.
-  console.log('\n→ Activations event passé (manuel)...');
+  // ── Activations event passé (PATCH — le trigger a déjà créé les lignes) ────
+  // Le trigger crée toutes les activations (passé + futur) avec accepted_count=0.
+  // On PATCH le passé pour simuler les vraies participations.
+  console.log('\n→ Activations event passé (mise à jour des comptages)...');
   const passedAccepted = { Marie: 9, 'Jean-Pierre': 80, Fatou: 24, Samuel: 7, Claire: 4, Kofi: 72 };
+  const patchHeaders = { ...headers, 'Prefer': 'return=minimal' };
 
   for (const h of activeHosts) {
     const hid = hostIds[h.email];
     if (!hid) continue;
     const accepted = passedAccepted[h.first_name] ?? 0;
     const isFull = accepted >= h.capacity;
-    try {
-      await req('POST', '/host_activations', {
-        host_profile_id: hid,
-        event_id: evtPasse.id,
-        is_active: true,
-        is_full: isFull,
-        capacity: h.capacity,
-        accepted_count: accepted,
-      });
+    const url = `${BASE_URL}/rest/v1/host_activations?host_profile_id=eq.${hid}&event_id=eq.${evtPasse.id}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: patchHeaders,
+      body: JSON.stringify({ accepted_count: accepted, is_full: isFull }),
+    });
+    if (res.ok) {
       console.log(`  ✓ ${h.first_name} — ${accepted}/${h.capacity}${isFull ? ' (COMPLET)' : ''}`);
-    } catch (e) {
-      console.log(`  ✗ ${h.first_name}: ${e.message.slice(0, 120)}`);
+    } else {
+      const t = await res.text();
+      console.log(`  ✗ ${h.first_name}: ${t.slice(0, 120)}`);
     }
   }
 
