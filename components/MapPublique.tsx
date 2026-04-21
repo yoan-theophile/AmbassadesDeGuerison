@@ -45,24 +45,23 @@ export default function MapPublique() {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    let cancelled = false;
+
     async function initMap() {
       const L = (await import('leaflet')).default;
 
-      // Fix icône Leaflet avec Webpack
+      if (cancelled || !containerRef.current) return;
+      if ((containerRef.current as any)._leaflet_id) return;
+
       const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
       const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png';
-
-      const defaultIcon = L.icon({
-        iconUrl,
-        shadowUrl,
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
+      L.Marker.prototype.options.icon = L.icon({
+        iconUrl, shadowUrl,
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
       });
-      L.Marker.prototype.options.icon = defaultIcon;
 
-      if (!containerRef.current) return;
       const map = L.map(containerRef.current).setView([20, 10], 3);
+      if (cancelled) { map.remove(); return; }
       mapRef.current = map;
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -74,6 +73,7 @@ export default function MapPublique() {
     initMap();
 
     return () => {
+      cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
     };
