@@ -25,9 +25,9 @@ interface Activation {
 
 interface ContactRequest {
   id: string;
-  visitor_name: string;
+  visitor_first_name: string;
   visitor_email: string;
-  message: string;
+  visitor_message: string;
   status: string;
   created_at: string;
   action_token: string;
@@ -58,7 +58,7 @@ export default function DashboardPage() {
         .limit(5),
       supabase
         .from('contact_requests')
-        .select('id, visitor_name, visitor_email, message, status, created_at, action_token')
+        .select('id, visitor_first_name, visitor_email, visitor_message, status, created_at, action_token')
         .eq('host_profile_id', (await supabase.from('host_profiles').select('id').eq('user_id', user.id).single()).data?.id ?? '')
         .order('created_at', { ascending: false })
         .limit(20),
@@ -252,10 +252,10 @@ export default function DashboardPage() {
                 <div key={r.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-slate-900 text-sm">{r.visitor_name}</p>
+                      <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
                       <p className="text-slate-500 text-xs">{r.visitor_email}</p>
-                      {r.message && (
-                        <p className="text-slate-600 text-sm mt-1 italic">"{r.message}"</p>
+                      {r.visitor_message && (
+                        <p className="text-slate-600 text-sm mt-1 italic">"{r.visitor_message}"</p>
                       )}
                       <p className="text-slate-400 text-xs mt-1">
                         {new Date(r.created_at).toLocaleDateString('fr-FR')}

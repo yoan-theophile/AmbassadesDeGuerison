@@ -101,7 +101,7 @@ export default async function AmbassadePage({ params }: Props) {
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-sm font-medium text-slate-800 mb-4">Demander à rejoindre</p>
-          <ContactForm hostProfileId={host.id} hostName={host.first_name} />
+          <ContactForm hostProfileId={host.id} hostName={host.first_name} contactMode={host.contact_mode} />
         </div>
       </div>
     </main>
