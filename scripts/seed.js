@@ -163,27 +163,36 @@ async function run() {
     }
   }
 
-  // ---- Activations (event futur) — déclenché par trigger normalement ----
-  // Le trigger fn_auto_activate_hosts_for_event s'est déclenché à l'insertion de l'event.
-  // Mais les host_profiles ont été insérés APRÈS. On crée manuellement.
+  // ---- Activations (event futur) — upsert via PATCH pour corriger le capacity=5 du trigger ----
+  // Le trigger crée des activations avec capacity=5 (hardcodé) quand le host passe active.
+  // On insère d'abord, puis on PATCH pour forcer la bonne capacité même si déjà existant.
   console.log('\n→ Activations event futur...');
+  const capF = { Marie: 15, 'Jean-Pierre': 80, Fatou: 40, Samuel: 12, Claire: 8, Kofi: 120, Sophie: 10 };
   for (const h of activeHosts) {
     const hid = hostIds[h.email];
     if (!hid) continue;
-    const capF = { Marie: 15, 'Jean-Pierre': 80, Fatou: 40, Samuel: 12, Claire: 8, Kofi: 120, Sophie: 10 };
+    const cap = capF[h.first_name] ?? 10;
     try {
       await req('POST', '/host_activations', {
         host_profile_id: hid,
         event_id: evtFutur.id,
         is_active: true,
         is_full: false,
-        capacity: capF[h.first_name] ?? 10,
+        capacity: cap,
         accepted_count: 0,
       });
-      console.log(`  ✓ ${h.first_name} activé pour ${evtFutur.title.slice(0, 30)}...`);
-    } catch (e) {
-      // Peut déjà exister si le trigger a fonctionné
-      console.log(`  · ${h.first_name}: ${e.message.slice(0, 80)}`);
+      console.log(`  ✓ ${h.first_name} créé (cap ${cap})`);
+    } catch {
+      // Déjà existant (trigger) — on corrige la capacité via PATCH
+      try {
+        const patchHeaders = { ...headers, 'Prefer': 'return=minimal' };
+        const url = `${BASE_URL}/rest/v1/host_activations?host_profile_id=eq.${hid}&event_id=eq.${evtFutur.id}`;
+        const res = await fetch(url, { method: 'PATCH', headers: patchHeaders, body: JSON.stringify({ capacity: cap, accepted_count: 0 }) });
+        if (!res.ok) { const t = await res.text(); console.log(`  ✗ PATCH ${h.first_name}: ${t.slice(0, 80)}`); }
+        else console.log(`  ✓ ${h.first_name} mis à jour (cap ${cap} via PATCH)`);
+      } catch (e2) {
+        console.log(`  ✗ ${h.first_name}: ${e2.message.slice(0, 80)}`);
+      }
     }
   }
 

@@ -13,8 +13,8 @@ interface HostPin {
   lng: number;
   contact_mode: 'public' | 'form' | 'approval';
   is_full: boolean;
-  accepted_count: number;
-  capacity: number;
+  accepted_count: number | null;
+  capacity: number | null;
   whatsapp_group_url?: string;
 }
 
@@ -99,7 +99,7 @@ export default function MapPublique() {
             <div class="min-w-[180px]">
               <p class="font-semibold">${host.first_name}</p>
               <p class="text-sm text-gray-600">${host.city}, ${host.country}</p>
-              <p class="text-xs mt-1">Places : ${host.accepted_count}/${host.capacity}${fullBadge}</p>
+              <p class="text-xs mt-1">Places : ${host.accepted_count ?? 0}/${host.capacity ?? '?'}${fullBadge}</p>
               ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-green-600 text-xs mt-1 block">Rejoindre le groupe WhatsApp</a>` : ''}
               ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-block text-indigo-600 text-sm font-medium">Contacter →</a>` : ''}
             </div>
