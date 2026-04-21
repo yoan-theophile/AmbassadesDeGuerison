@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendContactRequestReceivedVisitor, sendNewContactRequestHost } from '@/lib/email/templates';
 
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
@@ -69,6 +70,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Demande déjà envoyée' }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Fetch host details for email notifications (fire-and-forget, don't block response)
+  const { data: hostDetails } = await supabase
+    .from('host_activations')
+    .select('host_profiles!inner(email, first_name, city, contact_mode)')
+    .eq('id', host_activation_id)
+    .single();
+  const hp = hostDetails?.host_profiles as any;
+  if (hp) {
+    Promise.allSettled([
+      sendContactRequestReceivedVisitor(
+        visitor_email.trim(),
+        visitor_first_name.trim(),
+        hp.first_name,
+        hp.city,
+        hp.contact_mode
+      ),
+      sendNewContactRequestHost(
+        hp.email,
+        hp.first_name,
+        visitor_first_name.trim(),
+        visitor_email.trim(),
+        visitor_message?.trim() ?? null
+      ),
+    ]);
   }
 
   return NextResponse.json({ id: data.id }, { status: 201 });
