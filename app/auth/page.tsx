@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { Mail, MailCheck, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import AppHeader from '@/components/AppHeader';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
@@ -34,7 +35,9 @@ export default function AuthPage() {
 
   if (sent) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <>
+        <AppHeader />
+        <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <MailCheck className="w-7 h-7 text-emerald-600" />
@@ -52,11 +55,14 @@ export default function AuthPage() {
           </button>
         </div>
       </main>
+      </>
     );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <>
+      <AppHeader />
+      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Retour à la carte
@@ -109,5 +115,6 @@ export default function AuthPage() {
         </div>
       </div>
     </main>
+    </>
   );
 }
