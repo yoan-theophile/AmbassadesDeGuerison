@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import ShareButtons from '@/components/ShareButtons';
+import AppHeader from '@/components/AppHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,9 @@ export default async function TemoignagesPage({ params }: Props) {
   const testimonials = testimonialsRes.data ?? [];
 
   return (
-    <main className="min-h-screen bg-white px-4 py-10">
+    <>
+      <AppHeader />
+      <main className="flex-1 bg-white px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4">
@@ -80,5 +83,6 @@ export default async function TemoignagesPage({ params }: Props) {
         )}
       </div>
     </main>
+    </>
   );
 }

@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { MapPin } from 'lucide-react';
+import AppHeader from '@/components/AppHeader';
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+    <>
+      <AppHeader />
+      <main className="flex-1 bg-slate-50 flex items-center justify-center px-4">
       <div className="max-w-sm w-full text-center">
         <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <MapPin className="w-8 h-8 text-indigo-400" />
@@ -20,5 +23,6 @@ export default function NotFound() {
         </Link>
       </div>
     </main>
+    </>
   );
 }
