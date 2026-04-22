@@ -36,22 +36,27 @@
 ## Scénario 1 — La carte publique
 
 **Ce que montre cette page :**
-La carte mondiale avec les épingles des ambassades actives pour le dernier live.
+La carte mondiale avec les épingles des ambassades actives + le bandeau événement.
 
 **Étapes :**
 1. Ouvrir `http://localhost:3000`
-2. La carte s'affiche avec 6 épingles géolocalisées
-3. Zoomer sur la France : Paris (Marie) et Lyon (Jean-Pierre)
-4. Zoomer sur l'Europe : Bruxelles (Fatou) et Genève (Claire)
-5. Dézoomer : Montréal (Canada) et Abidjan (Côte d'Ivoire) apparaissent
-6. Cliquer sur l'épingle de **Marie à Paris** → bulle d'information avec prénom, ville et capacité
-7. Cliquer sur « Contacter → » dans la bulle
+2. **Bandeau EventBanner** visible en haut de la carte :
+   - Si live dans < 7j : compte à rebours indigo animé *"Prochain live dans 10j 4h 32min"*
+   - Sinon : *"Prochain live le samedi 3 mai"*
+   - Après le live : *"Dernier live il y a X jours — prochainement"*
+3. La carte s'affiche avec 6 épingles géolocalisées
+4. Zoomer sur la France : Paris (Marie) et Lyon (Jean-Pierre)
+5. Zoomer sur l'Europe : Bruxelles (Fatou) et Genève (Claire)
+6. Dézoomer : Montréal (Canada) et Abidjan (Côte d'Ivoire) apparaissent
+7. Cliquer sur l'épingle de **Marie à Paris** → bulle d'information avec prénom, ville et capacité
+8. Cliquer sur « Contacter → » dans la bulle
 
 **Points clés à montrer à David :**
 - Couverture internationale en temps réel
 - L'épingle de **Jean-Pierre (Lyon)** affiche « Complet » (80/80)
 - Actualisation automatique toutes les 30 secondes sans rechargement de page
 - Sophie (Bordeaux) n'apparaît pas : statut `pending_onboarding`, pas encore visible
+- La carte s'affiche même s'il n'y a pas de live passé (fallback sur le prochain event futur)
 
 ---
 
@@ -111,7 +116,7 @@ Une ambassade d'église avec lien WhatsApp direct.
 Le parcours pour devenir un nouvel ambassadeur, avec saisie de ville intelligente et sélection de pays complète.
 
 **Étapes :**
-1. Depuis la carte, cliquer sur « Devenir hôte » (bouton indigo en haut à droite)
+1. Depuis la carte, cliquer sur « Devenir ambassadeur » (bouton indigo en haut à droite)
    - Ou URL directe : `http://localhost:3000/inscription`
 2. **Étape 1 — Coordonnées :**
    - Prénom : Thomas
@@ -130,13 +135,16 @@ Le parcours pour devenir un nouvel ambassadeur, avec saisie de ville intelligent
    - Mode de contact : E-mail
    - Récapitulatif visible
    - Cliquer sur « Envoyer ma demande »
-5. Page de confirmation : *"Merci Thomas. Votre demande est en cours de validation."*
+5. Page de confirmation avec **share CTA** :
+   - Bouton « Copier le lien » → copie l'URL de la carte
+   - Bouton « WhatsApp » → partage pré-rempli : *"Je viens de m'inscrire comme ambassadeur…"*
 
 **Points clés :**
 - La ville avec autocomplete est géocodée → l'épingle apparaîtra précisément sur la carte une fois activé
 - 200+ pays disponibles, francophones épinglés en tête
 - L'adresse est stockée mais jamais visible publiquement avant activation
 - La candidature arrive dans la modération admin
+- Dès la confirmation, l'ambassadeur est incité à partager — viralité dès le premier contact
 
 ---
 
@@ -233,6 +241,83 @@ L'hôte peut refuser une demande via son lien de refus, même après l'auto-acce
 
 ---
 
+## Scénario 9 — Tableau de bord ambassadeur (share + live + témoignages)
+
+**Ce que montre ce scénario :**
+Ce que voit un ambassadeur connecté pendant (et après) un live.
+
+**Prérequis :** se connecter en tant que Marie (magic link) depuis `/auth`.
+
+**Section « Partager mon ambassade » :**
+1. Ouvrir le dashboard → section bleue en haut
+2. L'URL de la fiche ambassade est affichée : `…/ambassade/{id}`
+3. Cliquer sur « Copier le lien » → feedback *"Copié !"*
+4. Cliquer sur « Partager sur WhatsApp » → message pré-rempli avec la ville et l'URL
+
+**Section « Lever la main pour témoigner » (pendant le live) :**
+1. Saisir un texte dans la zone : *"Quelqu'un vient d'être guéri d'un genou douloureux depuis 3 ans !"*
+2. Cliquer sur « Lever la main pour témoigner »
+3. Confirmation : *"David verra votre témoignage"*
+4. L'admin David voit le signal apparaître dans `/admin/live` dans les 5 secondes
+
+**Section « Partager un témoignage » :**
+1. Saisir un témoignage complet
+2. Choisir le timing : *Pendant le live* ou *Après le live*
+3. Envoyer → compteur *"1 témoignage envoyé"* s'incrémente
+4. Renvoyer un 2e témoignage → *"2 témoignages envoyés"*
+5. Chaque témoignage passe en modération (is_visible = false jusqu'à validation David)
+
+---
+
+## Scénario 10 — Feed temps réel David (admin/live)
+
+**Ce que montre ce scénario :**
+La page que David ouvre sur un 2e écran pendant le live.
+
+**Étapes :**
+1. Ouvrir `http://localhost:3000/admin/live`
+2. Deux colonnes côte à côte :
+   - **Gauche — Signaux live** : liste des ambassadeurs qui veulent « monter en live »
+     - Chaque signal affiche le nom, la ville et le message de l'ambassadeur
+     - Bouton « Approuver » → signal disparaît du feed (statut approuvé)
+     - Bouton « Refuser » → signal décliné
+   - **Droite — Témoignages à publier** : témoignages en attente de modération
+     - Bouton « Publier » → témoignage visible sur la page publique `/lives/{id}/temoignages`
+     - Bouton « Refuser » → supprimé
+3. Les deux feeds se rafraîchissent automatiquement (signaux : 5s, témoignages : 10s)
+
+**Points clés :**
+- David voit TOUT en un seul écran, sans naviguer
+- Les signaux viennent des ambassadeurs qui vivent quelque chose de fort
+- Les témoignages viennent à la fois des ambassadeurs ET des visiteurs (via leur lien accueil-invite)
+
+---
+
+## Scénario 11 — Témoignage visiteur (parcours complet)
+
+**Ce que montre ce scénario :**
+Un visiteur qui a reçu une guérison peut témoigner directement depuis son lien d'invite.
+
+**Contexte :** Pierre a déjà consulté son lien et l'adresse est visible. Modifier `created_at` de sa demande à -25h (voir Scénario 6).
+
+**Étapes :**
+1. Ouvrir le lien `/accueil-invite/{action_token}` de Pierre
+2. L'adresse de Marie s'affiche
+3. En bas de la page, section **« Partagez votre témoignage »** :
+   - Zone de texte : *"J'avais des douleurs chroniques depuis 10 ans. Pendant le live, quelque chose s'est passé — je suis guéri !"*
+   - Prénom (optionnel) : *Pierre*
+   - Cliquer sur « Envoyer mon témoignage »
+4. Confirmation : *"Merci ! Votre témoignage sera publié après validation."*
+5. Dans `/admin/live` → colonne droite → le témoignage de Pierre apparaît (visiteur anonyme ou prénom)
+6. David clique « Publier » → le témoignage est visible sur `/lives/{id}/temoignages`
+
+**Points clés :**
+- Zéro compte requis pour le visiteur : le token de son lien suffit
+- Les témoignages visiteurs et ambassadeurs sont modérés au même endroit
+- La page témoignages publique a un bouton « Partager » (copier + WhatsApp)
+
+---
+
 ## Pour réinitialiser les données entre les démos
 
 ```bash
@@ -257,4 +342,4 @@ Pour accéder aux pages `/admin/*` :
 
 ---
 
-*Mis à jour le 22 avril 2026 — DavidTheryApp v1.1 (flux contact inversé + composants UI)*
+*Mis à jour le 22 avril 2026 — DavidTheryApp v1.2 (témoignages multi + visiteurs, live enrichi, EventBanner, share card, admin/live)*
