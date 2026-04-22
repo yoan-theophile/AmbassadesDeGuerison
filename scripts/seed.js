@@ -118,7 +118,7 @@ async function run() {
     {
       first_name: 'Sophie', email: 'sophie.leroux@demo.fr',
       city: 'Bordeaux', country: 'France',
-      host_type: 'individual', contact_mode: 'form', capacity: 10,
+      host_type: 'individual', contact_mode: 'email', capacity: 10,
       address_private: "8 cours de l'Intendance, 33000 Bordeaux",
       consignes: null,
       lat: 44.8378, lng: -0.5792, status: 'pending_onboarding',
