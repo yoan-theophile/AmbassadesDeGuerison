@@ -7,14 +7,27 @@ export const revalidate = 0;
 export async function GET() {
   const supabase = createServiceClient();
 
-  // "Dernier live" = event passé le plus récent (stable même si un event futur est créé)
-  const { data: lastEvent } = await supabase
+  const now = new Date().toISOString();
+
+  // Préfère le dernier live passé ; fallback sur le prochain futur si aucun live passé
+  let { data: lastEvent } = await supabase
     .from('events')
     .select('id')
-    .lte('event_date', new Date().toISOString())
+    .lte('event_date', now)
     .order('event_date', { ascending: false })
     .limit(1)
     .single();
+
+  if (!lastEvent) {
+    const { data: futureEvent } = await supabase
+      .from('events')
+      .select('id')
+      .gt('event_date', now)
+      .order('event_date', { ascending: true })
+      .limit(1)
+      .single();
+    lastEvent = futureEvent;
+  }
 
   if (!lastEvent) {
     return NextResponse.json([]);

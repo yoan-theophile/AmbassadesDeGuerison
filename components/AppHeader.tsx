@@ -16,7 +16,7 @@ export default function AppHeader() {
           className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
         >
           <UserPlus className="w-4 h-4" />
-          <span className="hidden sm:inline">Devenir hôte</span>
+          <span className="hidden sm:inline">Devenir ambassadeur</span>
         </Link>
         <Link
           href="/dashboard"

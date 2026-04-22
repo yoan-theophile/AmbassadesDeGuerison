@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Send } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
 
 interface Props {
@@ -13,7 +13,8 @@ interface Props {
 export default function ContactForm({ hostProfileId, hostName, contactMode }: Props) {
   const [form, setForm] = useState({ visitor_first_name: '', visitor_email: '', visitor_whatsapp: '', visitor_message: '' });
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [actionToken, setActionToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
 
   function set(field: string, value: string) {
@@ -35,9 +36,19 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
     if (!res.ok) {
       setError(data.error ?? 'Une erreur est survenue.');
     } else {
-      setDone(true);
+      setActionToken(data.action_token);
     }
     setLoading(false);
+  }
+
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: select text
+    }
   }
 
   const contactHint: Record<string, string> = {
@@ -47,17 +58,42 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
   };
   const hint = contactHint[contactMode] ?? 'prochainement';
 
-  if (done) {
+  if (actionToken) {
+    const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/accueil-invite/${actionToken}`;
     return (
-      <div className="text-center py-5">
-        <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+      <div className="py-4 space-y-4">
+        <div className="text-center">
+          <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+          </div>
+          <p className="text-slate-800 font-medium text-sm">Demande envoyée !</p>
+          <p className="text-slate-500 text-xs mt-1 leading-relaxed">
+            L'adresse de {hostName} sera disponible dans 24 heures.
+          </p>
         </div>
-        <p className="text-slate-800 font-medium text-sm">Demande envoyée !</p>
-        <p className="text-slate-500 text-xs mt-1 leading-relaxed">
-          Un lien d'accès vous a été envoyé par e-mail. L'adresse de {hostName} sera disponible dans 24 heures.
-        </p>
-        <p className="text-slate-400 text-xs mt-2">Vérifiez votre boîte de réception.</p>
+
+        <div className="bg-indigo-50 rounded-xl p-4 space-y-3">
+          <p className="text-indigo-800 text-xs font-medium">Votre lien d'invitation</p>
+          <p className="text-indigo-600 text-xs break-all font-mono">{inviteUrl}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => copyLink(inviteUrl)}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-indigo-200 text-indigo-700 text-xs font-medium py-2 rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              {copied ? 'Copié !' : 'Copier'}
+            </button>
+            <a
+              href={inviteUrl}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Accéder
+            </a>
+          </div>
+        </div>
+
+        <p className="text-slate-400 text-xs text-center">Un e-mail vous a également été envoyé.</p>
       </div>
     );
   }

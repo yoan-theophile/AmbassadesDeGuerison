@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AlertTriangle, Home, MapPin, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, Home, MapPin, CheckCircle2, Clock, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 
 interface WaitState {
@@ -25,6 +25,8 @@ interface AddressData {
   whatsapp: string | null;
   consignes: string | null;
   host_first_name: string | null;
+  event_id: string | null;
+  contact_request_id: string | null;
 }
 
 type Step = 'loading' | 'waiting' | 'consignes' | 'address' | 'error';
@@ -45,6 +47,12 @@ export default function AccueilInvitePage() {
   const [address, setAddress] = useState<AddressData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Témoignage visiteur
+  const [testimonialContent, setTestimonialContent] = useState('');
+  const [testimonialName, setTestimonialName] = useState('');
+  const [testimonialSent, setTestimonialSent] = useState(false);
+  const [testimonialSubmitting, setTestimonialSubmitting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/contact-requests/${token}/acknowledge`)
@@ -83,6 +91,26 @@ export default function AccueilInvitePage() {
     }, 30_000);
     return () => clearInterval(id);
   }, [step, token]);
+
+  async function submitTestimonial() {
+    if (!testimonialContent.trim() || !address?.contact_request_id || !address?.event_id) return;
+    setTestimonialSubmitting(true);
+    try {
+      await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_request_id: address.contact_request_id,
+          visitor_name: testimonialName.trim() || null,
+          event_id: address.event_id,
+          timing: 'after',
+          content: testimonialContent.trim(),
+        }),
+      });
+      setTestimonialSent(true);
+    } catch { /* silencieux */ }
+    setTestimonialSubmitting(false);
+  }
 
   async function acknowledge() {
     setSubmitting(true);
@@ -247,6 +275,45 @@ export default function AccueilInvitePage() {
             <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{address.consignes}</p>
           </div>
         )}
+
+        {/* Formulaire témoignage visiteur */}
+        <div className="mt-6 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-4 h-4 text-indigo-400" />
+            <p className="text-sm font-medium text-slate-700">Partagez votre témoignage</p>
+          </div>
+
+          {testimonialSent ? (
+            <div className="flex items-center gap-2 text-emerald-600 text-sm">
+              <CheckCircle2 className="w-4 h-4" />
+              Merci ! Votre témoignage sera publié après validation.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <textarea
+                value={testimonialContent}
+                onChange={(e) => setTestimonialContent(e.target.value)}
+                placeholder="Qu'est-ce que Dieu a fait lors de ce live ? (guérison, délivrance, conversion…)"
+                rows={3}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              />
+              <input
+                type="text"
+                value={testimonialName}
+                onChange={(e) => setTestimonialName(e.target.value)}
+                placeholder="Votre prénom (optionnel)"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <button
+                onClick={submitTestimonial}
+                disabled={testimonialSubmitting || !testimonialContent.trim()}
+                className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {testimonialSubmitting ? 'Envoi…' : 'Envoyer mon témoignage'}
+              </button>
+            </div>
+          )}
+        </div>
 
         <Link href="/" className="mt-5 inline-block text-xs text-slate-400 hover:text-slate-600 transition-colors">
           Retour à la carte

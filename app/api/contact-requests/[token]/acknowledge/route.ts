@@ -13,6 +13,7 @@ async function fetchRequest(token: string) {
     .select(`
       id, status, created_at, onboarding_completed,
       host_activations!inner (
+        event_id,
         host_profiles!inner (
           first_name, address_private, whatsapp_group_url, consignes
         )
@@ -93,5 +94,7 @@ export async function POST(
     whatsapp: hp?.whatsapp_group_url ?? null,
     consignes: hp?.consignes ?? null,
     host_first_name: hp?.first_name ?? null,
+    event_id: ha?.event_id ?? null,
+    contact_request_id: data.id,
   });
 }

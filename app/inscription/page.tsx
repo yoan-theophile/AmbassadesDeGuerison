@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight, Copy } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
@@ -25,6 +25,7 @@ export default function InscriptionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -66,27 +67,63 @@ export default function InscriptionPage() {
   }
 
   if (success) {
+    const shareText = encodeURIComponent(
+      `Je viens de m'inscrire comme ambassadeur des lives de guérison avec David Théry 🙏\nRejoignez la carte des ambassades : ${typeof window !== 'undefined' ? window.location.origin : ''}`
+    );
+
+    async function copyShareLink() {
+      try {
+        await navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.origin : '');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch { /* fallback ignoré */ }
+    }
+
     return (
       <>
         <AppHeader />
         <main className="flex-1 flex items-center justify-center bg-slate-50 px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+          <div className="text-center max-w-sm w-full">
+            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+            </div>
+            <h1 className="text-xl font-semibold text-slate-800 mb-2">Inscription envoyée !</h1>
+            <p className="text-slate-500 text-sm mb-6">
+              Merci {form.first_name}. Votre demande est en cours de validation.
+              Vous recevrez un e-mail de confirmation.
+            </p>
+
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4 text-left">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+                En attendant, partagez la carte
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyShareLink}
+                  className="flex items-center gap-1.5 flex-1 justify-center border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  {copied ? 'Copié !' : 'Copier le lien'}
+                </button>
+                <a
+                  href={`https://wa.me/?text=${shareText}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 flex-1 justify-center bg-emerald-500 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <Link
+              href="/"
+              className="text-sm text-indigo-600 hover:underline flex items-center gap-1 justify-center"
+            >
+              <ArrowLeft className="w-4 h-4" /> Retour à la carte
+            </Link>
           </div>
-          <h1 className="text-xl font-semibold text-slate-800 mb-2">Inscription envoyée</h1>
-          <p className="text-slate-500 text-sm mb-6">
-            Merci {form.first_name}. Votre demande est en cours de validation.
-            Vous recevrez un e-mail de confirmation.
-          </p>
-          <Link
-            href="/"
-            className="text-sm text-indigo-600 hover:underline flex items-center gap-1 justify-center"
-          >
-            <ArrowLeft className="w-4 h-4" /> Retour à la carte
-          </Link>
-        </div>
-      </main>
+        </main>
       </>
     );
   }

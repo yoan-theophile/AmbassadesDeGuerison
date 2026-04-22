@@ -102,5 +102,5 @@ export async function POST(request: NextRequest) {
     ]);
   }
 
-  return NextResponse.json({ id: data.id }, { status: 201 });
+  return NextResponse.json({ id: data.id, action_token: data.action_token }, { status: 201 });
 }

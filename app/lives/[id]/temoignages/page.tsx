@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
+import ShareButtons from '@/components/ShareButtons';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,17 +33,25 @@ export default async function TemoignagesPage({ params }: Props) {
     <main className="min-h-screen bg-white px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {new Date(event.event_date).toLocaleDateString('fr-FR', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </p>
-          <p className="text-indigo-600 font-medium mt-1">
-            {testimonials.length} témoignage{testimonials.length !== 1 ? 's' : ''}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                {new Date(event.event_date).toLocaleDateString('fr-FR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+              <p className="text-indigo-600 font-medium mt-1">
+                {testimonials.length} témoignage{testimonials.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <ShareButtons
+              url={`/lives/${id}/temoignages`}
+              text={`${testimonials.length} témoignage${testimonials.length !== 1 ? 's' : ''} lors du live "${event.title}" avec David Théry 🙏`}
+            />
+          </div>
         </div>
 
         {testimonials.length === 0 ? (

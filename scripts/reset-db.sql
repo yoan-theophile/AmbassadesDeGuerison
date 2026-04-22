@@ -55,8 +55,8 @@ CREATE TABLE host_profiles (
       OR whatsapp_group_url LIKE 'https://chat.whatsapp.com/%'
       OR whatsapp_group_url LIKE 'https://wa.me/%'
     ),
-  contact_mode        TEXT NOT NULL DEFAULT 'form'
-    CHECK (contact_mode IN ('public', 'form', 'approval')),
+  contact_mode        TEXT NOT NULL DEFAULT 'email'
+    CHECK (contact_mode IN ('email', 'whatsapp', 'telephone')),
   capacity            INT NOT NULL DEFAULT 10 CHECK (capacity > 0),
   consignes           TEXT,
   status              TEXT NOT NULL DEFAULT 'pending_onboarding'
@@ -94,14 +94,18 @@ CREATE TABLE contact_requests (
 );
 
 CREATE TABLE testimonials (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  host_profile_id   UUID NOT NULL REFERENCES host_profiles(id) ON DELETE CASCADE,
-  event_id          UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  content           TEXT NOT NULL,
-  photo_url         TEXT,
-  timing            TEXT CHECK (timing IN ('during', 'after')),
-  is_visible        BOOLEAN DEFAULT TRUE,
-  created_at        TIMESTAMPTZ DEFAULT NOW()
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_profile_id       UUID REFERENCES host_profiles(id) ON DELETE CASCADE,
+  contact_request_id    UUID REFERENCES contact_requests(id) ON DELETE SET NULL,
+  visitor_name          TEXT,
+  event_id              UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  content               TEXT NOT NULL,
+  photo_url             TEXT,
+  timing                TEXT CHECK (timing IN ('during', 'after')),
+  is_visible            BOOLEAN DEFAULT FALSE,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT chk_testimonial_author
+    CHECK (host_profile_id IS NOT NULL OR contact_request_id IS NOT NULL)
 );
 
 CREATE TABLE live_signals (
@@ -281,10 +285,14 @@ CREATE POLICY "testimonials_public_read" ON testimonials
   FOR SELECT USING (is_visible = true);
 CREATE POLICY "testimonials_host_full" ON testimonials
   FOR ALL USING (
-    EXISTS (
+    host_profile_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM host_profiles hp
       WHERE hp.id = host_profile_id AND hp.user_id = auth.uid()
     )
+  );
+CREATE POLICY "testimonials_visitor_insert" ON testimonials
+  FOR INSERT WITH CHECK (
+    contact_request_id IS NOT NULL AND host_profile_id IS NULL
   );
 CREATE POLICY "testimonials_admin_full" ON testimonials
   FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');

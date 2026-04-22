@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Home, LogOut, Radio } from 'lucide-react';
+import {
+  CheckCircle2, Copy, Home, LogOut, Radio, Share2,
+  MessageSquare, Send, ExternalLink,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface HostProfile {
@@ -40,8 +43,21 @@ export default function DashboardPage() {
   const [activations, setActivations] = useState<Activation[]>([]);
   const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Live signal
+  const [signalDescription, setSignalDescription] = useState('');
   const [signalSent, setSignalSent] = useState(false);
   const [signalLoading, setSignalLoading] = useState(false);
+
+  // Share ambassade
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Testimonial
+  const [testimonialContent, setTestimonialContent] = useState('');
+  const [testimonialTiming, setTestimonialTiming] = useState<'during' | 'after'>('after');
+  const [testimonialSubmitting, setTestimonialSubmitting] = useState(false);
+  const [testimonialsSentCount, setTestimonialsSentCount] = useState(0);
+  const [testimonialError, setTestimonialError] = useState('');
 
   const supabase = createClient();
 
@@ -82,6 +98,10 @@ export default function DashboardPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Activation la plus récente (pour live signal + témoignage)
+  const latestActivation = activations[0] ?? null;
+  const latestEventId = latestActivation?.event_id ?? null;
+
   async function toggleActivation(id: string, currentValue: boolean) {
     await fetch(`/api/host-activations/${id}`, {
       method: 'PATCH',
@@ -104,16 +124,69 @@ export default function DashboardPage() {
     );
   }
 
-  async function sendModule7Signal() {
+  async function sendLiveSignal() {
+    if (!signalDescription.trim() || !profile || !latestEventId) return;
     setSignalLoading(true);
     await fetch('/api/live-signals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'module7', host_profile_id: profile?.id }),
+      body: JSON.stringify({
+        host_profile_id: profile.id,
+        event_id: latestEventId,
+        description: signalDescription.trim(),
+      }),
     });
     setSignalSent(true);
+    setSignalDescription('');
     setSignalLoading(false);
-    setTimeout(() => setSignalSent(false), 10000);
+    setTimeout(() => setSignalSent(false), 15000);
+  }
+
+  async function copyAmbassadeLink() {
+    if (!profile) return;
+    const url = `${window.location.origin}/ambassade/${profile.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch { /* fallback ignored */ }
+  }
+
+  function shareOnWhatsApp() {
+    if (!profile) return;
+    const url = `${window.location.origin}/ambassade/${profile.id}`;
+    const text = encodeURIComponent(
+      `Je suis ambassadeur des lives de guérison avec David Théry 🙏\nRejoignez-nous à ${profile.city} !\n${url}`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  async function submitTestimonial() {
+    if (!testimonialContent.trim() || !profile || !latestEventId) return;
+    setTestimonialSubmitting(true);
+    setTestimonialError('');
+    try {
+      const res = await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host_profile_id: profile.id,
+          event_id: latestEventId,
+          timing: testimonialTiming,
+          content: testimonialContent.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setTestimonialError(d.error ?? 'Erreur lors de l\'envoi.');
+      } else {
+        setTestimonialsSentCount((n) => n + 1);
+        setTestimonialContent('');
+      }
+    } catch {
+      setTestimonialError('Erreur réseau.');
+    }
+    setTestimonialSubmitting(false);
   }
 
   async function handleSignOut() {
@@ -144,17 +217,17 @@ export default function DashboardPage() {
   }
 
   const statusLabels: Record<string, string> = {
-    pending: 'En attente de validation',
+    pending_onboarding: 'En attente de validation',
     active: 'Actif',
-    inactive: 'Inactif',
-    rejected: 'Refusé',
+    suspended: 'Suspendu',
   };
   const statusColors: Record<string, string> = {
-    pending: 'bg-amber-50 text-amber-700',
+    pending_onboarding: 'bg-amber-50 text-amber-700',
     active: 'bg-emerald-50 text-emerald-700',
-    inactive: 'bg-slate-100 text-slate-500',
-    rejected: 'bg-red-50 text-red-700',
+    suspended: 'bg-red-50 text-red-700',
   };
+
+  const ambassadeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/ambassade/${profile.id}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -172,37 +245,100 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+
+        {/* En-tête */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-slate-800">Bonjour, {profile.first_name}</h1>
             <p className="text-slate-500 text-sm">{profile.city}, {profile.country}</p>
           </div>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-slate-100'}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-slate-100 text-slate-600'}`}>
             {statusLabels[profile.status] ?? profile.status}
           </span>
         </div>
 
+        {/* [4] Partager mon ambassade */}
         {profile.status === 'active' && (
-          <div className="bg-indigo-600 text-white rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Radio className="w-4 h-4 text-indigo-300" />
-              <p className="font-semibold">Signal de présence</p>
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-indigo-500" />
+              <h2 className="font-semibold text-slate-800 text-sm">Votre ambassade</h2>
             </div>
-            <p className="text-indigo-200 text-sm mb-4 ml-6">
-              Indiquez que vous êtes présent pendant le live en cours.
-            </p>
-            <button
-              onClick={sendModule7Signal}
-              disabled={signalLoading || signalSent}
-              className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
+
+            <div className="bg-slate-50 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-slate-400 mb-0.5">Lien public</p>
+              <p className="text-xs text-indigo-600 font-mono break-all">{ambassadeUrl}</p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={copyAmbassadeLink}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-100 transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+                {linkCopied ? 'Copié !' : 'Copier le lien'}
+              </button>
+              <button
+                onClick={shareOnWhatsApp}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                WhatsApp
+              </button>
+            </div>
+
+            <a
+              href={`/ambassade/${profile.id}/badge`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
             >
-              {signalSent ? (
-                <><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Signal envoyé !</>
-              ) : signalLoading ? 'Envoi…' : 'Je suis présent'}
-            </button>
+              <ExternalLink className="w-3 h-3" />
+              Voir mon badge ambassade
+            </a>
           </div>
         )}
 
+        {/* [NEW-A] Lever la main pour témoigner en live */}
+        {profile.status === 'active' && latestEventId && (
+          <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-indigo-300" />
+              <p className="font-semibold">Témoigner en live</p>
+            </div>
+
+            {signalSent ? (
+              <div className="flex items-center gap-2 text-indigo-100 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                Signal envoyé ! David verra votre témoignage.
+              </div>
+            ) : (
+              <>
+                <p className="text-indigo-200 text-sm">
+                  Décrivez ce qui s'est passé dans votre ambassade — guérison, transformation, moment fort.
+                  David lira votre message et pourra vous inviter à partager en direct.
+                </p>
+                <textarea
+                  value={signalDescription}
+                  onChange={(e) => setSignalDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Ex : Marie a été guérie d'une douleur chronique pendant la prière…"
+                  className="w-full bg-indigo-700 text-white placeholder-indigo-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                />
+                <button
+                  onClick={sendLiveSignal}
+                  disabled={signalLoading || !signalDescription.trim()}
+                  className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  {signalLoading ? 'Envoi…' : 'Lever la main pour témoigner'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Mes lives */}
         {activations.length > 0 && (
           <section>
             <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes lives</h2>
@@ -219,27 +355,19 @@ export default function DashboardPage() {
                         {ev?.event_date && (
                           <p className="text-slate-400 text-xs mt-0.5">
                             {new Date(ev.event_date).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric',
+                              day: 'numeric', month: 'long', year: 'numeric',
                             })}
                           </p>
                         )}
                       </div>
                       <div className="flex flex-col gap-2 shrink-0">
                         <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                          <Toggle
-                            value={a.is_active}
-                            onChange={() => toggleActivation(a.id, a.is_active)}
-                          />
+                          <Toggle value={a.is_active} onChange={() => toggleActivation(a.id, a.is_active)} />
                           {a.is_active ? "J'accueille" : 'Inactif'}
                         </label>
                         {a.is_active && (
                           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                            <Toggle
-                              value={a.is_full}
-                              onChange={() => toggleFull(a.id, a.is_full)}
-                            />
+                            <Toggle value={a.is_full} onChange={() => toggleFull(a.id, a.is_full)} />
                             Complet
                           </label>
                         )}
@@ -252,6 +380,74 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* [5] Formulaire témoignage */}
+        {latestEventId && (
+          <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-600" />
+              <h2 className="font-semibold text-slate-800 text-sm">Partager un témoignage</h2>
+            </div>
+
+            {testimonialsSentCount > 0 && (
+              <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-sm">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {testimonialsSentCount} témoignage{testimonialsSentCount > 1 ? 's' : ''} envoyé{testimonialsSentCount > 1 ? 's' : ''} — merci !
+              </div>
+            )}
+
+            <p className="text-slate-500 text-xs">
+              Chaque personne de votre ambassade peut partager son témoignage. Soumissions multiples acceptées.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Comment s'est passé le live chez vous ?
+              </label>
+              <textarea
+                value={testimonialContent}
+                onChange={(e) => setTestimonialContent(e.target.value)}
+                rows={4}
+                placeholder="Partagez ce que vous avez vécu pendant ce live…"
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Moment</label>
+              <div className="flex gap-2">
+                {(['during', 'after'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTestimonialTiming(t)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      testimonialTiming === t
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {t === 'during' ? 'Pendant le live' : 'Après le live'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {testimonialError && (
+              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
+            )}
+
+            <button
+              onClick={submitTestimonial}
+              disabled={testimonialSubmitting || !testimonialContent.trim()}
+              className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
+            </button>
+          </section>
+        )}
+
+        {/* Demandes de contact */}
         <section>
           <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Demandes de contact</h2>
           {contactRequests.length === 0 ? (
@@ -299,15 +495,11 @@ function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-        value ? 'bg-indigo-600' : 'bg-slate-200'
-      }`}
+      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${value ? 'bg-indigo-600' : 'bg-slate-200'}`}
     >
-      <span
-        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${
-          value ? 'translate-x-4' : 'translate-x-0.5'
-        }`}
-      />
+      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${value ? 'translate-x-4' : 'translate-x-0.5'}`} />
     </button>
   );
 }
+
+const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white';

@@ -69,7 +69,7 @@ async function run() {
     {
       first_name: 'Marie', email: 'marie.dubois@demo.fr',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'form', capacity: 15,
+      host_type: 'individual', contact_mode: 'email', capacity: 15,
       address_private: '12 rue de la Paix, 75001 Paris',
       consignes: 'Sonner à l\'interphone "Dubois". Ascenseur disponible. Parking Opéra à 200m.',
       lat: 48.8698, lng: 2.3315, status: 'active',
@@ -77,7 +77,7 @@ async function run() {
     {
       first_name: 'Jean-Pierre', email: 'jp.martin@demo.fr',
       city: 'Lyon', country: 'France',
-      host_type: 'church', contact_mode: 'public', capacity: 80,
+      host_type: 'church', contact_mode: 'whatsapp', capacity: 80,
       address_private: '5 place Bellecour, 69002 Lyon',
       consignes: 'Entrée principale sur la place. Grande salle au premier étage. Accessible PMR.',
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupLyon123',
@@ -86,7 +86,7 @@ async function run() {
     {
       first_name: 'Fatou', email: 'fatou.diallo@demo.fr',
       city: 'Bruxelles', country: 'Belgique',
-      host_type: 'individual', contact_mode: 'approval', capacity: 40,
+      host_type: 'individual', contact_mode: 'telephone', capacity: 40,
       address_private: 'Avenue Louise 54, 1050 Bruxelles',
       consignes: 'Salle communautaire au rez-de-chaussée. Pas de parking sur place.',
       lat: 50.8503, lng: 4.3517, status: 'active',
@@ -94,7 +94,7 @@ async function run() {
     {
       first_name: 'Samuel', email: 'samuel.eko@demo.fr',
       city: 'Montréal', country: 'Canada',
-      host_type: 'individual', contact_mode: 'public', capacity: 12,
+      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
       address_private: '1420 rue Sherbrooke O, Montréal, QC H3G 1K4',
       consignes: 'Appartement 4B. Buzzer : SAMUEL. Métro Guy-Concordia à 5 min.',
       lat: 45.5017, lng: -73.5673, status: 'active',
@@ -102,7 +102,7 @@ async function run() {
     {
       first_name: 'Claire', email: 'claire.bernard@demo.fr',
       city: 'Genève', country: 'Suisse',
-      host_type: 'individual', contact_mode: 'form', capacity: 8,
+      host_type: 'individual', contact_mode: 'email', capacity: 8,
       address_private: 'Rue du Rhône 10, 1204 Genève',
       consignes: 'Digicode : 4521. 3ème étage, porte droite.',
       lat: 46.2044, lng: 6.1432, status: 'active',
@@ -110,7 +110,7 @@ async function run() {
     {
       first_name: 'Kofi', email: 'kofi.asante@demo.fr',
       city: 'Abidjan', country: "Côte d'Ivoire",
-      host_type: 'church', contact_mode: 'public', capacity: 120,
+      host_type: 'church', contact_mode: 'whatsapp', capacity: 120,
       address_private: 'Carrefour Anono, Cocody, Abidjan',
       consignes: 'Temple évangélique Lumière. Grande salle climatisée.',
       lat: 5.3600, lng: -4.0083, status: 'active',
@@ -277,7 +277,7 @@ async function run() {
         event_id: evtPasse.id,
         content: t.content,
         timing: t.timing,
-        is_visible: true,
+        is_visible: false,
       });
       console.log(`  ✓ Témoignage de ${t.email.split('.')[0]}`);
     } catch (e) {
