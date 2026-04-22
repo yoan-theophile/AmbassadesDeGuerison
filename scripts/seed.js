@@ -62,8 +62,8 @@ async function run() {
   console.log('  ✓ Tables vidées\n');
 
   // ── Hôtes ────────────────────────────────────────────────────────────────
-  // On insère les hôtes EN PREMIER (avant les events), comme ça le trigger
-  // fn_auto_activate_hosts_for_event aura des hôtes actifs à activer.
+  // Insérés EN PREMIER — le trigger fn_auto_activate_hosts_for_event
+  // a besoin des hôtes actifs avant la création des events.
   console.log('→ Ambassadeurs...');
   const hostsData = [
     {
@@ -139,8 +139,7 @@ async function run() {
   const activeHosts = hostsData.filter(h => h.status === 'active');
 
   // ── Events ───────────────────────────────────────────────────────────────
-  // Insérés APRÈS les hôtes → le trigger active automatiquement les hôtes actifs
-  // avec leur vraie capacité (trigger corrigé dans reset-db.sql).
+  // Insérés APRÈS les hôtes → le trigger active automatiquement les hôtes actifs.
   console.log('\n→ Événements...');
   const now = new Date();
 
@@ -161,10 +160,10 @@ async function run() {
   });
   console.log(`  ✓ Event futur  : ${evtFutur.title}`);
 
-  // ── Activations event passé (PATCH — le trigger a déjà créé les lignes) ────
-  // Le trigger crée toutes les activations (passé + futur) avec accepted_count=0.
-  // On PATCH le passé pour simuler les vraies participations.
-  console.log('\n→ Activations event passé (mise à jour des comptages)...');
+  // ── Activations event passé ───────────────────────────────────────────────
+  // Le trigger a créé les lignes avec accepted_count=0.
+  // On PATCH uniquement les comptages pour simuler les participations réelles.
+  console.log('\n→ Activations event passé (comptages)...');
   const passedAccepted = { Marie: 9, 'Jean-Pierre': 80, Fatou: 24, Samuel: 7, Claire: 4, Kofi: 72 };
   const patchHeaders = { ...headers, 'Prefer': 'return=minimal' };
 
@@ -187,7 +186,7 @@ async function run() {
     }
   }
 
-  // ── Vérification activations event futur (créées par le trigger) ─────────
+  // ── Vérification activations event futur ─────────────────────────────────
   console.log('\n→ Vérification activations event futur (trigger)...');
   const futureActs = await req('GET', `/host_activations?event_id=eq.${evtFutur.id}&select=host_profile_id,capacity,accepted_count`);
   if (futureActs && futureActs.length > 0) {
@@ -196,7 +195,7 @@ async function run() {
       if (host) console.log(`  ✓ ${host.first_name} — 0/${act.capacity}`);
     }
   } else {
-    console.log('  ⚠ Aucune activation créée par le trigger (schema non réinitialisé ?)');
+    console.log('  ⚠ Aucune activation créée par le trigger.');
     console.log('    → Exécuter scripts/reset-db.sql puis relancer ce script.');
   }
 
@@ -206,25 +205,6 @@ async function run() {
     `/host_activations?event_id=eq.${evtPasse.id}&is_active=eq.true&select=id,host_profile_id`
   );
   const findAct = email => activationsPasse.find(a => a.host_profile_id === hostIds[email]);
-
-  // Détection des colonnes disponibles dans contact_requests
-  const sampleCols = await req('GET', '/contact_requests?limit=0&select=*').catch(() => null);
-  const colsHeaders = await fetch(`${BASE_URL}/rest/v1/contact_requests?limit=0`, {
-    headers: { ...headers, 'Accept': 'application/json' },
-  });
-  // On teste si les nouvelles colonnes existent en tentant un HEAD
-  let hasWhatsapp = false;
-  let hasOnboarding = false;
-  try {
-    const testRes = await fetch(`${BASE_URL}/rest/v1/contact_requests?select=visitor_whatsapp&limit=0`, { headers });
-    hasWhatsapp = testRes.ok;
-  } catch (_) {}
-  try {
-    const testRes = await fetch(`${BASE_URL}/rest/v1/contact_requests?select=onboarding_completed&limit=0`, { headers });
-    hasOnboarding = testRes.ok;
-  } catch (_) {}
-  if (!hasWhatsapp) console.log('  ⚠ visitor_whatsapp absent (schéma ancien — relancer reset-db.sql)');
-  if (!hasOnboarding) console.log('  ⚠ onboarding_completed absent (schéma ancien — relancer reset-db.sql)');
 
   const contactData = [
     {
@@ -256,18 +236,16 @@ async function run() {
     const act = findAct(c.email);
     if (!act) { console.log(`  · Activation manquante pour ${c.first}`); continue; }
     try {
-      const body = {
+      await req('POST', '/contact_requests', {
         host_activation_id: act.id,
         visitor_first_name: c.first,
         visitor_email: `${c.first.toLowerCase()}.demo@mail.com`,
+        visitor_whatsapp: c.whatsapp,
         visitor_message: c.msg,
         status: c.status,
-      };
-      if (hasWhatsapp) body.visitor_whatsapp = c.whatsapp;
-      if (hasOnboarding) body.onboarding_completed = c.onboarding_completed;
-
-      await req('POST', '/contact_requests', body);
-      console.log(`  ✓ ${c.first} → ${c.email.split('.')[0]} (${c.status}${c.onboarding_completed && hasOnboarding ? ', onboarded' : ''})`);
+        onboarding_completed: c.onboarding_completed,
+      });
+      console.log(`  ✓ ${c.first} → ${c.email.split('.')[0]} (${c.status}${c.onboarding_completed ? ', onboarded' : ''})`);
     } catch (e) {
       console.log(`  ✗ ${c.first}: ${e.message.slice(0, 120)}`);
     }
