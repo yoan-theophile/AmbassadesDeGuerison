@@ -43,11 +43,14 @@ function templateOrHtml(
 // RESEND_TEMPLATE_CONTACT_ACCEPTED
 //   variables : host_first_name, action_url
 //
-// RESEND_TEMPLATE_CONTACT_RECEIVED_VISITOR
-//   variables : visitor_first_name, host_first_name, host_city, contact_hint, app_url
+// RESEND_TEMPLATE_CONTACT_RESERVED
+//   variables : visitor_first_name, host_first_name, host_city, accueil_url, available_at
 //
 // RESEND_TEMPLATE_CONTACT_RECEIVED_HOST
-//   variables : host_first_name, visitor_first_name, visitor_email, visitor_message, dashboard_url
+//   variables : host_first_name, visitor_first_name, visitor_email, visitor_whatsapp, visitor_message, decline_url
+//
+// RESEND_TEMPLATE_CONTACT_DECLINED
+//   variables : visitor_first_name, host_first_name, app_url
 //
 // RESEND_TEMPLATE_ADMIN_NO_ACTIVATIONS
 //   variables : event_title, event_date, admin_url
@@ -122,35 +125,56 @@ export async function sendContactRequestAccepted(
   } as any);
 }
 
-export async function sendContactRequestReceivedVisitor(
+export async function sendContactRequestReserved(
   to: string,
   visitorFirstName: string,
   hostFirstName: string,
   hostCity: string,
-  contactMode: string
+  accueilUrl: string,
+  availableAt: Date
 ) {
-  const contactHint: Record<string, string> = {
-    email: 'par e-mail',
-    whatsapp: 'via WhatsApp',
-    telephone: 'par téléphone',
-  };
-  const hint = contactHint[contactMode] ?? 'prochainement';
+  const dateStr = availableAt.toLocaleString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
   return getResend().emails.send({
     from: FROM(),
     to,
-    subject: `Demande envoyée à l'ambassade de ${hostFirstName}`,
-    ...templateOrHtml('RESEND_TEMPLATE_CONTACT_RECEIVED_VISITOR', {
+    subject: `Votre place est réservée — Ambassade de ${hostFirstName}`,
+    ...templateOrHtml('RESEND_TEMPLATE_CONTACT_RESERVED', {
       visitor_first_name: visitorFirstName,
       host_first_name: hostFirstName,
       host_city: hostCity,
-      contact_hint: hint,
+      accueil_url: accueilUrl,
+      available_at: dateStr,
+    }, `
+      <p>Bonjour ${visitorFirstName},</p>
+      <p>Votre demande pour rejoindre l'ambassade de <strong>${hostFirstName}</strong> (${hostCity}) est bien enregistrée.</p>
+      <p>Votre lien d'accès à l'adresse sera disponible le <strong>${dateStr}</strong>.</p>
+      <p><a href="${accueilUrl}" style="background:#4F46E5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Accéder à mon lien</a></p>
+      <p style="color:#64748b;font-size:13px;">Si vous ne pouvez finalement pas venir, vous n'avez rien à faire — votre place sera libérée automatiquement.</p>
+      <p style="color:#64748b;font-size:13px;">Ambassades de Guérison — <a href="${APP_URL()}">Voir la carte</a></p>
+    `),
+  } as any);
+}
+
+export async function sendContactRequestDeclined(
+  to: string,
+  visitorFirstName: string,
+  hostFirstName: string
+) {
+  return getResend().emails.send({
+    from: FROM(),
+    to,
+    subject: `Votre demande auprès de ${hostFirstName} n'a pas pu être confirmée`,
+    ...templateOrHtml('RESEND_TEMPLATE_CONTACT_DECLINED', {
+      visitor_first_name: visitorFirstName,
+      host_first_name: hostFirstName,
       app_url: APP_URL(),
     }, `
       <p>Bonjour ${visitorFirstName},</p>
-      <p>Votre demande de contact à l'ambassade de <strong>${hostFirstName}</strong> (${hostCity}) a bien été reçue.</p>
-      <p>${hostFirstName} vous contactera <strong>${hint}</strong>, généralement dans les 24 à 48 heures.</p>
-      <p>Si vous n'avez pas de nouvelles passé ce délai, vous pouvez soumettre une nouvelle demande depuis la carte.</p>
-      <p style="color:#64748b;font-size:13px;">Ambassades de Guérison — <a href="${APP_URL()}">Voir la carte</a></p>
+      <p>${hostFirstName} n'est malheureusement pas en mesure de vous accueillir pour ce live.</p>
+      <p>D'autres ambassades sont peut-être disponibles près de chez vous :</p>
+      <p><a href="${APP_URL()}" style="background:#4F46E5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Voir la carte</a></p>
     `),
   } as any);
 }
@@ -160,24 +184,32 @@ export async function sendNewContactRequestHost(
   hostFirstName: string,
   visitorFirstName: string,
   visitorEmail: string,
-  visitorMessage: string | null
+  visitorWhatsapp: string | null,
+  visitorMessage: string | null,
+  declineUrl: string
 ) {
+  const contactLine = visitorWhatsapp
+    ? `<p>📱 WhatsApp : <a href="https://wa.me/${visitorWhatsapp.replace(/\D/g, '')}">${visitorWhatsapp}</a></p>`
+    : '';
   return getResend().emails.send({
     from: FROM(),
     to,
-    subject: `Nouvelle demande de ${visitorFirstName}`,
+    subject: `${visitorFirstName} souhaite rejoindre votre ambassade`,
     ...templateOrHtml('RESEND_TEMPLATE_CONTACT_RECEIVED_HOST', {
       host_first_name: hostFirstName,
       visitor_first_name: visitorFirstName,
       visitor_email: visitorEmail,
+      visitor_whatsapp: visitorWhatsapp ?? '',
       visitor_message: visitorMessage ?? '',
-      dashboard_url: `${APP_URL()}/dashboard`,
+      decline_url: declineUrl,
     }, `
       <p>Bonjour ${hostFirstName},</p>
-      <p><strong>${visitorFirstName}</strong> (${visitorEmail}) souhaite rejoindre votre ambassade.</p>
+      <p><strong>${visitorFirstName}</strong> souhaite rejoindre votre ambassade.</p>
+      <p>✉️ E-mail : <a href="mailto:${visitorEmail}">${visitorEmail}</a></p>
+      ${contactLine}
       ${visitorMessage ? `<p>Message : <em>"${visitorMessage}"</em></p>` : ''}
-      <p>Connectez-vous à votre espace pour accepter ou refuser cette demande :</p>
-      <p><a href="${APP_URL()}/dashboard" style="background:#4F46E5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Voir la demande</a></p>
+      <p style="color:#64748b;font-size:13px;margin-top:16px;">Sa place sera confirmée automatiquement dans 24 heures. Si vous n'êtes pas en mesure de l'accueillir, cliquez ici :</p>
+      <p><a href="${declineUrl}" style="background:#ef4444;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Refuser cette demande</a></p>
     `),
   } as any);
 }

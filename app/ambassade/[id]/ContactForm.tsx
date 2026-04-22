@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CheckCircle2, Send } from 'lucide-react';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 interface Props {
   hostProfileId: string;
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export default function ContactForm({ hostProfileId, hostName, contactMode }: Props) {
-  const [form, setForm] = useState({ visitor_first_name: '', visitor_email: '', visitor_message: '' });
+  const [form, setForm] = useState({ visitor_first_name: '', visitor_email: '', visitor_whatsapp: '', visitor_message: '' });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -54,9 +55,9 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
         </div>
         <p className="text-slate-800 font-medium text-sm">Demande envoyée !</p>
         <p className="text-slate-500 text-xs mt-1 leading-relaxed">
-          {hostName} va recevoir votre demande et vous contactera <strong className="text-slate-700">{hint}</strong> dans les 24 à 48 heures.
+          Un lien d'accès vous a été envoyé par e-mail. L'adresse de {hostName} sera disponible dans 24 heures.
         </p>
-        <p className="text-slate-400 text-xs mt-2">Un e-mail de confirmation vous a été envoyé.</p>
+        <p className="text-slate-400 text-xs mt-2">Vérifiez votre boîte de réception.</p>
       </div>
     );
   }
@@ -71,6 +72,13 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
         <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail *</label>
         <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
       </div>
+      <PhoneInput
+        label="WhatsApp (optionnel)"
+        id="visitor_whatsapp"
+        value={form.visitor_whatsapp}
+        onChange={(v) => set('visitor_whatsapp', v)}
+        placeholder="+33 6 12 34 56 78"
+      />
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
         <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />

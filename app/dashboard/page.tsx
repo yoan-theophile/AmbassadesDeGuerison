@@ -27,6 +27,7 @@ interface ContactRequest {
   id: string;
   visitor_first_name: string;
   visitor_email: string;
+  visitor_whatsapp: string | null;
   visitor_message: string;
   status: string;
   created_at: string;
@@ -48,21 +49,30 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/auth'); return; }
 
-    const [{ data: prof }, { data: acts }, { data: reqs }] = await Promise.all([
-      supabase.from('host_profiles').select('id, first_name, city, country, status, email').eq('user_id', user.id).single(),
-      supabase
-        .from('host_activations')
-        .select('id, is_active, is_full, event_id, events(title, event_date)')
-        .eq('host_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      supabase
-        .from('contact_requests')
-        .select('id, visitor_first_name, visitor_email, visitor_message, status, created_at, action_token')
-        .eq('host_profile_id', (await supabase.from('host_profiles').select('id').eq('user_id', user.id).single()).data?.id ?? '')
-        .order('created_at', { ascending: false })
-        .limit(20),
-    ]);
+    const { data: prof } = await supabase
+      .from('host_profiles')
+      .select('id, first_name, city, country, status, email')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!prof) { setLoading(false); return; }
+
+    const { data: acts } = await supabase
+      .from('host_activations')
+      .select('id, is_active, is_full, event_id, events(title, event_date)')
+      .eq('host_profile_id', prof.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const activationIds = (acts ?? []).map((a) => a.id);
+    const { data: reqs } = activationIds.length > 0
+      ? await supabase
+          .from('contact_requests')
+          .select('id, visitor_first_name, visitor_email, visitor_whatsapp, visitor_message, status, created_at, action_token')
+          .in('host_activation_id', activationIds)
+          .order('created_at', { ascending: false })
+          .limit(20)
+      : { data: [] };
 
     setProfile(prof);
     setActivations((acts as unknown as Activation[]) ?? []);
@@ -254,6 +264,9 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
                       <p className="text-slate-500 text-xs">{r.visitor_email}</p>
+                      {r.visitor_whatsapp && (
+                        <p className="text-slate-500 text-xs">WhatsApp : {r.visitor_whatsapp}</p>
+                      )}
                       {r.visitor_message && (
                         <p className="text-slate-600 text-sm mt-1 italic">"{r.visitor_message}"</p>
                       )}
@@ -263,14 +276,12 @@ export default function DashboardPage() {
                     </div>
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full shrink-0 font-medium ${
-                        r.status === 'accepted'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : r.status === 'declined'
+                        r.status === 'declined'
                           ? 'bg-red-50 text-red-700'
-                          : 'bg-amber-50 text-amber-700'
+                          : 'bg-emerald-50 text-emerald-700'
                       }`}
                     >
-                      {r.status === 'accepted' ? 'Acceptée' : r.status === 'declined' ? 'Refusée' : 'En attente'}
+                      {r.status === 'declined' ? 'Refusée' : 'Confirmée'}
                     </span>
                   </div>
                 </div>

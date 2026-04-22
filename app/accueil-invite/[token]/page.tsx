@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AlertTriangle, Home, MapPin, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Home, MapPin, CheckCircle2, Clock } from 'lucide-react';
 import Link from 'next/link';
 
-interface ConsignesData {
-  host_first_name: string;
+interface WaitState {
+  status: 'waiting';
+  seconds_remaining: number;
+  host_first_name: string | null;
+  consignes: string | null;
+}
+
+interface ReadyState {
+  status: 'ready';
+  seconds_remaining: 0;
+  host_first_name: string | null;
   consignes: string | null;
   already_acknowledged: boolean;
 }
@@ -18,44 +27,71 @@ interface AddressData {
   host_first_name: string | null;
 }
 
+type Step = 'loading' | 'waiting' | 'consignes' | 'address' | 'error';
+
+function formatCountdown(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h${m > 0 ? ` ${m}min` : ''}`;
+  if (m > 0) return `${m} min`;
+  return 'quelques secondes';
+}
+
 export default function AccueilInvitePage() {
   const { token } = useParams<{ token: string }>();
-  const [step, setStep] = useState<'loading' | 'consignes' | 'address' | 'error'>('loading');
-  const [consignes, setConsignes] = useState<ConsignesData | null>(null);
+  const [step, setStep] = useState<Step>('loading');
+  const [waitData, setWaitData] = useState<WaitState | null>(null);
+  const [consignesData, setConsignesData] = useState<ReadyState | null>(null);
   const [address, setAddress] = useState<AddressData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    async function loadConsignes() {
-      const res = await fetch(`/api/contact-requests/${token}/acknowledge`);
-      if (!res.ok) {
-        const { error } = await res.json();
-        setErrorMsg(error ?? 'Lien invalide ou expiré.');
-        setStep('error');
-        return;
-      }
-      const data: ConsignesData = await res.json();
-      setConsignes(data);
-      if (data.already_acknowledged) {
-        await acknowledge();
-      } else {
-        setStep('consignes');
-      }
-    }
-    loadConsignes();
+    fetch(`/api/contact-requests/${token}/acknowledge`)
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) { setErrorMsg(d.error ?? 'Lien invalide ou expiré.'); setStep('error'); return; }
+        if (d.status === 'waiting') {
+          setWaitData(d as WaitState);
+          setStep('waiting');
+        } else {
+          const ready = d as ReadyState;
+          setConsignesData(ready);
+          if (ready.already_acknowledged) {
+            await acknowledge();
+          } else {
+            setStep('consignes');
+          }
+        }
+      })
+      .catch(() => { setErrorMsg('Erreur réseau.'); setStep('error'); });
   }, [token]);
 
+  // Décompte toutes les 30s pour rafraîchir l'état
+  useEffect(() => {
+    if (step !== 'waiting') return;
+    const id = setInterval(async () => {
+      const r = await fetch(`/api/contact-requests/${token}/acknowledge`).catch(() => null);
+      if (!r?.ok) return;
+      const d = await r.json();
+      if (d.status === 'ready') {
+        setConsignesData(d as ReadyState);
+        setStep('consignes');
+      } else {
+        setWaitData(d as WaitState);
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [step, token]);
+
   async function acknowledge() {
+    setSubmitting(true);
     const res = await fetch(`/api/contact-requests/${token}/acknowledge`, { method: 'POST' });
-    if (!res.ok) {
-      const { error } = await res.json();
-      setErrorMsg(error ?? 'Erreur inattendue.');
-      setStep('error');
-      return;
-    }
-    const data: AddressData = await res.json();
-    setAddress(data);
+    const d = await res.json();
+    if (!res.ok) { setErrorMsg(d.error ?? 'Erreur inattendue.'); setStep('error'); setSubmitting(false); return; }
+    setAddress(d as AddressData);
     setStep('address');
+    setSubmitting(false);
   }
 
   if (step === 'loading') {
@@ -78,27 +114,55 @@ export default function AccueilInvitePage() {
           </div>
           <h1 className="text-lg font-semibold text-slate-800 mb-2">Lien invalide ou expiré</h1>
           <p className="text-slate-500 text-sm mb-1">{errorMsg}</p>
-          <p className="text-slate-400 text-xs mt-3">
-            Ce lien est valable 7 jours. Contactez l'organisateur si le problème persiste.
-          </p>
-          <Link href="/" className="mt-5 inline-block text-xs text-indigo-600 hover:underline">
-            Retour à la carte
-          </Link>
+          <p className="text-slate-400 text-xs mt-3">Ce lien est valable 7 jours.</p>
+          <Link href="/" className="mt-5 inline-block text-xs text-indigo-600 hover:underline">Retour à la carte</Link>
         </div>
       </main>
     );
   }
 
-  if (step === 'consignes') {
+  if (step === 'waiting' && waitData) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-10">
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-4 text-center">
+            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-6 h-6 text-indigo-500" />
+            </div>
+            <h1 className="text-lg font-semibold text-slate-800 mb-1">
+              Votre place est réservée chez {waitData.host_first_name}
+            </h1>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              L'adresse sera disponible dans <strong className="text-slate-700">{formatCountdown(waitData.seconds_remaining)}</strong>.
+            </p>
+            <p className="text-slate-400 text-xs mt-3">
+              Cette page se met à jour automatiquement. Vous recevrez aussi l'adresse par e-mail.
+            </p>
+          </div>
+
+          {waitData.consignes && (
+            <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5">
+              <p className="text-xs font-medium text-indigo-400 uppercase tracking-wide mb-2">
+                En attendant — consignes de {waitData.host_first_name}
+              </p>
+              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{waitData.consignes}</p>
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
+  if (step === 'consignes' && consignesData) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-10">
         <div className="max-w-lg mx-auto">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-slate-800 mb-1">
-              Bienvenue chez {consignes?.host_first_name}
+              Bienvenue chez {consignesData.host_first_name}
             </h1>
             <p className="text-slate-500 text-sm">
-              Votre demande a été acceptée. Lisez les informations ci-dessous avant de recevoir l'adresse.
+              Lisez les informations ci-dessous avant de recevoir l'adresse.
             </p>
           </div>
 
@@ -118,20 +182,21 @@ export default function AccueilInvitePage() {
             </ul>
           </div>
 
-          {consignes?.consignes && (
+          {consignesData.consignes && (
             <div className="bg-indigo-50 rounded-xl border border-indigo-100 p-5 mb-5">
               <p className="text-xs font-medium text-indigo-400 uppercase tracking-wide mb-2">
-                Consignes de {consignes.host_first_name}
+                Consignes de {consignesData.host_first_name}
               </p>
-              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{consignes.consignes}</p>
+              <p className="text-sm text-indigo-800 whitespace-pre-wrap leading-relaxed">{consignesData.consignes}</p>
             </div>
           )}
 
           <button
             onClick={acknowledge}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-indigo-700 transition-colors"
+            disabled={submitting}
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 transition-colors"
           >
-            J'ai bien pris note — Voir l'adresse
+            {submitting ? 'Chargement…' : "J'ai bien pris note — Voir l'adresse"}
           </button>
         </div>
       </main>
@@ -162,14 +227,14 @@ export default function AccueilInvitePage() {
 
         {address?.whatsapp && (
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-3">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">WhatsApp</p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Groupe WhatsApp</p>
             <a
-              href={`https://wa.me/${address.whatsapp.replace(/\D/g, '')}`}
+              href={address.whatsapp}
               className="text-emerald-600 font-medium text-sm hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {address.whatsapp}
+              Rejoindre le groupe
             </a>
           </div>
         )}

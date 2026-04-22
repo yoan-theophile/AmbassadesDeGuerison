@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
-
-const COUNTRIES = ['France', 'Belgique', 'Suisse', 'Canada', 'Luxembourg', 'Autre'];
+import CityInput from '@/components/ui/CityInput';
+import CountrySelect from '@/components/ui/CountrySelect';
 const TYPES = [
   { value: 'domicile', label: 'Domicile' },
   { value: 'salle', label: 'Salle communautaire' },
@@ -31,6 +31,8 @@ export default function InscriptionPage() {
     first_name: '',
     city: '',
     country: 'France',
+    lat: undefined as number | undefined,
+    lng: undefined as number | undefined,
     type: 'domicile',
     capacity: '10',
     contact_mode: 'email',
@@ -137,14 +139,22 @@ export default function InscriptionPage() {
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
               </Field>
-              <Field label="Ville" required>
-                <input type="text" value={form.city} onChange={(e) => set('city', e.target.value)} required className={inputCls} placeholder="Lyon" />
-              </Field>
-              <Field label="Pays" required>
-                <select value={form.country} onChange={(e) => set('country', e.target.value)} className={inputCls}>
-                  {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </Field>
+              <CityInput
+                label="Ville"
+                id="city"
+                required
+                value={form.city}
+                onChange={(city, lat, lng) =>
+                  setForm((prev) => ({ ...prev, city, lat, lng }))
+                }
+              />
+              <CountrySelect
+                label="Pays"
+                id="country"
+                required
+                value={form.country}
+                onChange={(country) => set('country', country)}
+              />
               <button
                 type="button"
                 onClick={() => setStep(2)}

@@ -24,3 +24,45 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* react-phone-number-input — style projet */
+.phone-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: white;
+  padding: 0 0.75rem;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.phone-input:focus-within {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px #6366f1;
+}
+.phone-input .PhoneInputCountrySelect {
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: #475569;
+  cursor: pointer;
+  padding: 0.625rem 0.25rem 0.625rem 0;
+  outline: none;
+}
+.phone-input .PhoneInputCountryIcon {
+  width: 1.25rem;
+  height: auto;
+}
+.phone-input .PhoneInputInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: #1e293b;
+  padding: 0.625rem 0;
+  outline: none;
+}
+.phone-input .PhoneInputInput::placeholder {
+  color: #94a3b8;
+}

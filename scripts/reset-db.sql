@@ -75,8 +75,7 @@ CREATE TABLE host_activations (
   accepted_count    INT NOT NULL DEFAULT 0 CHECK (accepted_count >= 0),
   is_active         BOOLEAN DEFAULT FALSE,
   is_full           BOOLEAN DEFAULT FALSE,
-  UNIQUE (host_profile_id, event_id),
-  CONSTRAINT check_accepted_lte_capacity CHECK (accepted_count <= capacity)
+  UNIQUE (host_profile_id, event_id)
 );
 
 CREATE TABLE contact_requests (
@@ -84,10 +83,12 @@ CREATE TABLE contact_requests (
   host_activation_id    UUID NOT NULL REFERENCES host_activations(id) ON DELETE CASCADE,
   visitor_first_name    TEXT NOT NULL,
   visitor_email         TEXT NOT NULL,
+  visitor_whatsapp      TEXT,
   visitor_message       TEXT,
   status                TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'accepted', 'declined')),
+    CHECK (status IN ('pending', 'declined')),
   action_token          UUID NOT NULL DEFAULT gen_random_uuid(),
+  onboarding_completed  BOOLEAN DEFAULT FALSE,
   UNIQUE (host_activation_id, visitor_email),
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
@@ -191,30 +192,38 @@ AFTER UPDATE OF status ON host_profiles
 FOR EACH ROW EXECUTE FUNCTION fn_auto_activate_host_for_existing_events();
 
 -- ============================================================
--- 5. FONCTION ATOMIQUE : accept_contact_request
+-- 5. TRIGGER : accepted_count auto-géré sur contact_requests
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION accept_contact_request(activation_id UUID, request_id UUID)
-RETURNS JSONB AS $$
-DECLARE
-  updated_count INT;
+-- Incrémente accepted_count à chaque nouvelle demande.
+-- Décrémente si une demande passe à 'declined'.
+-- Auto-set is_full quand accepted_count >= capacity.
+CREATE OR REPLACE FUNCTION fn_contact_request_count_update()
+RETURNS TRIGGER AS $$
 BEGIN
-  UPDATE host_activations
-  SET
-    accepted_count = accepted_count + 1,
-    is_full = CASE WHEN accepted_count + 1 >= capacity THEN TRUE ELSE FALSE END
-  WHERE id = activation_id AND accepted_count < capacity;
+  IF TG_OP = 'INSERT' THEN
+    UPDATE host_activations
+    SET
+      accepted_count = accepted_count + 1,
+      is_full = CASE WHEN (accepted_count + 1) >= capacity THEN TRUE ELSE is_full END
+    WHERE id = NEW.host_activation_id;
 
-  GET DIAGNOSTICS updated_count = ROW_COUNT;
-
-  IF updated_count = 0 THEN
-    RETURN '{"error": "complet"}'::JSONB;
+  ELSIF TG_OP = 'UPDATE' AND OLD.status != 'declined' AND NEW.status = 'declined' THEN
+    UPDATE host_activations
+    SET accepted_count = GREATEST(accepted_count - 1, 0)
+    WHERE id = NEW.host_activation_id;
   END IF;
 
-  UPDATE contact_requests SET status = 'accepted' WHERE id = request_id;
-  RETURN '{"success": true}'::JSONB;
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'fn_contact_request_count_update failed: %', SQLERRM;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_contact_request_count
+AFTER INSERT OR UPDATE OF status ON contact_requests
+FOR EACH ROW EXECUTE FUNCTION fn_contact_request_count_update();
 
 -- ============================================================
 -- 6. ROW LEVEL SECURITY
