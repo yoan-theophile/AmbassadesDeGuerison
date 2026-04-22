@@ -16,7 +16,9 @@
       "Skill(checkpoint)",
       "Bash(git commit *)",
       "Bash(supabase projects *)",
-      "Bash(supabase db *)"
+      "Bash(supabase db *)",
+      "Bash(npx tsc *)",
+      "Skill(qa)"
     ]
   }
 }
