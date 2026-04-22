@@ -207,26 +207,67 @@ async function run() {
   );
   const findAct = email => activationsPasse.find(a => a.host_profile_id === hostIds[email]);
 
+  // Détection des colonnes disponibles dans contact_requests
+  const sampleCols = await req('GET', '/contact_requests?limit=0&select=*').catch(() => null);
+  const colsHeaders = await fetch(`${BASE_URL}/rest/v1/contact_requests?limit=0`, {
+    headers: { ...headers, 'Accept': 'application/json' },
+  });
+  // On teste si les nouvelles colonnes existent en tentant un HEAD
+  let hasWhatsapp = false;
+  let hasOnboarding = false;
+  try {
+    const testRes = await fetch(`${BASE_URL}/rest/v1/contact_requests?select=visitor_whatsapp&limit=0`, { headers });
+    hasWhatsapp = testRes.ok;
+  } catch (_) {}
+  try {
+    const testRes = await fetch(`${BASE_URL}/rest/v1/contact_requests?select=onboarding_completed&limit=0`, { headers });
+    hasOnboarding = testRes.ok;
+  } catch (_) {}
+  if (!hasWhatsapp) console.log('  ⚠ visitor_whatsapp absent (schéma ancien — relancer reset-db.sql)');
+  if (!hasOnboarding) console.log('  ⚠ onboarding_completed absent (schéma ancien — relancer reset-db.sql)');
+
   const contactData = [
-    { email: 'marie.dubois@demo.fr', first: 'Pierre',    msg: 'Je serai avec ma femme, nous sommes deux.', status: 'accepted' },
-    { email: 'marie.dubois@demo.fr', first: 'Nathalie',  msg: null, status: 'pending' },
-    { email: 'jp.martin@demo.fr',    first: 'Ahmed',     msg: 'Merci pour cette initiative, je viens seul.', status: 'accepted' },
-    { email: 'fatou.diallo@demo.fr', first: 'Laure',     msg: null, status: 'declined' },
-    { email: 'samuel.eko@demo.fr',   first: 'Emmanuel',  msg: "J'habite à 10 minutes, avec plaisir !", status: 'accepted' },
+    {
+      email: 'marie.dubois@demo.fr', first: 'Pierre',
+      msg: 'Je serai avec ma femme, nous sommes deux.',
+      whatsapp: '+33612345678', status: 'pending', onboarding_completed: true,
+    },
+    {
+      email: 'marie.dubois@demo.fr', first: 'Nathalie',
+      msg: null, whatsapp: null, status: 'pending', onboarding_completed: false,
+    },
+    {
+      email: 'jp.martin@demo.fr', first: 'Ahmed',
+      msg: 'Merci pour cette initiative, je viens seul.',
+      whatsapp: '+33698765432', status: 'pending', onboarding_completed: true,
+    },
+    {
+      email: 'fatou.diallo@demo.fr', first: 'Laure',
+      msg: null, whatsapp: null, status: 'declined', onboarding_completed: false,
+    },
+    {
+      email: 'samuel.eko@demo.fr', first: 'Emmanuel',
+      msg: "J'habite à 10 minutes, avec plaisir !",
+      whatsapp: '+15141234567', status: 'pending', onboarding_completed: true,
+    },
   ];
 
   for (const c of contactData) {
     const act = findAct(c.email);
     if (!act) { console.log(`  · Activation manquante pour ${c.first}`); continue; }
     try {
-      await req('POST', '/contact_requests', {
+      const body = {
         host_activation_id: act.id,
         visitor_first_name: c.first,
         visitor_email: `${c.first.toLowerCase()}.demo@mail.com`,
         visitor_message: c.msg,
         status: c.status,
-      });
-      console.log(`  ✓ ${c.first} → ${c.email.split('.')[0]} (${c.status})`);
+      };
+      if (hasWhatsapp) body.visitor_whatsapp = c.whatsapp;
+      if (hasOnboarding) body.onboarding_completed = c.onboarding_completed;
+
+      await req('POST', '/contact_requests', body);
+      console.log(`  ✓ ${c.first} → ${c.email.split('.')[0]} (${c.status}${c.onboarding_completed && hasOnboarding ? ', onboarded' : ''})`);
     } catch (e) {
       console.log(`  ✗ ${c.first}: ${e.message.slice(0, 120)}`);
     }

@@ -7,25 +7,35 @@
 
 ## Données de démo disponibles
 
-### 6 ambassadeurs actifs sur la carte
-| Ambassadeur | Ville | Pays | Capacité |
-|-------------|-------|------|---------|
-| Marie | Paris | France | 15 places |
-| Jean-Pierre | Lyon | France | 80 places (COMPLET) |
-| Fatou | Bruxelles | Belgique | 40 places |
-| Samuel | Montréal | Canada | 12 places |
-| Claire | Genève | Suisse | 8 places |
-| Kofi | Abidjan | Côte d'Ivoire | 120 places |
+### 7 ambassadeurs (6 actifs + 1 en attente d'onboarding)
+| Ambassadeur | Ville | Pays | Capacité | Statut |
+|-------------|-------|------|---------|--------|
+| Marie | Paris | France | 15 places | actif |
+| Jean-Pierre | Lyon | France | 80 places (COMPLET) | actif |
+| Fatou | Bruxelles | Belgique | 40 places | actif |
+| Samuel | Montréal | Canada | 12 places | actif |
+| Claire | Genève | Suisse | 8 places | actif |
+| Kofi | Abidjan | Côte d'Ivoire | 120 places | actif |
+| Sophie | Bordeaux | France | 10 places | pending_onboarding |
 
 ### 2 lives
 - **Live passé** : « Live Guérison #14 — Brisez les chaînes » (il y a 3 semaines)
 - **Live à venir** : « Live Guérison #15 — La puissance de l'Amour » (dans 10 jours)
 
+### 5 demandes de contact (sur le live passé)
+| Visiteur | Ambassade | Statut |
+|---------|-----------|--------|
+| Pierre | Marie (Paris) | pending — onboarding fait |
+| Nathalie | Marie (Paris) | pending — lien non encore consulté |
+| Ahmed | Jean-Pierre (Lyon) | pending — onboarding fait |
+| Laure | Fatou (Bruxelles) | declined (refusée) |
+| Emmanuel | Samuel (Montréal) | pending — onboarding fait |
+
 ---
 
 ## Scénario 1 — La carte publique
 
-**Ce que montre cette page :**  
+**Ce que montre cette page :**
 La carte mondiale avec les épingles des ambassades actives pour le dernier live.
 
 **Étapes :**
@@ -34,52 +44,54 @@ La carte mondiale avec les épingles des ambassades actives pour le dernier live
 3. Zoomer sur la France : Paris (Marie) et Lyon (Jean-Pierre)
 4. Zoomer sur l'Europe : Bruxelles (Fatou) et Genève (Claire)
 5. Dézoomer : Montréal (Canada) et Abidjan (Côte d'Ivoire) apparaissent
-6. Cliquer sur l'épingle de **Marie à Paris** → bulle d'information avec son prénom et sa ville
-7. Cliquer sur « Voir l'ambassade » dans la bulle
+6. Cliquer sur l'épingle de **Marie à Paris** → bulle d'information avec prénom, ville et capacité
+7. Cliquer sur « Contacter → » dans la bulle
 
 **Points clés à montrer à David :**
 - Couverture internationale en temps réel
-- L'épingle de **Jean-Pierre (Lyon)** affiche « Complet » (ambassade pleine)
+- L'épingle de **Jean-Pierre (Lyon)** affiche « Complet » (80/80)
 - Actualisation automatique toutes les 30 secondes sans rechargement de page
+- Sophie (Bordeaux) n'apparaît pas : statut `pending_onboarding`, pas encore visible
 
 ---
 
 ## Scénario 2 — Demande de contact (parcours visiteur)
 
-**Ce que montre ce scénario :**  
-Un visiteur qui veut rejoindre une ambassade pour le prochain live.
+**Ce que montre ce scénario :**
+Un visiteur qui veut rejoindre une ambassade pour le prochain live. Le nouveau flux : auto-acceptation après 24h, pas de validation explicite de l'hôte.
 
 **Étapes :**
-1. Depuis la carte, cliquer sur **Marie (Paris)**
-2. Dans la bulle, cliquer sur « Voir l'ambassade »
+1. Depuis la carte, cliquer sur **Marie (Paris)** → « Contacter → »
    - URL : `http://localhost:3000/ambassade/{id}`
-3. La page affiche :
+2. La page affiche :
    - Prénom et ville
    - Type de lieu : Domicile
    - Mode de contact : Formulaire
    - Les consignes de Marie : *"Sonner à l'interphone Dubois. Ascenseur disponible. Parking Opéra à 200m."*
-4. Remplir le formulaire de contact :
+3. Remplir le formulaire de contact :
    - **Prénom** : Thomas
    - **E-mail** : thomas.demo@test.fr
+   - **WhatsApp** (optionnel) : +33 6 12 34 56 78 — sélectionner le drapeau France
    - **Message** : Je viendrai avec mon épouse, nous sommes deux.
-5. Cliquer sur « Envoyer la demande »
-6. Message de confirmation : *"Demande envoyée — Marie recevra votre demande..."*
+4. Cliquer sur « Envoyer la demande »
+5. Message de confirmation : *"Un lien d'accès vous a été envoyé par e-mail. L'adresse de Marie sera disponible dans 24 heures."*
 
 **Points clés :**
-- L'adresse privée n'est jamais visible avant acceptation (sécurité)
-- Le formulaire est simple et rapide (3 champs)
-- Confirmation immédiate
+- L'adresse privée n'est jamais visible avant l'expiration du délai de 24h
+- Le champ WhatsApp accepte n'importe quel indicatif pays (sélecteur de drapeau)
+- La demande est en statut `pending` — l'hôte peut refuser, sinon c'est automatique
+- Le visiteur reçoit un lien `/accueil-invite/{token}` par e-mail
 
 ---
 
 ## Scénario 3 — Ambassade avec groupe WhatsApp
 
-**Ce que montre ce scénario :**  
+**Ce que montre ce scénario :**
 Une ambassade d'église avec lien WhatsApp direct.
 
 **Étapes :**
 1. Depuis la carte, cliquer sur **Jean-Pierre (Lyon)**
-2. Cliquer sur « Voir l'ambassade »
+2. Cliquer sur « Contacter → »
 3. Observer :
    - Type : Église / lieu de culte
    - **Ambassade affichée comme « Complète »** (80/80 places)
@@ -95,17 +107,18 @@ Une ambassade d'église avec lien WhatsApp direct.
 
 ## Scénario 4 — Inscription comme ambassadeur
 
-**Ce que montre ce scénario :**  
-Le parcours pour devenir un nouvel ambassadeur.
+**Ce que montre ce scénario :**
+Le parcours pour devenir un nouvel ambassadeur, avec saisie de ville intelligente et sélection de pays complète.
 
 **Étapes :**
 1. Depuis la carte, cliquer sur « Devenir hôte » (bouton indigo en haut à droite)
    - Ou URL directe : `http://localhost:3000/inscription`
 2. **Étape 1 — Coordonnées :**
-   - Prénom : Sophie
-   - E-mail : sophie.nouveau@test.fr
-   - Ville : Toulouse
-   - Pays : France
+   - Prénom : Thomas
+   - E-mail : thomas.nouveau@test.fr
+   - **Ville** : commencer à taper « Toul » → suggestions Nominatim apparaissent → sélectionner « Toulouse, France »
+     *(La géolocalisation lat/lng est capturée automatiquement)*
+   - **Pays** : sélectionner dans la liste — les pays francophones sont en tête (France, Belgique, Suisse, Canada...)
    - Cliquer sur « Continuer »
 3. **Étape 2 — Le lieu :**
    - Type : Domicile
@@ -117,19 +130,19 @@ Le parcours pour devenir un nouvel ambassadeur.
    - Mode de contact : E-mail
    - Récapitulatif visible
    - Cliquer sur « Envoyer ma demande »
-5. Page de confirmation : *"Merci Sophie. Votre demande est en cours de validation."*
+5. Page de confirmation : *"Merci Thomas. Votre demande est en cours de validation."*
 
 **Points clés :**
-- Formulaire en 3 étapes, clair et progressif
+- La ville avec autocomplete est géocodée → l'épingle apparaîtra précisément sur la carte une fois activé
+- 200+ pays disponibles, francophones épinglés en tête
 - L'adresse est stockée mais jamais visible publiquement avant activation
-- L'ambassadeur reçoit un e-mail de confirmation (Resend)
 - La candidature arrive dans la modération admin
 
 ---
 
 ## Scénario 5 — Tableau de bord admin (KPIs)
 
-**Ce que montre ce scénario :**  
+**Ce que montre ce scénario :**
 La vue de pilotage pour David.
 
 **Étapes :**
@@ -153,35 +166,59 @@ La vue de pilotage pour David.
 
 ---
 
-## Scénario 6 — L'invitation visiteur (lien magique)
+## Scénario 6 — L'invitation visiteur (nouveau flux auto-accept)
 
-**Ce que montre ce scénario :**  
-Ce que reçoit un visiteur quand son hôte accepte sa demande.
+**Ce que montre ce scénario :**
+Ce que reçoit un visiteur après avoir soumis une demande. L'adresse est masquée 24h puis révélée automatiquement.
 
-**Contexte :** Pierre a envoyé une demande à Marie (Paris). Marie a accepté.
-Sa demande est en statut `accepted` dans la base.
+**Contexte :** Pierre a envoyé une demande à Marie (Paris). Sa demande est en statut `pending`. Il a déjà consulté son lien (onboarding_completed = true).
 
-**Simuler le lien d'invitation :**
+**Simuler l'état « délai écoulé » (adresse visible) :**
 1. Dans Supabase Dashboard → Table `contact_requests`
-2. Trouver la ligne de Pierre (visitor_email = `pierre.v@mail.com`)
+2. Trouver la ligne de **Pierre** (visitor_email = `pierre.demo@mail.com`)
 3. Copier la valeur de `action_token`
-4. Ouvrir : `http://localhost:3000/accueil-invite/{action_token}`
-5. La page affiche :
-   - « Bienvenue chez Marie »
-   - Les règles générales de conduite
-   - Les consignes de Marie
-   - Bouton « J'ai bien pris note — Voir l'adresse »
-6. Cliquer sur le bouton
-7. L'adresse complète apparaît : *"12 rue de la Paix, 75001 Paris"*
+4. Modifier `created_at` à une date d'il y a plus de 24h (ex : `2026-04-20 10:00:00`)
+5. Ouvrir : `http://localhost:3000/accueil-invite/{action_token}`
+6. La page affiche directement l'adresse : *"12 rue de la Paix, 75001 Paris"*
+
+**Simuler l'état « en attente » (< 24h, adresse masquée) :**
+1. Même chemin, mais `created_at` laissé à maintenant
+2. Ouvrir le lien → page « Bienvenue chez Marie »
+3. Les règles générales + consignes de Marie s'affichent
+4. Cliquer sur « J'ai bien pris note »
+5. Message : *"Votre adresse sera disponible dans X heures"* (compte à rebours)
 
 **Points clés :**
-- L'adresse n'est dévoilée qu'après lecture et acceptation des règles
-- Lien à usage unique (7 jours de validité)
-- Processus sécurisé : le visiteur doit lire les consignes avant d'avoir l'adresse
+- L'adresse n'est dévoilée qu'après 24h (évaluation lazy, pas de cron)
+- Le visiteur peut consulter son lien autant de fois qu'il veut
+- `action_token` est le même UUID pour le lien visiteur et le lien de refus de l'hôte
 
 ---
 
-## Scénario 7 — Présentation de la carte internationale
+## Scénario 7 — L'hôte refuse une demande
+
+**Ce que montre ce scénario :**
+L'hôte peut refuser une demande via son lien de refus, même après l'auto-accept.
+
+**Contexte :** Nathalie a envoyé une demande à Marie mais Marie ne peut pas l'accueillir.
+
+**Étapes :**
+1. Dans Supabase Dashboard → Table `contact_requests`
+2. Trouver la ligne de **Nathalie** (visitor_email = `nathalie.demo@mail.com`)
+3. Copier la valeur de `action_token`
+4. Ouvrir : `http://localhost:3000/refuser/{action_token}`
+5. La page demande confirmation : *"Refuser la demande de Nathalie ?"*
+6. Cliquer sur « Confirmer le refus »
+7. Statut passe à `declined` — `accepted_count` décrémenté
+
+**Points clés :**
+- L'hôte n'a pas besoin de se connecter : le lien tokenisé suffit
+- La demande de Laure (Fatou/Bruxelles) est déjà en `declined` dans les données de démo
+- Refus possible à tout moment, même après la fenêtre 24h
+
+---
+
+## Scénario 8 — Présentation de la carte internationale
 
 **À utiliser pour ouvrir la démo devant David.**
 
@@ -192,7 +229,7 @@ Sa demande est en statut `accepted` dans la base.
 4. **Pitch :** *"Quand vous créez un live, tous les ambassadeurs sont automatiquement activés. En un clic, 6 pays sont prêts à vous accueillir."*
 5. Cliquer sur l'épingle de **Kofi à Abidjan** → *"120 personnes peuvent se réunir en Côte d'Ivoire pour suivre votre message."*
 6. Cliquer sur **Marie à Paris** → *"Et ici, 15 places disponibles à Paris, avec ses propres consignes d'accueil."*
-7. **Pitch :** *"Le visiteur clique, envoie une demande, et reçoit l'adresse uniquement quand l'hôte valide. Zéro risque de diffusion non désirée."*
+7. **Pitch :** *"Le visiteur envoie une demande, reçoit un lien sécurisé, et l'adresse s'affiche automatiquement après 24h. L'hôte peut refuser à tout moment. Zéro compte requis pour le visiteur."*
 
 ---
 
@@ -203,6 +240,10 @@ node scripts/seed.js
 ```
 
 Ce script vide la base et réinsère toutes les données de démo proprement.
+
+> **Note** : Le schéma DB doit correspondre à `scripts/reset-db.sql`. Si les colonnes
+> `visitor_whatsapp` ou `onboarding_completed` sont manquantes, relancer ce script
+> dans Supabase SQL Editor puis relancer `node scripts/seed.js`.
 
 ---
 
@@ -216,4 +257,4 @@ Pour accéder aux pages `/admin/*` :
 
 ---
 
-*Généré le 21 avril 2026 — DavidTheryApp v1*
+*Mis à jour le 22 avril 2026 — DavidTheryApp v1.1 (flux contact inversé + composants UI)*
