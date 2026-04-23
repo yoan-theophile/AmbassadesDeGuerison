@@ -156,7 +156,7 @@ La vue de pilotage pour David.
 **Étapes :**
 1. Ouvrir `http://localhost:3000/admin/stats`
    - *(Redirige vers `/auth` si non connecté — normal en démo)*
-   - Pour la démo : se connecter avec un compte admin (voir ci-dessous)
+   - Se connecter avec `david.thery@demo.fr` via magic link
 2. Le tableau de bord affiche :
    - **Dernier live** : Live Guérison #14 — date
    - **Ambassades actives** : 6
@@ -334,11 +334,14 @@ Ce script vide la base et réinsère toutes les données de démo proprement.
 
 ## Compte admin pour la démo
 
-Pour accéder aux pages `/admin/*` :
-1. Aller dans **Supabase Dashboard** → Authentication → Users
-2. Créer un utilisateur avec votre e-mail
-3. Dans les **user_metadata**, ajouter : `{ "role": "admin" }`
-4. Utiliser la magic link pour se connecter via `http://localhost:3000/auth`
+Deux comptes admin sont créés par le seed (rôle admin déjà configuré) :
+
+| E-mail | Usage |
+|--------|-------|
+| `david.thery@demo.fr` | Compte démo David |
+| `theo.nelson.ia@gmail.com` | Compte développeur |
+
+Se connecter via magic link : `http://localhost:3000/auth` → saisir l'e-mail → cliquer le lien reçu.
 
 ---
 
