@@ -4,23 +4,53 @@ import AmbassadeursTable from '@/components/AmbassadeursTable';
 
 export const dynamic = 'force-dynamic';
 
-async function getAmbassadeurs() {
+const PAGE_SIZE = 20;
+
+async function getAmbassadeurs(page: number, q: string, status: string) {
   const supabase = createServiceClient();
-  const { data } = await supabase
+  const offset = (page - 1) * PAGE_SIZE;
+
+  let query = supabase
     .from('host_profiles')
-    .select('id, first_name, city, country, host_type, status, contact_mode, capacity, created_at')
-    .order('created_at', { ascending: false });
-  return data ?? [];
+    .select(
+      'id, first_name, email, city, country, host_type, status, contact_mode, capacity, created_at',
+      { count: 'exact' }
+    );
+
+  if (q) query = query.ilike('first_name', `%${q}%`);
+  if (status !== 'all') query = (query as any).eq('status', status);
+
+  const { data, count } = await (query as any)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  return { ambassadeurs: data ?? [], total: count ?? 0 };
 }
 
-export default async function AdminAmbassadeursPage() {
-  const ambassadeurs = await getAmbassadeurs();
+interface PageProps {
+  searchParams: Promise<{ page?: string; q?: string; status?: string }>;
+}
+
+export default async function AdminAmbassadeursPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10));
+  const q = sp.q ?? '';
+  const filterStatus = sp.status ?? 'all';
+
+  const { ambassadeurs, total } = await getAmbassadeurs(page, q, filterStatus);
 
   return (
     <AdminLayout>
       <div className="px-6 py-8">
         <h1 className="text-base font-semibold text-slate-800 mb-6">Ambassadeurs</h1>
-        <AmbassadeursTable ambassadeurs={ambassadeurs} />
+        <AmbassadeursTable
+          ambassadeurs={ambassadeurs}
+          total={total}
+          page={page}
+          pageSize={PAGE_SIZE}
+          searchQ={q}
+          filterStatus={filterStatus}
+        />
       </div>
     </AdminLayout>
   );
