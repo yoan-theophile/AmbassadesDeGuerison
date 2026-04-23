@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Settings,
   ChevronLeft,
+  LogOut,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/browser';
 
 const NAV = [
   { href: '/admin/stats',         label: 'Vue générale',  Icon: LayoutDashboard },
@@ -23,6 +25,13 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace('/auth');
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -52,14 +61,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-slate-800">
+        <div className="px-3 py-4 border-t border-slate-800 space-y-1">
           <Link
             href="/"
-            className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors rounded-lg"
           >
             <ChevronLeft className="w-3 h-3" />
             Carte publique
           </Link>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-400 text-xs transition-colors rounded-lg"
+          >
+            <LogOut className="w-3 h-3" />
+            Se déconnecter
+          </button>
         </div>
       </aside>
 
