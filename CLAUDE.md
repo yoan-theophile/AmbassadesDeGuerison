@@ -45,12 +45,25 @@ node scripts/seed.js                                      # insère les données
 
 ### Comptes de démo créés par le seed
 
-| E-mail | Rôle |
-|--------|------|
-| `david.thery@demo.fr` | admin |
-| `theo.nelson.ia@gmail.com` | admin |
-| `marie.dubois@demo.fr` | ambassadeur (actif) |
-| `jp.martin@demo.fr` | ambassadeur (actif, complet) |
+| E-mail | Rôle | Statut |
+|--------|------|--------|
+| `david.thery@demo.fr` | admin | — |
+| `theo.nelson.ia@gmail.com` | admin | — |
+| `marie.dubois@demo.fr` | ambassadeur | `active` |
+| `jp.martin@demo.fr` | ambassadeur | `active` (complet) |
+| `sophie.leroux@demo.fr` | ambassadeur | `pending_onboarding` (utile pour tester `/onboarding`) |
+
+## Pipeline d'activation ambassadeur
+
+Flux self-service déclenché après l'inscription :
+
+```
+/inscription → pending_onboarding → /onboarding → PATCH /api/onboarding/complete → active
+```
+
+- `PATCH /api/onboarding/complete` : auth cookie obligatoire, idempotent si déjà `active` (200 no-op), rejette tout statut autre que `pending_onboarding` (400). Déclenche deux e-mails non-bloquants : `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
+- Le dashboard redirige automatiquement vers `/onboarding` si `status = pending_onboarding`.
+- Un admin peut ensuite `Suspendre` (`active → suspended`) ou `Réactiver` (`suspended → active`) via `PATCH /api/admin/ambassadeurs/[id]`.
 
 ## Pages admin
 
@@ -58,7 +71,12 @@ node scripts/seed.js                                      # insère les données
 |-------|-------------|
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, filtres, Suspendre/Réactiver |
+| `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
+| `/admin/planning` | Gestion des événements (création, modification) |
+| `/admin/temoignages` | Modération témoignages — combobox event, recherche multi-mots, pagination, Tout publier |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
+
+`/admin/moderation` redirige vers `/admin/live`.
 
 ### Config onboarding (`onboarding_config`)
 
