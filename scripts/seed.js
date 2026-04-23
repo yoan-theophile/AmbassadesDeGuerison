@@ -285,6 +285,62 @@ async function run() {
     }
   }
 
+  // ── Comptes admin ────────────────────────────────────────────────────────
+  // Créés via l'API Auth admin (service_role) — aucun email envoyé.
+  console.log('\n→ Comptes admin...');
+
+  async function authReq(method, path, body) {
+    const res = await fetch(`${BASE_URL}/auth/v1${path}`, {
+      method,
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`${res.status}: ${text.slice(0, 200)}`);
+    return text ? JSON.parse(text) : null;
+  }
+
+  const admins = [
+    { email: 'david.thery@demo.fr',      label: 'David Théry (démo)' },
+    { email: 'theo.nelson.ia@gmail.com',  label: 'Théophile (dev)'    },
+  ];
+
+  // Charge les utilisateurs existants une seule fois pour éviter les doublons
+  let existingAuthUsers = [];
+  try {
+    const res = await authReq('GET', '/admin/users?per_page=1000');
+    existingAuthUsers = res?.users ?? [];
+  } catch (e) {
+    console.log(`  ⚠ Impossible de lister les utilisateurs Auth: ${e.message.slice(0, 80)}`);
+  }
+
+  for (const admin of admins) {
+    const existing = existingAuthUsers.find(u => u.email === admin.email);
+    try {
+      if (existing) {
+        // Garantit user_metadata.role = 'admin' même si le compte existait déjà
+        await authReq('PUT', `/admin/users/${existing.id}`, {
+          user_metadata: { ...(existing.user_metadata ?? {}), role: 'admin' },
+        });
+        console.log(`  ✓ ${admin.label} — rôle admin confirmé`);
+      } else {
+        await authReq('POST', '/admin/users', {
+          email: admin.email,
+          email_confirm: true,
+          user_metadata: { role: 'admin' },
+        });
+        console.log(`  ✓ ${admin.label} — créé`);
+      }
+    } catch (e) {
+      console.log(`  ✗ ${admin.label}: ${e.message.slice(0, 100)}`);
+    }
+  }
+  console.log('  → Connexion via magic link sur http://localhost:3000/auth\n');
+
   // ── Résumé ────────────────────────────────────────────────────────────────
   console.log('\n📊 Résumé :');
   const tables = ['events', 'host_profiles', 'host_activations', 'contact_requests', 'testimonials'];
