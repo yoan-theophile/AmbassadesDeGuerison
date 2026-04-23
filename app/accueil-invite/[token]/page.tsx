@@ -48,6 +48,7 @@ export default function AccueilInvitePage() {
   const [address, setAddress] = useState<AddressData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Témoignage visiteur
   const [testimonialContent, setTestimonialContent] = useState('');
@@ -80,14 +81,19 @@ export default function AccueilInvitePage() {
   useEffect(() => {
     if (step !== 'waiting') return;
     const id = setInterval(async () => {
-      const r = await fetch(`/api/contact-requests/${token}/acknowledge`).catch(() => null);
-      if (!r?.ok) return;
-      const d = await r.json();
-      if (d.status === 'ready') {
-        setConsignesData(d as ReadyState);
-        setStep('consignes');
-      } else {
-        setWaitData(d as WaitState);
+      setRefreshing(true);
+      try {
+        const r = await fetch(`/api/contact-requests/${token}/acknowledge`).catch(() => null);
+        if (!r?.ok) return;
+        const d = await r.json();
+        if (d.status === 'ready') {
+          setConsignesData(d as ReadyState);
+          setStep('consignes');
+        } else {
+          setWaitData(d as WaitState);
+        }
+      } finally {
+        setRefreshing(false);
       }
     }, 30_000);
     return () => clearInterval(id);
@@ -172,9 +178,17 @@ export default function AccueilInvitePage() {
               <p className="text-slate-500 text-sm leading-relaxed">
                 L'adresse sera disponible dans <strong className="text-slate-700">{formatCountdown(waitData.seconds_remaining)}</strong>.
               </p>
-              <p className="text-slate-400 text-xs mt-3">
-                Cette page se met à jour automatiquement. Vous recevrez aussi l'adresse par e-mail.
-              </p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                {refreshing && (
+                  <svg className="animate-spin w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                )}
+                <p className="text-slate-400 text-xs">
+                  Cette page se met à jour automatiquement. Vous recevrez aussi l'adresse par e-mail.
+                </p>
+              </div>
             </div>
 
             {waitData.consignes && (
