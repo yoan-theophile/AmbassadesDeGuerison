@@ -19,12 +19,18 @@ interface Testimonial {
 export default function AdminTestimonialFeed({ eventId }: { eventId: string | null }) {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchTestimonials = useCallback(async () => {
-    const base = '/api/testimonials?is_visible=false';
-    const url = eventId ? `${base}&event_id=${eventId}` : base;
-    const res = await fetch(url);
-    if (res.ok) setTestimonials(await res.json());
+    setRefreshing(true);
+    try {
+      const base = '/api/testimonials?is_visible=false';
+      const url = eventId ? `${base}&event_id=${eventId}` : base;
+      const res = await fetch(url);
+      if (res.ok) setTestimonials(await res.json());
+    } finally {
+      setRefreshing(false);
+    }
   }, [eventId]);
 
   useEffect(() => {
@@ -57,7 +63,12 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
         <h2 className="font-semibold text-slate-700">
           Témoignages en attente ({testimonials.length})
         </h2>
-        <span className="text-xs text-slate-400">Rafraîchissement auto toutes les 10s</span>
+        {refreshing && (
+          <svg className="animate-spin w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
       </div>
 
       {testimonials.length === 0 && (
