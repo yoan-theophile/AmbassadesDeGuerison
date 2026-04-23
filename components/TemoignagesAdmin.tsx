@@ -106,6 +106,7 @@ export default function TemoignagesAdmin({ temoignages }: { temoignages: Temoign
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [page, setPage] = useState(1);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const eventTitles = Array.from(
     new Set(items.map((t) => t.event?.[0]?.title).filter(Boolean) as string[])
@@ -162,7 +163,7 @@ export default function TemoignagesAdmin({ temoignages }: { temoignages: Temoign
   }
 
   async function deleteTestimonial(id: string) {
-    if (!window.confirm('Supprimer définitivement ce témoignage ?')) return;
+    setConfirmDelete(null);
     setItems((prev) => prev.filter((t) => t.id !== id));
     const supabase = createClient();
     const { error } = await supabase.from('testimonials').delete().eq('id', id);
@@ -291,26 +292,44 @@ export default function TemoignagesAdmin({ temoignages }: { temoignages: Temoign
                     <span>{new Date(t.created_at).toLocaleDateString('fr-FR')}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => toggleVisibility(t.id, t.is_visible)}
-                    title={t.is_visible ? 'Masquer' : 'Publier'}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                      t.is_visible
-                        ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                        : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                    }`}
-                  >
-                    {t.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
-                  <button
-                    onClick={() => deleteTestimonial(t.id)}
-                    title="Supprimer définitivement"
-                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {confirmDelete === t.id ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-red-600 font-medium">Supprimer ?</span>
+                    <button
+                      onClick={() => deleteTestimonial(t.id)}
+                      className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
+                    >
+                      Confirmer
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(null)}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => toggleVisibility(t.id, t.is_visible)}
+                      title={t.is_visible ? 'Masquer' : 'Publier'}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                        t.is_visible
+                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {t.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(t.id)}
+                      title="Supprimer définitivement"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
