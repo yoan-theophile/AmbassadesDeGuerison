@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, Copy, Home, LogOut, Radio, Share2,
-  MessageSquare, Send, ExternalLink,
+  MessageSquare, Send, ExternalLink, Play,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ONBOARDING } from '@/config/onboarding';
 
 interface HostProfile {
   id: string;
@@ -75,6 +76,7 @@ export default function DashboardPage() {
       .single();
 
     if (!prof) { setLoading(false); return; }
+    if (prof.status === 'pending_onboarding') { router.replace('/onboarding'); return; }
 
     const { data: acts } = await supabase
       .from('host_activations')
@@ -225,7 +227,7 @@ export default function DashboardPage() {
   }
 
   const statusLabels: Record<string, string> = {
-    pending_onboarding: 'En attente de validation',
+    pending_onboarding: 'Inscription à finaliser',
     active: 'Actif',
     suspended: 'Suspendu',
   };
@@ -263,6 +265,23 @@ export default function DashboardPage() {
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-slate-100 text-slate-600'}`}>
             {statusLabels[profile.status] ?? profile.status}
           </span>
+        </div>
+
+        {/* Formation */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 pt-5 pb-3">
+            <Play className="w-4 h-4 text-indigo-500" />
+            <h2 className="font-semibold text-slate-800 text-sm">Formation ambassadeur</h2>
+          </div>
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              src={ONBOARDING.VIDEO_URL}
+              title="Formation ambassadeur — David Théry"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
         </div>
 
         {/* [4] Partager mon ambassade */}

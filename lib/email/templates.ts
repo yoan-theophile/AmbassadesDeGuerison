@@ -54,6 +54,12 @@ function templateOrHtml(
 //
 // RESEND_TEMPLATE_ADMIN_NO_ACTIVATIONS
 //   variables : event_title, event_date, admin_url
+//
+// RESEND_TEMPLATE_NOUVELLE_ACTIVATION_ADMIN
+//   variables : first_name, city, country, admin_url
+//
+// RESEND_TEMPLATE_BIENVENUE_AMBASSADEUR
+//   variables : first_name, dashboard_url, carte_url
 // ---------------------------------------------------------------------------
 
 export async function sendMagicLink(to: string, magicLinkUrl: string) {
@@ -220,6 +226,48 @@ export async function sendNewContactRequestHost(
       ${visitorMessage ? `<p>Message : <em>"${visitorMessage}"</em></p>` : ''}
       <p style="color:#64748b;font-size:13px;margin-top:16px;">Sa place sera confirmée automatiquement dans 24 heures. Si vous n'êtes pas en mesure de l'accueillir, cliquez ici :</p>
       <p><a href="${declineUrl}" style="background:#ef4444;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Refuser cette demande</a></p>
+    `),
+  } as any);
+}
+
+export async function sendNouvelleActivationAdmin(firstName: string, city: string, country: string) {
+  const adminEmail = process.env.RESEND_ADMIN_EMAIL!;
+  return getResend().emails.send({
+    from: FROM(),
+    to: adminEmail,
+    subject: `Nouvelle ambassade activée — ${firstName}, ${city}`,
+    ...templateOrHtml('RESEND_TEMPLATE_NOUVELLE_ACTIVATION_ADMIN', {
+      first_name: firstName,
+      city,
+      country,
+      admin_url: `${APP_URL()}/admin/ambassadeurs`,
+    }, `
+      <p>Une nouvelle ambassade vient d'être activée :</p>
+      <ul>
+        <li><strong>Prénom :</strong> ${firstName}</li>
+        <li><strong>Ville :</strong> ${city}</li>
+        <li><strong>Pays :</strong> ${country}</li>
+      </ul>
+      <p><a href="${APP_URL()}/admin/ambassadeurs">Voir les ambassadeurs</a></p>
+    `),
+  } as any);
+}
+
+export async function sendBienvenueAmbassadeur(to: string, firstName: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to,
+    subject: 'Bienvenue dans les Ambassades de Guérison !',
+    ...templateOrHtml('RESEND_TEMPLATE_BIENVENUE_AMBASSADEUR', {
+      first_name: firstName,
+      dashboard_url: `${APP_URL()}/dashboard`,
+      carte_url: `${APP_URL()}`,
+    }, `
+      <p>Bonjour ${firstName},</p>
+      <p>Votre ambassade est maintenant active ! Vous apparaissez sur la carte des Ambassades de Guérison.</p>
+      <p>Lors des prochains lives de David Théry, vous pourrez accueillir des participants chez vous.</p>
+      <p><a href="${APP_URL()}/dashboard" style="background:#4F46E5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Accéder à mon espace</a></p>
+      <p style="margin-top:16px;"><a href="${APP_URL()}">Voir ma position sur la carte</a></p>
     `),
   } as any);
 }
