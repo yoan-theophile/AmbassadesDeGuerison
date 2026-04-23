@@ -46,13 +46,15 @@ export async function POST(req: NextRequest) {
     data: { role: 'host' },
   });
 
+  let profileId: string | undefined;
+
   if (authError) {
     if (authError.message.includes('already been registered')) {
       const { data: existingUser } = await supabase.auth.admin.listUsers();
       const user = existingUser?.users.find((u) => u.email === email);
       if (!user) return NextResponse.json({ error: authError.message }, { status: 400 });
 
-      const { error: profileError } = await supabase.from('host_profiles').insert({
+      const { data: profileData, error: profileError } = await supabase.from('host_profiles').insert({
         user_id: user.id,
         email,
         first_name,
@@ -67,8 +69,9 @@ export async function POST(req: NextRequest) {
         lat: lat ?? null,
         lng: lng ?? null,
         status: 'pending',
-      });
+      }).select('id').single();
       if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+      profileId = profileData?.id;
     } else {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
     const userId = authData.user?.id;
     if (!userId) return NextResponse.json({ error: 'Erreur création utilisateur.' }, { status: 500 });
 
-    const { error: profileError } = await supabase.from('host_profiles').insert({
+    const { data: profileData, error: profileError } = await supabase.from('host_profiles').insert({
       user_id: userId,
       email,
       first_name,
@@ -91,13 +94,14 @@ export async function POST(req: NextRequest) {
       lat: lat ?? null,
       lng: lng ?? null,
       status: 'pending',
-    });
+    }).select('id').single();
     if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+    profileId = profileData?.id;
   }
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     await sendRegistrationConfirmation(email, first_name).catch(() => {});
   }
 
-  return NextResponse.json({ success: true }, { status: 201 });
+  return NextResponse.json({ success: true, id: profileId }, { status: 201 });
 }
