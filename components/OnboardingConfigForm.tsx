@@ -68,17 +68,17 @@ export default function OnboardingConfigForm({ initialConfig }: Props) {
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Chemin du PDF guide
+              Lien vers le PDF guide
             </label>
             <input
               type="text"
               value={pdfUrl}
               onChange={(e) => setPdfUrl(e.target.value)}
-              placeholder="/docs/guide-ambassade.pdf"
+              placeholder="https://drive.google.com/file/d/..."
               className={inputCls}
             />
             <p className="text-xs text-slate-400 mt-1">
-              Chemin absolu depuis la racine publique, ou URL externe.
+              Lien Google Drive, Dropbox, ou tout autre lien public vers le PDF.
             </p>
           </div>
 
