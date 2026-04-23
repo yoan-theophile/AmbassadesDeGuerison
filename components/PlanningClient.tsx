@@ -32,7 +32,14 @@ export default function PlanningClient({ events }: { events: Event[] }) {
 
   const displayed = filter === 'upcoming' ? upcomingAll : pastAll;
   const filtered = search.trim()
-    ? displayed.filter((e) => e.title.toLowerCase().includes(search.trim().toLowerCase()))
+    ? displayed.filter((e) => {
+        const q = search.trim().toLowerCase();
+        return (
+          e.title.toLowerCase().includes(q) ||
+          (e.description?.toLowerCase().includes(q) ?? false) ||
+          (e.live_link?.toLowerCase().includes(q) ?? false)
+        );
+      })
     : displayed;
 
   async function createEvent(formData: FormData) {
