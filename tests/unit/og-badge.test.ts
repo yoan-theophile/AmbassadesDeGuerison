@@ -12,10 +12,10 @@ describe('OG badge route', () => {
   it('retourne 404 si hôte non actif', async () => {
     // Simule une réponse Supabase vide
     const mockSupabase = {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
+      from: (_table: string) => ({
+        select: (_cols: string) => ({
+          eq: (_col: string, _val: unknown) => ({
+            eq: (_col2: string, _val2: unknown) => ({
               single: () => Promise.resolve({ data: null, error: null }),
             }),
           }),
