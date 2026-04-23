@@ -9,7 +9,7 @@ async function getEvents() {
   const { data } = await supabase
     .from('events')
     .select('id, title, event_date, live_link, description')
-    .order('event_date', { ascending: false });
+    .order('event_date', { ascending: true });
   return data ?? [];
 }
 

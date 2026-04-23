@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Plus, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Plus, Link as LinkIcon, Calendar, Search, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 
@@ -13,17 +13,27 @@ interface Event {
   description: string | null;
 }
 
+type Filter = 'upcoming' | 'past';
+
 export default function PlanningClient({ events }: { events: Event[] }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [editingLink, setEditingLink] = useState<string | null>(null);
-  const [linkValue, setLinkValue] = useState('');
+  const [, startTransition] = useTransition();
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<Filter>('upcoming');
 
   const now = new Date().toISOString();
-  const upcoming = events.filter((e) => e.event_date >= now);
-  const past = events.filter((e) => e.event_date < now);
+
+  // Server sends ascending; upcoming = soonest first, past reversed = most recent first
+  const upcomingAll = events.filter((e) => e.event_date >= now);
+  const pastAll = [...events.filter((e) => e.event_date < now)].reverse();
+
+  const displayed = filter === 'upcoming' ? upcomingAll : pastAll;
+  const filtered = search.trim()
+    ? displayed.filter((e) => e.title.toLowerCase().includes(search.trim().toLowerCase()))
+    : displayed;
 
   async function createEvent(formData: FormData) {
     setError('');
@@ -41,23 +51,33 @@ export default function PlanningClient({ events }: { events: Event[] }) {
     startTransition(() => router.refresh());
   }
 
-  async function saveLiveLink(eventId: string) {
+  async function updateEvent(formData: FormData) {
+    if (!editingEvent) return;
+    setError('');
+    const title = (formData.get('title') as string).trim();
+    const event_date = formData.get('event_date') as string;
+    const live_link = (formData.get('live_link') as string).trim() || null;
+
+    if (!title || !event_date) { setError('Titre et date sont requis.'); return; }
+
     const supabase = createClient();
     const { error: err } = await supabase
       .from('events')
-      .update({ live_link: linkValue.trim() || null })
-      .eq('id', eventId);
+      .update({ title, event_date, live_link })
+      .eq('id', editingEvent.id);
     if (err) { setError(err.message); return; }
-    setEditingLink(null);
+
+    setEditingEvent(null);
     startTransition(() => router.refresh());
   }
 
   return (
     <div className="max-w-2xl">
-      <div className="flex justify-between items-center mb-6">
-        <p className="text-sm text-slate-500">{upcoming.length} à venir · {past.length} passés</p>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-5">
+        <p className="text-sm text-slate-500">{upcomingAll.length} à venir · {pastAll.length} passés</p>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setError(''); }}
           className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -65,6 +85,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
         </button>
       </div>
 
+      {/* Create form */}
       {showForm && (
         <form
           action={createEvent}
@@ -77,7 +98,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="title"
               placeholder="Live Guérison #16 — …"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               required
             />
           </div>
@@ -86,7 +107,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="event_date"
               type="datetime-local"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               required
             />
           </div>
@@ -95,7 +116,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="live_link"
               placeholder="https://youtube.com/live/..."
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
             />
           </div>
           <div className="flex gap-2 pt-1">
@@ -107,7 +128,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={() => { setShowForm(false); setError(''); }}
               className="text-slate-500 px-4 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors"
             >
               Annuler
@@ -116,21 +137,104 @@ export default function PlanningClient({ events }: { events: Event[] }) {
         </form>
       )}
 
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1 mb-4 bg-slate-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setFilter('upcoming')}
+          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+            filter === 'upcoming'
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          À venir
+        </button>
+        <button
+          onClick={() => setFilter('past')}
+          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+            filter === 'past'
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Passés
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un live…"
+          className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        />
+      </div>
+
+      {/* Event list */}
       {events.length === 0 ? (
         <p className="text-sm text-slate-400 py-8 text-center">Aucun événement. Créez le premier live.</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-slate-400 py-8 text-center">Aucun live trouvé.</p>
       ) : (
         <div className="space-y-3">
-          {upcoming.length > 0 && (
-            <>
-              <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">À venir</p>
-              {upcoming.map((e) => <EventRow key={e.id} event={e} editingLink={editingLink} linkValue={linkValue} setEditingLink={setEditingLink} setLinkValue={setLinkValue} saveLiveLink={saveLiveLink} error={error} />)}
-            </>
-          )}
-          {past.length > 0 && (
-            <>
-              <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mt-6">Passés</p>
-              {past.map((e) => <EventRow key={e.id} event={e} editingLink={editingLink} linkValue={linkValue} setEditingLink={setEditingLink} setLinkValue={setLinkValue} saveLiveLink={saveLiveLink} error={error} />)}
-            </>
+          {filtered.map((e) =>
+            editingEvent?.id === e.id ? (
+              <form
+                key={e.id}
+                action={updateEvent}
+                className="bg-white border border-indigo-200 rounded-xl p-4 space-y-3"
+              >
+                {error && <p className="text-xs text-red-500">{error}</p>}
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Titre</label>
+                  <input
+                    name="title"
+                    defaultValue={editingEvent.title}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Date et heure</label>
+                  <input
+                    name="event_date"
+                    type="datetime-local"
+                    defaultValue={editingEvent.event_date.slice(0, 16)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Lien du live (optionnel)</label>
+                  <input
+                    name="live_link"
+                    defaultValue={editingEvent.live_link ?? ''}
+                    placeholder="https://youtube.com/live/..."
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+                  >
+                    Sauvegarder
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingEvent(null); setError(''); }}
+                    className="text-slate-500 px-4 py-1.5 rounded-lg text-sm hover:bg-slate-100 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <EventRow key={e.id} event={e} onEdit={() => setEditingEvent(e)} />
+            )
           )}
         </div>
       )}
@@ -138,16 +242,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
   );
 }
 
-function EventRow({ event, editingLink, linkValue, setEditingLink, setLinkValue, saveLiveLink, error }: {
-  event: Event;
-  editingLink: string | null;
-  linkValue: string;
-  setEditingLink: (id: string | null) => void;
-  setLinkValue: (v: string) => void;
-  saveLiveLink: (id: string) => void;
-  error: string;
-}) {
-  const isEditing = editingLink === event.id;
+function EventRow({ event, onEdit }: { event: Event; onEdit: () => void }) {
   const isPast = event.event_date < new Date().toISOString();
 
   return (
@@ -161,53 +256,26 @@ function EventRow({ event, editingLink, linkValue, setEditingLink, setLinkValue,
               weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
             })}
           </div>
+          {event.live_link && (
+            <a
+              href={event.live_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-1.5 text-xs text-indigo-600 hover:underline"
+            >
+              <LinkIcon className="w-3 h-3" />
+              {event.live_link}
+            </a>
+          )}
         </div>
-        {!isPast && (
-          <button
-            onClick={() => {
-              if (isEditing) {
-                setEditingLink(null);
-              } else {
-                setEditingLink(event.id);
-                setLinkValue(event.live_link ?? '');
-              }
-            }}
-            className="text-xs text-indigo-600 hover:underline shrink-0"
-          >
-            {event.live_link ? 'Modifier lien' : 'Ajouter lien'}
-          </button>
-        )}
-      </div>
-
-      {event.live_link && !isEditing && (
-        <a
-          href={event.live_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 text-xs text-indigo-600 hover:underline"
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1 text-xs text-indigo-600 hover:underline shrink-0"
         >
-          <LinkIcon className="w-3 h-3" />
-          {event.live_link}
-        </a>
-      )}
-
-      {isEditing && (
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            value={linkValue}
-            onChange={(e) => setLinkValue(e.target.value)}
-            placeholder="https://youtube.com/live/..."
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            autoFocus
-          />
-          <button
-            onClick={() => saveLiveLink(event.id)}
-            className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition-colors"
-          >
-            Sauvegarder
-          </button>
-        </div>
-      )}
+          <Pencil className="w-3 h-3" />
+          Modifier
+        </button>
+      </div>
     </div>
   );
 }
