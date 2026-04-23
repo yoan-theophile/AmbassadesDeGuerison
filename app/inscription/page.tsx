@@ -12,11 +12,6 @@ const TYPES = [
   { value: 'individual', label: 'Domicile / particulier' },
   { value: 'church', label: 'Église / lieu de culte' },
 ];
-const CONTACT_MODES = [
-  { value: 'email', label: 'E-mail' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'telephone', label: 'Téléphone' },
-];
 
 export default function InscriptionPage() {
   const router = useRouter();
@@ -35,7 +30,6 @@ export default function InscriptionPage() {
     lng: undefined as number | undefined,
     type: 'individual',
     capacity: '10',
-    contact_mode: 'email',
     address_private: '',
     whatsapp_group_url: '',
     consignes: '',
@@ -229,11 +223,6 @@ export default function InscriptionPage() {
 
           {step === 3 && (
             <>
-              <Field label="Mode de contact préféré" required>
-                <select value={form.contact_mode} onChange={(e) => set('contact_mode', e.target.value)} className={inputCls}>
-                  {CONTACT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </Field>
               <Field label="Lien groupe WhatsApp (optionnel)">
                 <input type="url" value={form.whatsapp_group_url} onChange={(e) => set('whatsapp_group_url', e.target.value)} className={inputCls} placeholder="https://chat.whatsapp.com/..." />
               </Field>
