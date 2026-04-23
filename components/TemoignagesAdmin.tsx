@@ -96,13 +96,19 @@ function EventCombobox({
   );
 }
 
-export default function TemoignagesAdmin({ temoignages }: { temoignages: Temoignage[] }) {
+export default function TemoignagesAdmin({
+  temoignages,
+  initialEventTitle,
+}: {
+  temoignages: Temoignage[];
+  initialEventTitle?: string | null;
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [items, setItems] = useState(temoignages);
   const [filter, setFilter] = useState<Filter>('hidden');
   const [search, setSearch] = useState('');
-  const [eventFilter, setEventFilter] = useState('');
+  const [eventFilter, setEventFilter] = useState(initialEventTitle ?? '');
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [page, setPage] = useState(1);
   const [batchLoading, setBatchLoading] = useState(false);

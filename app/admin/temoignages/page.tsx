@@ -15,8 +15,26 @@ async function getTemoignages() {
   return data ?? [];
 }
 
-export default async function AdminTemoignagesPage() {
-  const temoignages = await getTemoignages();
+async function getEventTitle(eventId: string): Promise<string | null> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('events')
+    .select('title')
+    .eq('id', eventId)
+    .single();
+  return data?.title ?? null;
+}
+
+export default async function AdminTemoignagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event_id?: string }>;
+}) {
+  const { event_id } = await searchParams;
+  const [temoignages, initialEventTitle] = await Promise.all([
+    getTemoignages(),
+    event_id ? getEventTitle(event_id) : Promise.resolve(null),
+  ]);
 
   return (
     <AdminLayout>
@@ -32,7 +50,7 @@ export default async function AdminTemoignagesPage() {
             Page publique
           </Link>
         </div>
-        <TemoignagesAdmin temoignages={temoignages} />
+        <TemoignagesAdmin temoignages={temoignages} initialEventTitle={initialEventTitle} />
       </div>
     </AdminLayout>
   );

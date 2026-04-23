@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import AdminFeed from '@/components/AdminFeed';
-import AdminTestimonialFeed from '@/components/AdminTestimonialFeed';
+import LiveTestimonialsCounter from '@/components/LiveTestimonialsCounter';
 import AdminLayout from '@/components/AdminLayout';
 
 export const dynamic = 'force-dynamic';
@@ -59,17 +59,17 @@ export default async function AdminLivePage() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <h2 className="text-sm font-semibold text-slate-700">Demandes de prière</h2>
+              <h2 className="text-sm font-semibold text-slate-700">Mains levées</h2>
             </div>
             <AdminFeed eventId={event?.id ?? null} />
           </section>
 
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-              <h2 className="text-sm font-semibold text-slate-700">Témoignages reçus</h2>
+              <div className="w-2 h-2 bg-indigo-500 rounded-full" />
+              <h2 className="text-sm font-semibold text-slate-700">Témoignages</h2>
             </div>
-            <AdminTestimonialFeed eventId={event?.id ?? null} />
+            <LiveTestimonialsCounter eventId={event?.id ?? null} />
           </section>
         </div>
       </div>
