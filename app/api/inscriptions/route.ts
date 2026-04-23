@@ -42,14 +42,18 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { role: 'host' },
+  // createUser + email_confirm: true crée le compte sans envoyer d'email via Supabase Auth.
+  // Évite le rate limit (~2-4/h) de inviteUserByEmail. La confirmation passe par Resend ci-dessous.
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { role: 'host' },
   });
 
   let profileId: string | undefined;
 
   if (authError) {
-    if (authError.message.includes('already been registered')) {
+    if (authError.message.toLowerCase().includes('already')) {
       const { data: existingUser } = await supabase.auth.admin.listUsers();
       const user = existingUser?.users.find((u) => u.email === email);
       if (!user) return NextResponse.json({ error: authError.message }, { status: 400 });
@@ -68,7 +72,7 @@ export async function POST(req: NextRequest) {
         consignes: consignes || null,
         lat: lat ?? null,
         lng: lng ?? null,
-        status: 'pending',
+        status: 'pending_onboarding',
       }).select('id').single();
       if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
       profileId = profileData?.id;
@@ -93,7 +97,7 @@ export async function POST(req: NextRequest) {
       consignes: consignes || null,
       lat: lat ?? null,
       lng: lng ?? null,
-      status: 'pending',
+      status: 'pending_onboarding',
     }).select('id').single();
     if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
     profileId = profileData?.id;
