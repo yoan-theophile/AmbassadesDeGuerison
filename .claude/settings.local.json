@@ -20,7 +20,10 @@
       "Bash(npx tsc *)",
       "Skill(qa)",
       "Skill(plan-ceo-review)",
-      "WebSearch"
+      "WebSearch",
+      "Skill(investigate)",
+      "Skill(design-consultation)",
+      "Skill(plan-eng-review)"
     ]
   }
 }

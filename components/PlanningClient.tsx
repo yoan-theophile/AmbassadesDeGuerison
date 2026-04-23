@@ -15,6 +15,23 @@ interface Event {
 
 type Filter = 'upcoming' | 'past';
 
+// La Réunion = UTC+4, sans heure d'été. L'offset est fixé en env pour ne pas
+// dépendre de la timezone du navigateur (admin peut ouvrir depuis n'importe où).
+const TZ_OFFSET = process.env.NEXT_PUBLIC_ADMIN_TZ_OFFSET ?? '+04:00';
+
+function localInputToUTC(localStr: string): string {
+  return new Date(`${localStr}:00${TZ_OFFSET}`).toISOString();
+}
+
+function utcToLocalInput(utcStr: string): string {
+  const m = TZ_OFFSET.match(/([+-])(\d{2}):(\d{2})/);
+  const offsetMs = m
+    ? (parseInt(m[2]) * 60 + parseInt(m[3])) * 60000 * (m[1] === '+' ? 1 : -1)
+    : 4 * 3600000;
+  const d = new Date(utcStr);
+  return new Date(d.getTime() + offsetMs).toISOString().slice(0, 16);
+}
+
 export default function PlanningClient({ events }: { events: Event[] }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
@@ -44,10 +61,14 @@ export default function PlanningClient({ events }: { events: Event[] }) {
   async function createEvent(formData: FormData) {
     setError('');
     const title = (formData.get('title') as string).trim();
-    const event_date = formData.get('event_date') as string;
+    const event_date_local = formData.get('event_date') as string;
     const live_link = (formData.get('live_link') as string).trim() || null;
 
-    if (!title || !event_date) { setError('Titre et date sont requis.'); return; }
+    if (!title || !event_date_local) { setError('Titre et date sont requis.'); return; }
+
+    // Conversion explicite en UTC via l'offset La Réunion (NEXT_PUBLIC_ADMIN_TZ_OFFSET)
+    // — indépendant de la timezone du navigateur
+    const event_date = localInputToUTC(event_date_local);
 
     const supabase = createClient();
     const { error: err } = await supabase.from('events').insert({ title, event_date, live_link });
@@ -61,10 +82,12 @@ export default function PlanningClient({ events }: { events: Event[] }) {
     if (!editingEvent) return;
     setError('');
     const title = (formData.get('title') as string).trim();
-    const event_date = formData.get('event_date') as string;
+    const event_date_local = formData.get('event_date') as string;
     const live_link = (formData.get('live_link') as string).trim() || null;
 
-    if (!title || !event_date) { setError('Titre et date sont requis.'); return; }
+    if (!title || !event_date_local) { setError('Titre et date sont requis.'); return; }
+
+    const event_date = localInputToUTC(event_date_local);
 
     const supabase = createClient();
     const { error: err } = await supabase
@@ -109,7 +132,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Date et heure</label>
+            <label className="text-xs text-slate-500 block mb-1">Date et heure <span className="text-slate-400">(heure La Réunion)</span></label>
             <input
               name="event_date"
               type="datetime-local"
@@ -204,11 +227,11 @@ export default function PlanningClient({ events }: { events: Event[] }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Date et heure</label>
+                  <label className="text-xs text-slate-500 block mb-1">Date et heure <span className="text-slate-400">(heure La Réunion)</span></label>
                   <input
                     name="event_date"
                     type="datetime-local"
-                    defaultValue={editingEvent.event_date.slice(0, 16)}
+                    defaultValue={utcToLocalInput(editingEvent.event_date)}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                     required
                   />
@@ -258,8 +281,10 @@ function EventRow({ event, onEdit }: { event: Event; onEdit: () => void }) {
           <p className="text-sm font-medium text-slate-800 truncate">{event.title}</p>
           <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
             <Calendar className="w-3 h-3" />
-            {new Date(event.event_date).toLocaleDateString('fr-FR', {
+            {new Date(event.event_date).toLocaleString('fr-FR', {
               weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+              timeZone: 'Indian/Reunion',
             })}
           </div>
           {event.live_link && (

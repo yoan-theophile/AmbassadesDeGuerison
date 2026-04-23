@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
+import TemoignageCard from '@/components/TemoignageCard';
 import Link from 'next/link';
 import { MapPin, MessageSquare, Send } from 'lucide-react';
 
@@ -9,16 +10,12 @@ async function getTemoignages() {
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('testimonials')
-    .select('id, content, timing, created_at, host_profile:host_profiles(first_name, city, country)')
+    .select('id, content, timing, created_at, host_profile:host_profiles(first_name, city), event:events(title)')
     .eq('is_visible', true)
     .order('created_at', { ascending: false });
   return data ?? [];
 }
 
-const TIMING_LABELS: Record<string, string> = {
-  during: 'Pendant le live',
-  after:  'Après le live',
-};
 
 export default async function TemoignagesPage() {
   const temoignages = await getTemoignages();
@@ -34,7 +31,7 @@ export default async function TemoignagesPage() {
             </div>
             <h1 className="text-2xl font-semibold text-slate-800">Témoignages</h1>
             <p className="text-slate-500 text-sm mt-2">
-              Ce que vivent les ambassades à travers le monde.
+              Ce que vivent les ambassadeurs à travers le monde.
             </p>
           </div>
 
@@ -50,20 +47,20 @@ export default async function TemoignagesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {temoignages.map((t) => (
-                <div key={t.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                  <p className="text-slate-700 text-sm leading-relaxed">"{t.content}"</p>
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                    <span className="font-medium text-slate-500">
-                      {Array.isArray(t.host_profile) && t.host_profile[0]
-                        ? `${t.host_profile[0].first_name}, ${t.host_profile[0].city}`
-                        : 'Ambassade'}
-                    </span>
-                    {t.timing && <span>{TIMING_LABELS[t.timing] ?? t.timing}</span>}
-                  </div>
-                </div>
-              ))}
+            <div className="grid gap-4 sm:grid-cols-2 items-start">
+              {temoignages.map((t) => {
+                const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
+                const ev = Array.isArray(t.event) ? t.event[0] : t.event;
+                return (
+                  <TemoignageCard
+                    key={t.id}
+                    content={t.content}
+                    hostName={hp ? `${hp.first_name}, ${hp.city}` : null}
+                    eventTitle={ev?.title ?? null}
+                    timing={t.timing}
+                  />
+                );
+              })}
             </div>
           )}
 

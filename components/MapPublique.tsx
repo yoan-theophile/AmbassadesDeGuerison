@@ -40,6 +40,7 @@ export default function MapPublique() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   // Polling 30s pour les activations
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function MapPublique() {
         // réseau indisponible — on garde les données précédentes
       } finally {
         setRefreshing(false);
+        setLoaded(true);
       }
     }
 
@@ -128,14 +130,15 @@ export default function MapPublique() {
             <div style="min-width:190px;padding:2px 0">
               <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
-              <p class="text-xs text-slate-500 mt-1">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
+              <p class="text-xs text-indigo-500 mt-1">Groupe de visionnage — lives David Théry</p>
+              <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
               ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
               ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             </div>
           `;
           L.marker([host.lat, host.lng], { icon: makeIcon(L, host.host_type, host.is_full) })
             .addTo(mapRef.current!)
-            .bindPopup(popup, { maxWidth: 240 });
+            .bindPopup(popup, { maxWidth: 280 });
         });
     }
 
@@ -145,6 +148,20 @@ export default function MapPublique() {
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
+      {loaded && hosts.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-lg px-6 py-5 text-center max-w-xs pointer-events-auto">
+            <p className="text-slate-700 text-sm font-medium">Aucune ambassade active pour l'instant</p>
+            <p className="text-slate-400 text-xs mt-1">Soyez le premier à en ouvrir une près de chez vous.</p>
+            <a
+              href="/inscription"
+              className="mt-3 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
+            >
+              Devenir ambassadeur
+            </a>
+          </div>
+        </div>
+      )}
       {refreshing && (
         <div className="absolute top-3 right-12 z-[1000] bg-white/80 rounded-full p-1.5 shadow-sm">
           <svg className="animate-spin w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none">

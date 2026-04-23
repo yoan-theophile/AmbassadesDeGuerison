@@ -35,46 +35,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-52 shrink-0 bg-slate-900 flex flex-col">
+      <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col">
         <div className="px-4 py-5 border-b border-slate-800">
-          <p className="text-white text-sm font-semibold">✦ David Théry</p>
-          <p className="text-slate-500 text-xs mt-0.5">Espace admin</p>
+          <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
+          <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
+          <p className="sm:hidden text-white text-sm font-semibold">✦</p>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1">
           {NAV.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`flex items-center justify-center sm:justify-start gap-3 px-2 sm:px-3 py-2 rounded-lg text-sm transition-colors ${
                   active
                     ? 'bg-slate-800 text-white'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                {label}
+                <span className="hidden sm:inline">{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-slate-800 space-y-1">
+        <div className="px-2 py-4 border-t border-slate-800 space-y-1">
           <Link
             href="/"
-            className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors rounded-lg"
+            className="flex items-center justify-center sm:justify-start gap-2 px-2 sm:px-3 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors rounded-lg"
           >
-            <ChevronLeft className="w-3 h-3" />
-            Carte publique
+            <ChevronLeft className="w-3 h-3 shrink-0" />
+            <span className="hidden sm:inline">Carte publique</span>
           </Link>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-400 text-xs transition-colors rounded-lg"
+            className="w-full flex items-center justify-center sm:justify-start gap-2 px-2 sm:px-3 py-2 text-slate-500 hover:text-red-400 text-xs transition-colors rounded-lg"
           >
-            <LogOut className="w-3 h-3" />
-            Se déconnecter
+            <LogOut className="w-3 h-3 shrink-0" />
+            <span className="hidden sm:inline">Se déconnecter</span>
           </button>
         </div>
       </aside>

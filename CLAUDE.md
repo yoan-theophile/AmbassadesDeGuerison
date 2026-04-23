@@ -63,6 +63,7 @@ Flux self-service déclenché après l'inscription :
 
 - `PATCH /api/onboarding/complete` : auth cookie obligatoire, idempotent si déjà `active` (200 no-op), rejette tout statut autre que `pending_onboarding` (400). Déclenche deux e-mails non-bloquants : `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
 - Le dashboard redirige automatiquement vers `/onboarding` si `status = pending_onboarding`.
+- **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
 - Un admin peut ensuite `Suspendre` (`active → suspended`) ou `Réactiver` (`suspended → active`) via `PATCH /api/admin/ambassadeurs/[id]`.
 
 ## Pages admin
@@ -70,7 +71,7 @@ Flux self-service déclenché après l'inscription :
 | Route | Description |
 |-------|-------------|
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
-| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, filtres, Suspendre/Réactiver |
+| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/planning` | Gestion des événements (création, modification) |
 | `/admin/temoignages` | Modération témoignages — combobox event, recherche multi-mots, pagination, Tout publier |
@@ -87,12 +88,39 @@ Table singleton (`id = 1`). Accès exclusivement via `createServiceClient()` (by
 
 Si la table est vide ou `video_url = ''`, le GET retourne les constantes de `config/onboarding.ts`.
 
+## Page d'accueil publique (`/`)
+
+Carte Leaflet plein écran avec :
+- **Header** (`AppHeader`) : sous-titre "Groupes de visionnage — lives de David Théry" visible desktop (`hidden sm:block`), sous le nom.
+- **EventBanner** : bandeau flottant sur la carte — 4 états selon `liveInProgress` + `nextEvent` + `lastEvent` :
+  1. `liveInProgress = true` (event_date ≤ now ≤ event_date + `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`) → *"Live en cours — rejoignez-nous"* (indigo, Radio pulsing)
+  2. `nextEvent` dans < 7 jours → *"Prochain live dans Xj Xh Xmin"* (countdown, indigo)
+  3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
+  4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
+- **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
+- **Popup des pins** : contient une ligne "Groupe de visionnage — lives David Théry" pour contextualiser l'action Contacter.
+- **État vide** (`MapPublique`) : si `hosts.length === 0` après le 1er fetch, overlay centré avec CTA "Devenir ambassadeur" (conditionné à `loaded` pour éviter le flash).
+
+## Page témoignages publique (`/temoignages`)
+
+- Grille 2 colonnes (`sm:grid-cols-2 items-start`) — hauteurs libres par colonne.
+- **`TemoignageCard`** (client component) : icône `Quote` indigo en haut, texte sans guillemets, `line-clamp-4` par défaut. Si `scrollHeight > clientHeight`, bouton **"Lire la suite"** apparaît ; **"Réduire"** pour replier.
+- Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) + timing + titre du live en indigo.
+- Jointure Supabase many-to-one → retourne un objet, pas un tableau. Normaliser avec `Array.isArray ? [0] : direct`.
+
+## Page planning admin (`/admin/planning`)
+
+- **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
+- Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
+- Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
+
 ## Règles importantes
 
 - `lib/supabase/server.ts` (service_role) : JAMAIS importé depuis un Client Component
 - `lib/supabase/browser.ts` (anon key) : uniquement dans les Client Components
 - Port 6543 obligatoire pour les connexions Supabase server-side (pooler)
 - Feature flags dans `config/features.ts`
+- `AdminLayout` contient un bouton "Se déconnecter" en bas de la sidebar (`supabase.auth.signOut()` + `router.replace('/auth')`)
 
 ## Skill routing
 
@@ -109,6 +137,12 @@ Key routing rules:
 - Update docs after shipping → invoke document-release
 - Weekly retro → invoke retro
 - Design system, brand → invoke design-consultation
+
+## Design System
+Lire DESIGN.md avant toute décision visuelle ou UI.
+Couleurs, fonts, spacing, règles responsive — tout est défini là.
+Ne pas dévier sans accord explicite.
+En mode QA, signaler tout code qui ne suit pas DESIGN.md.
 - Visual audit, design polish → invoke design-review
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint

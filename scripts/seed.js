@@ -256,15 +256,27 @@ async function run() {
   const temoignages = [
     {
       email: 'marie.dubois@demo.fr', timing: 'after', is_visible: true,
-      content: "Ce live a été un moment de grâce extraordinaire. Nous étions 12 réunis dans la paix et la joie. Le message de David a touché nos cœurs. Merci !",
+      content: "Nous étions 12 ce soir. À un moment de prière, une sœur a senti une chaleur intense dans son dos — elle souffrait depuis trois ans. Elle a pleuré de joie. Dieu est fidèle.",
     },
     {
       email: 'jp.martin@demo.fr', timing: 'during', is_visible: true,
-      content: "Notre église a accueilli plus de 60 personnes pour ce live. Une atmosphère de ferveur et d'unité. Nous recommencerons avec joie au prochain live.",
+      content: "Plus de 60 personnes réunies dans notre église. Pendant la prière des mains levées, des gens ont témoigné de douleurs qui partaient. Une atmosphère de ferveur comme rarement vécue. Rendez-vous au prochain live !",
     },
     {
-      email: 'samuel.eko@demo.fr', timing: 'after', is_visible: false,
-      content: "Magnifique soirée ! La connexion entre les ambassades à travers le monde donne un sens profond à cette expérience de communauté.",
+      email: 'fatou.diallo@demo.fr', timing: 'after', is_visible: true,
+      content: "Mon mari était sceptique au départ. Il est venu par amour pour moi. À la fin du live il priait les mains levées, les yeux fermés. Il m'a dit : 'Je ne sais pas ce que j'ai ressenti, mais je veux revenir.' Merci David.",
+    },
+    {
+      email: 'kofi.asante@demo.fr', timing: 'during', is_visible: true,
+      content: "Abidjan était en feu ce soir. 120 frères et sœurs. Quand David a prié pour les guérisons, un homme dans notre salle — muet de l'oreille droite depuis l'enfance — a commencé à entendre. Nous avons tous pleuré.",
+    },
+    {
+      email: 'samuel.eko@demo.fr', timing: 'after', is_visible: true,
+      content: "Magnifique soirée à Montréal. La connexion avec les ambassades du monde entier donne un sens profond à cette communauté. Dieu n'a pas de frontières. On se retrouve la prochaine fois.",
+    },
+    {
+      email: 'claire.bernard@demo.fr', timing: 'after', is_visible: true,
+      content: "Nous étions 7 dans mon appartement. Petite assemblée mais présence forte. Une amie qui souffrait de migraines chroniques a eu la tête complètement dégagée pendant la prière. Elle dormait à poing fermé après le live — première fois depuis des mois.",
     },
   ];
 
@@ -279,7 +291,8 @@ async function run() {
         timing: t.timing,
         is_visible: t.is_visible,
       });
-      console.log(`  ✓ Témoignage de ${t.email.split('.')[0]}`);
+      const host = hostsData.find(h => h.email === t.email);
+      console.log(`  ✓ ${host?.first_name} (${host?.city})`);
     } catch (e) {
       console.log(`  ✗ ${e.message.slice(0, 120)}`);
     }

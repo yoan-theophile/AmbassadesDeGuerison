@@ -9,7 +9,10 @@ export default function AppHeader() {
         <div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center">
           <Home className="w-4 h-4 text-indigo-600" />
         </div>
-        <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
+        <div className="hidden sm:flex flex-col leading-tight">
+          <span className="font-semibold text-slate-800 text-sm">Ambassades de Guérison</span>
+          <span className="text-slate-400 text-xs">Groupes de visionnage — lives de David Théry</span>
+        </div>
       </Link>
       <nav className="flex items-center gap-1">
         <Link

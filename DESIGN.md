@@ -1,0 +1,151 @@
+# Design System — Ambassades de Guérison
+
+## Product Context
+- **What this is:** Carte interactive des groupes de visionnage des lives de David Théry (pasteur, guérison, francophonie)
+- **Who it's for:** Ambassadeurs (hôtes) + visiteurs qui cherchent un groupe près de chez eux — audience 65-70% mobile, forte présence africaine francophone
+- **Space/industry:** Application communautaire chrétienne francophone
+- **Project type:** Web app — carte publique + dashboard ambassadeur + espace admin
+
+## Aesthetic Direction
+- **Direction:** Minimal/Chaleureux — blanc, slate, indigo. Pas corporate, pas froid. La propreté d'un outil sérieux au service d'une communauté chaleureuse.
+- **Decoration level:** Minimal — la typographie et l'espacement font le travail. Aucun gradient, aucune illustration, aucun blob décoratif.
+- **Mood:** Confiance et accueil. L'utilisateur doit sentir que l'app est fiable et que derrière se trouve une communauté réelle.
+- **Anti-patterns:** Pas de purple gradient, pas de hero centré générique, pas de 3-col feature grid avec icônes en cercles colorés.
+
+## Typography
+- **Display/Hero:** Geist Sans (Next.js default) — clean, moderne, lisible à toutes les tailles. Pas Inter.
+- **Body:** Geist Sans — même famille, cohérence maximale
+- **UI/Labels:** Geist Sans — idem
+- **Data/Tables:** Geist Sans avec `tabular-nums` pour les chiffres alignés
+- **Code:** Geist Mono (présent dans le projet)
+- **Loading:** Fourni par Next.js `next/font/google` — déjà configuré
+- **Scale (Tailwind):**
+  - `text-xs` (12px) — métadonnées, labels secondaires
+  - `text-sm` (14px) — corps de texte, boutons, cards
+  - `text-base` (16px) — paragraphes
+  - `text-lg` (18px) — titres de section
+  - `text-xl` (20px) — titres de page mobile
+  - `text-2xl` (24px) — titres de page desktop
+
+## Color
+- **Approach:** Restrained — 1 accent indigo + slate neutrals + emerald sémantique
+- **Primary (indigo-600):** `#4f46e5` — CTAs, icônes accent, focus rings, liens actifs
+- **Primary dark (indigo-700):** `#4338ca` — hover states sur primary
+- **Primary light (indigo-50):** `#eef2ff` — backgrounds légers, badges, icônes en fond
+- **Primary muted (indigo-400):** `#818cf8` — icônes secondaires, états passifs
+- **Neutral background:** `white` (#ffffff) — surfaces cards, headers
+- **Neutral surface:** `slate-50` (#f8fafc) — backgrounds de pages
+- **Neutral border:** `slate-100` (#f1f5f9) — borders de cards
+- **Neutral muted:** `slate-400` (#94a3b8) — texte secondaire, icônes neutres
+- **Neutral body:** `slate-700` (#334155) — texte principal
+- **Neutral strong:** `slate-800` (#1e293b) — titres, labels importants
+- **Success (emerald-600):** `#059669` — WhatsApp, states positifs, badges actifs
+- **Error (red-600):** `#dc2626` — actions destructives (Suspendre, Supprimer)
+- **Dark mode:** Non implémenté en v1. Ignorer la media query dans globals.css.
+
+## Spacing
+- **Base unit:** 4px (Tailwind default)
+- **Density:** Comfortable — ni compact ni spacieux. `p-5` sur les cards, `px-4 py-3` sur les headers.
+- **Container padding mobile:** `px-4` (16px) — jamais moins sur mobile
+- **Container max-width:** `max-w-lg` (512px) pour les pages focused (inscription, ambassade), `max-w-2xl` (672px) pour les pages riches (dashboard, onboarding)
+- **Scale référence:**
+  - gap-1 (4px), gap-2 (8px) — séparation d'éléments inline
+  - gap-4 (16px) — séparation de blocs dans un composant
+  - gap-6 (24px) — séparation entre sections
+  - space-y-6 — spacing vertical entre cards dans une page
+
+## Layout
+- **Approach:** Grid-disciplined sur mobile, hybrid sur desktop
+- **Grid:**
+  - Mobile : 1 colonne, `px-4`
+  - sm (640px+) : 2 colonnes pour les grilles de cards (`sm:grid-cols-2`)
+  - Jamais de 3 colonnes sur les pages publiques
+- **Max content width:** `max-w-lg` (forms/detail) ou `max-w-2xl` (listes/dashboard)
+- **Border radius:**
+  - sm: `rounded-lg` (8px) — inputs, badges, petits boutons
+  - md: `rounded-xl` (12px) — boutons principaux, composants intermédiaires
+  - lg: `rounded-2xl` (16px) — cards, modals, containers
+  - full: `rounded-full` — pills, avatars, loaders circulaires
+
+## Responsive Design — Règles
+
+### Stratégie breakpoints
+```
+Utiliser uniquement sm: (640px) pour 95% des adaptations mobiles.
+md: et lg: réservés aux cas exceptionnels (admin sidebar si besoin futur).
+Les classes sans préfixe = mobile first.
+```
+
+### Breakpoint sm: (640px) — référence
+```
+Mobile (<640px)     → sm: (640px+)
+─────────────────────────────────────────────────
+Sidebar admin: w-14 → sm:w-52
+Labels nav admin: hidden → sm:block
+Sous-titre AppHeader: hidden → sm:flex flex-col
+Labels boutons nav: hidden → sm:inline
+Grille cards: grid-cols-1 → sm:grid-cols-2
+```
+
+### Touch targets
+```
+Tout élément interactif sur mobile : min 44px de hauteur
+├── Boutons principaux : py-2.5 minimum (40px) ou py-3 (44px) ✓
+├── Liens nav : py-2 (32px) acceptable si gap généreux
+└── Boutons icon-only : w-11 h-11 (44px) minimum
+```
+
+### Textes longs dans les bandeaux pill
+```
+Règle : jamais de whitespace-nowrap sur strings > 20 caractères
+Bandeaux EventBanner :
+  Mobile : message court ("Live dans 2h", "Live en cours")
+  Desktop (sm:) : message complet avec date et heure
+Implémentation : conditions sur la prop calculée, pas de CSS text-overflow
+```
+
+### Popups Leaflet
+```
+maxWidth: 280 (au lieu de 240)
+Pas de CSS custom — utiliser les options L.popup()
+Le positionnement mobile est géré par Leaflet nativement
+```
+
+### Grilles de cards
+```
+items-start obligatoire — les hauteurs de colonnes sont libres
+Éviter items-stretch sur des grilles de contenu éditorial
+```
+
+### Admin sidebar (mobile icon-only)
+```
+<aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col">
+  {/* Logo : icône toujours visible, texte caché sur mobile */}
+  <div className="px-4 py-5 border-b border-slate-800">
+    <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
+    <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
+    <p className="sm:hidden text-white text-sm font-semibold">✦</p>
+  </div>
+  {/* Nav items : icône toujours, label caché sur mobile */}
+  <Link className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2 ...">
+    <Icon className="w-4 h-4 shrink-0" />
+    <span className="hidden sm:inline">{label}</span>
+  </Link>
+```
+
+## Motion
+- **Approach:** Minimal-functional — seulement les transitions qui aident la compréhension
+- **Easing:** `transition-colors` pour les hover/focus, `transition-opacity` pour les états de chargement
+- **Duration:** 150ms pour les color transitions (Tailwind default)
+- **Pas de:** scroll-driven, entrance animations, keyframes décoratifs
+
+## Decisions Log
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-04-24 | sm: comme seul breakpoint | L'app est soit mobile soit desktop, tablettes = desktop |
+| 2026-04-24 | Pas de dark mode v1 | Complexité non justifiée pour la v1 |
+| 2026-04-24 | Geist Sans conservé | Meilleur que Inter pour la lisibilité à petite taille |
+| 2026-04-24 | whitespace-nowrap interdit sur >20 chars | EventBanner overflow sur iPhone SE (320px) |
+| 2026-04-24 | Admin sidebar icon-only (pas hamburger) | David = admin solo, icon-only suffit, zéro JS |
+| 2026-04-24 | maxWidth popup Leaflet : 280px | 240px trop étroit sur mobile portrait |
+| 2026-04-24 | items-start obligatoire sur card grids | Évite l'étirement des colonnes quand une card est expand |

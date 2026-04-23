@@ -40,10 +40,11 @@ La carte mondiale avec les épingles des ambassades actives + le bandeau événe
 
 **Étapes :**
 1. Ouvrir `http://localhost:3000`
-2. **Bandeau EventBanner** visible en haut de la carte :
-   - Si live dans < 7j : compte à rebours indigo animé *"Prochain live dans 10j 4h 32min"*
-   - Sinon : *"Prochain live le samedi 3 mai"*
-   - Après le live : *"Dernier live il y a X jours — prochainement"*
+2. **Bandeau EventBanner** visible en haut de la carte — 4 états :
+   - Live démarré depuis < 4h : *"Live en cours — rejoignez-nous"* (indigo, icône pulsante)
+   - Prochain live dans < 7j : *"Prochain live dans 10j 4h 32min"* (compte à rebours indigo)
+   - Prochain live dans ≥ 7j : *"Prochain live le samedi 3 mai à 18h00"* (heure en timezone locale du visiteur)
+   - Aucun live à venir : *"Dernier live il y a X jours — prochainement"*
 3. La carte s'affiche avec 6 épingles géolocalisées
 4. Zoomer sur la France : Paris (Marie) et Lyon (Jean-Pierre)
 5. Zoomer sur l'Europe : Bruxelles (Fatou) et Genève (Claire)
@@ -355,4 +356,4 @@ Pour le compte développeur (`theo.nelson.ia@gmail.com`), la magic link arrive n
 
 ---
 
-*Mis à jour le 22 avril 2026 — DavidTheryApp v1.2 (témoignages multi + visiteurs, live enrichi, EventBanner, share card, admin/live)*
+*Mis à jour le 24 avril 2026 — DavidTheryApp v1.3 (EventBanner 4 états + heure, TemoignageCard expand, planning heure La Réunion)*
