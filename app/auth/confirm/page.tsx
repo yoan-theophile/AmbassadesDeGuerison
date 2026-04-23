@@ -24,14 +24,13 @@ function ConfirmContent() {
     }
 
     const supabase = createClient();
-    supabase.auth.verifyOtp({ token_hash, type }).then(async ({ error }) => {
+    supabase.auth.verifyOtp({ token_hash, type }).then(({ data, error }) => {
       if (error) {
         setStatus('error');
         setErrorMsg(error.message);
       } else {
         setStatus('success');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.user_metadata?.role === 'admin') {
+        if (data.user?.user_metadata?.role === 'admin') {
           router.replace('/admin/stats');
         } else {
           router.replace('/dashboard');
