@@ -5,7 +5,7 @@
  */
 
 export function ambassadorShareText(origin: string): string {
-  return `Je viens de m'inscrire comme ambassadeur des lives de guérison avec David Théry 🙏\nRejoignez la carte des ambassades : ${origin}`;
+  return `Je viens de m'inscrire comme ambassadeur des lives de guérison avec David Théry ✨\nRejoignez la carte des ambassades : ${origin}`;
 }
 
 export function ambassadorWhatsAppUrl(origin: string): string {
@@ -13,7 +13,7 @@ export function ambassadorWhatsAppUrl(origin: string): string {
 }
 
 export function testimonialsShareText(eventTitle: string, count: number): string {
-  return `${count} témoignage${count !== 1 ? 's' : ''} lors du live "${eventTitle}" avec David Théry 🙏`;
+  return `${count} témoignage${count !== 1 ? 's' : ''} lors du live "${eventTitle}" avec David Théry ✨`;
 }
 
 export function testimonialsWhatsAppUrl(eventTitle: string, count: number, url: string): string {
