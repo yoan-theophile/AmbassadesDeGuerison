@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   // Fetch host details for emails
   const { data: hostDetails } = await supabase
     .from('host_profiles')
-    .select('email, first_name, city')
+    .select('email, first_name, city, whatsapp_group_url')
     .eq('id', host_profile_id)
     .single();
 
@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
         visitor_first_name.trim(),
         hostDetails.first_name,
         hostDetails.city,
+        hostDetails.email,
+        hostDetails.whatsapp_group_url ?? null,
         accueilUrl,
         availableAt
       ),

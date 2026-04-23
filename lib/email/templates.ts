@@ -44,7 +44,7 @@ function templateOrHtml(
 //   variables : host_first_name, action_url
 //
 // RESEND_TEMPLATE_CONTACT_RESERVED
-//   variables : visitor_first_name, host_first_name, host_city, accueil_url, available_at
+//   variables : visitor_first_name, host_first_name, host_city, host_email, host_whatsapp_group_url, accueil_url, available_at
 //
 // RESEND_TEMPLATE_CONTACT_RECEIVED_HOST
 //   variables : host_first_name, visitor_first_name, visitor_email, visitor_whatsapp, visitor_message, decline_url
@@ -130,12 +130,17 @@ export async function sendContactRequestReserved(
   visitorFirstName: string,
   hostFirstName: string,
   hostCity: string,
+  hostEmail: string,
+  hostWhatsappGroupUrl: string | null,
   accueilUrl: string,
   availableAt: Date
 ) {
   const dateStr = availableAt.toLocaleString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
   });
+  const whatsappLine = hostWhatsappGroupUrl
+    ? `<p>💬 Groupe WhatsApp de l'ambassade : <a href="${hostWhatsappGroupUrl}">Rejoindre le groupe</a></p>`
+    : '';
   return getResend().emails.send({
     from: FROM(),
     to,
@@ -144,12 +149,17 @@ export async function sendContactRequestReserved(
       visitor_first_name: visitorFirstName,
       host_first_name: hostFirstName,
       host_city: hostCity,
+      host_email: hostEmail,
+      host_whatsapp_group_url: hostWhatsappGroupUrl ?? '',
       accueil_url: accueilUrl,
       available_at: dateStr,
     }, `
       <p>Bonjour ${visitorFirstName},</p>
       <p>Votre demande pour rejoindre l'ambassade de <strong>${hostFirstName}</strong> (${hostCity}) est bien enregistrée.</p>
-      <p>Votre lien d'accès à l'adresse sera disponible le <strong>${dateStr}</strong>.</p>
+      <p>Pour contacter directement l'ambassadeur :</p>
+      <p>✉️ E-mail : <a href="mailto:${hostEmail}">${hostEmail}</a></p>
+      ${whatsappLine}
+      <p style="margin-top:16px;">Votre lien d'accès à l'adresse sera disponible le <strong>${dateStr}</strong>.</p>
       <p><a href="${accueilUrl}" style="background:#4F46E5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Accéder à mon lien</a></p>
       <p style="color:#64748b;font-size:13px;">Si vous ne pouvez finalement pas venir, vous n'avez rien à faire — votre place sera libérée automatiquement.</p>
       <p style="color:#64748b;font-size:13px;">Ambassades de Guérison — <a href="${APP_URL()}">Voir la carte</a></p>
