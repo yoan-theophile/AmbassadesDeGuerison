@@ -7,6 +7,26 @@ import AppHeader from '@/components/AppHeader';
 import { createClient } from '@/lib/supabase/browser';
 import { ONBOARDING } from '@/config/onboarding';
 
+export function buildVideoUrl(url: string): string {
+  if (!url) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}enablejsapi=1`;
+}
+
+export function parseYouTubeMessage(data: unknown): 'playing' | 'paused' | 'ended' | null {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data as string) : data;
+    if ((parsed as Record<string, unknown>)?.event !== 'onStateChange') return null;
+    const info = (parsed as Record<string, unknown>).info;
+    if (info === 1) return 'playing';
+    if (info === 2) return 'paused';
+    if (info === 0) return 'ended';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface OnboardingConfig {
   video_url: string;
   pdf_url: string;
@@ -14,6 +34,7 @@ interface OnboardingConfig {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const [videoStarted, setVideoStarted] = useState(false);
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,6 +71,15 @@ export default function OnboardingPage() {
       .then((d: OnboardingConfig) => setConfig({ video_url: d.video_url, pdf_url: d.pdf_url }))
       .catch(() => {});
   }, [router]);
+
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (!['https://www.youtube.com', 'https://www.youtube-nocookie.com'].includes(e.origin)) return;
+      if (parseYouTubeMessage(e.data) === 'playing') setVideoStarted(true);
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   async function handleSubmit() {
     if (!checked) return;
@@ -102,7 +132,7 @@ export default function OnboardingPage() {
             </div>
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
-                src={config.video_url}
+                src={buildVideoUrl(config.video_url)}
                 title="Formation ambassadeur — David Théry"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -129,13 +159,19 @@ export default function OnboardingPage() {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer">
+            {!videoStarted && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+                Regardez la vidéo ci-dessus pour débloquer cette étape.
+              </p>
+            )}
+            <label className={`flex items-start gap-3 ${videoStarted ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
               <div className="mt-0.5">
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={(e) => setChecked(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  disabled={!videoStarted}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
               <span className="text-sm text-slate-700">
