@@ -17,7 +17,7 @@ async function getAmbassadeurs(page: number, q: string, status: string) {
       { count: 'exact' }
     );
 
-  if (q) query = query.ilike('first_name', `%${q}%`);
+  if (q) query = (query as any).or(`first_name.ilike.%${q}%,email.ilike.%${q}%,city.ilike.%${q}%`);
   if (status !== 'all') query = (query as any).eq('status', status);
 
   const { data, count } = await (query as any)

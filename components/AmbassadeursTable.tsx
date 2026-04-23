@@ -98,7 +98,7 @@ export default function AmbassadeursTable({
       <form onSubmit={handleSearchSubmit} className="flex gap-2">
         <input
           type="search"
-          placeholder="Rechercher par prénom…"
+          placeholder="Rechercher par nom, e-mail, ville…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
