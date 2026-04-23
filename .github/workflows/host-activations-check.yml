@@ -1,9 +1,9 @@
 name: Host Activations Check
 
 on:
-  schedule:
-    # Quotidien à 8h UTC
-    - cron: '0 8 * * *'
+  # schedule:
+  #   # Quotidien à 8h UTC
+  #   - cron: '0 8 * * *'
   workflow_dispatch:
 
 jobs:

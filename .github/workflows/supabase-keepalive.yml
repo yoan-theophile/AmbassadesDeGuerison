@@ -1,9 +1,9 @@
 name: Supabase Keep Alive
 
 on:
-  schedule:
-    # Toutes les 5 jours à 8h UTC — Supabase pause après 7 jours d'inactivité
-    - cron: '0 8 */5 * *'
+  # schedule:
+  #   # Toutes les 5 jours à 8h UTC — Supabase pause après 7 jours d'inactivité
+  #   - cron: '0 8 */5 * *'
   workflow_dispatch:
 
 jobs:
