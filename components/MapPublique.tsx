@@ -39,10 +39,12 @@ export default function MapPublique() {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Polling 30s pour les activations
   useEffect(() => {
     async function fetchHosts() {
+      setRefreshing(true);
       try {
         const res = await fetch('/api/host-activations');
         if (res.ok) {
@@ -51,6 +53,8 @@ export default function MapPublique() {
         }
       } catch {
         // réseau indisponible — on garde les données précédentes
+      } finally {
+        setRefreshing(false);
       }
     }
 
@@ -138,5 +142,17 @@ export default function MapPublique() {
     updatePins();
   }, [hosts]);
 
-  return <div ref={containerRef} className="w-full h-full z-0" />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full z-0" />
+      {refreshing && (
+        <div className="absolute top-3 right-12 z-[1000] bg-white/80 rounded-full p-1.5 shadow-sm">
+          <svg className="animate-spin w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      )}
+    </div>
+  );
 }
