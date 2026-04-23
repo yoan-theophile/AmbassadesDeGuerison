@@ -7,15 +7,25 @@ import AppHeader from '@/components/AppHeader';
 import { createClient } from '@/lib/supabase/browser';
 import { ONBOARDING } from '@/config/onboarding';
 
+interface OnboardingConfig {
+  video_url: string;
+  pdf_url: string;
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
+  const [config, setConfig] = useState<OnboardingConfig>({
+    video_url: ONBOARDING.VIDEO_URL,
+    pdf_url:   ONBOARDING.PDF_PATH,
+  });
 
   useEffect(() => {
     const supabase = createClient();
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.replace('/auth');
@@ -34,6 +44,11 @@ export default function OnboardingPage() {
           }
         });
     });
+
+    fetch('/api/onboarding/config')
+      .then((r) => r.json())
+      .then((d: OnboardingConfig) => setConfig({ video_url: d.video_url, pdf_url: d.pdf_url }))
+      .catch(() => {});
   }, [router]);
 
   async function handleSubmit() {
@@ -87,7 +102,7 @@ export default function OnboardingPage() {
             </div>
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
-                src={ONBOARDING.VIDEO_URL}
+                src={config.video_url}
                 title="Formation ambassadeur — David Théry"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -103,7 +118,7 @@ export default function OnboardingPage() {
                 <p className="text-slate-500 text-xs mt-0.5">Informations pratiques pour accueillir lors des lives</p>
               </div>
               <a
-                href={ONBOARDING.PDF_PATH}
+                href={config.pdf_url}
                 download
                 className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-indigo-100 transition-colors shrink-0"
               >

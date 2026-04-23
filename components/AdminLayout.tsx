@@ -8,6 +8,7 @@ import {
   Radio,
   Calendar,
   MessageSquare,
+  Settings,
   ChevronLeft,
 } from 'lucide-react';
 
@@ -17,6 +18,7 @@ const NAV = [
   { href: '/admin/live',          label: 'Live en cours', Icon: Radio           },
   { href: '/admin/planning',      label: 'Planning',      Icon: Calendar        },
   { href: '/admin/temoignages',   label: 'Témoignages',   Icon: MessageSquare   },
+  { href: '/admin/settings',      label: 'Paramètres',    Icon: Settings        },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

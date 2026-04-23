@@ -341,6 +341,24 @@ async function run() {
   }
   console.log('  → Connexion via magic link sur http://localhost:3000/auth\n');
 
+  // ── Config onboarding ─────────────────────────────────────────────────────
+  console.log('\n→ Config onboarding...');
+  try {
+    const res = await fetch(`${BASE_URL}/rest/v1/onboarding_config`, {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: 1, video_url: '', pdf_url: '/docs/guide-ambassade.pdf' }),
+    });
+    if (res.ok) {
+      console.log('  ✓ Config onboarding initialisée (video_url vide → fallback config)');
+    } else {
+      const t = await res.text();
+      console.log(`  ✗ Config onboarding: ${t.slice(0, 120)}`);
+    }
+  } catch (e) {
+    console.log(`  ✗ Config onboarding: ${e.message.slice(0, 120)}`);
+  }
+
   // ── Résumé ────────────────────────────────────────────────────────────────
   console.log('\n📊 Résumé :');
   const tables = ['events', 'host_profiles', 'host_activations', 'contact_requests', 'testimonials'];

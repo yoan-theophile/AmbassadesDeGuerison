@@ -45,6 +45,11 @@ export default function DashboardPage() {
   const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [onboardingConfig, setOnboardingConfig] = useState({
+    video_url: ONBOARDING.VIDEO_URL,
+    pdf_url:   ONBOARDING.PDF_PATH,
+  });
+
   // Live signal
   const [signalDescription, setSignalDescription] = useState('');
   const [signalSent, setSignalSent] = useState(false);
@@ -110,6 +115,13 @@ export default function DashboardPage() {
   }, [router, supabase]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch('/api/onboarding/config')
+      .then((r) => r.json())
+      .then((d) => setOnboardingConfig({ video_url: d.video_url, pdf_url: d.pdf_url }))
+      .catch(() => {});
+  }, []);
 
 
   async function toggleActivation(id: string, currentValue: boolean) {
@@ -275,7 +287,7 @@ export default function DashboardPage() {
           </div>
           <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
             <iframe
-              src={ONBOARDING.VIDEO_URL}
+              src={onboardingConfig.video_url}
               title="Formation ambassadeur — David Théry"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen

@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS contact_requests    CASCADE;
 DROP TABLE IF EXISTS host_activations    CASCADE;
 DROP TABLE IF EXISTS host_profiles       CASCADE;
 DROP TABLE IF EXISTS events              CASCADE;
+DROP TABLE IF EXISTS onboarding_config   CASCADE;
 
 DROP VIEW  IF EXISTS host_profiles_public CASCADE;
 
@@ -117,6 +118,14 @@ CREATE TABLE live_signals (
     CHECK (status IN ('pending', 'approved', 'declined', 'used')),
   link_shared       BOOLEAN DEFAULT FALSE,
   created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE onboarding_config (
+  id         INTEGER PRIMARY KEY DEFAULT 1,
+  video_url  TEXT NOT NULL DEFAULT '',
+  pdf_url    TEXT NOT NULL DEFAULT '/docs/guide-ambassade.pdf',
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT single_row CHECK (id = 1)
 );
 
 -- ============================================================
@@ -233,12 +242,14 @@ FOR EACH ROW EXECUTE FUNCTION fn_contact_request_count_update();
 -- 6. ROW LEVEL SECURITY
 -- ============================================================
 
-ALTER TABLE events           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE host_profiles     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE host_activations  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contact_requests  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE testimonials      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE live_signals      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE host_profiles      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE host_activations   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_requests   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE testimonials       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE live_signals       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE onboarding_config  ENABLE ROW LEVEL SECURITY;
+-- Pas de policy publique — accès uniquement via service_role (bypass RLS)
 
 -- events : lecture publique, écriture admin
 CREATE POLICY "events_public_read"  ON events FOR SELECT USING (true);

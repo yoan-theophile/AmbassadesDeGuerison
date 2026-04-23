@@ -52,6 +52,23 @@ node scripts/seed.js                                      # insère les données
 | `marie.dubois@demo.fr` | ambassadeur (actif) |
 | `jp.martin@demo.fr` | ambassadeur (actif, complet) |
 
+## Pages admin
+
+| Route | Description |
+|-------|-------------|
+| `/admin/stats` | Vue générale — KPIs ambassadeurs |
+| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, filtres, Suspendre/Réactiver |
+| `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
+
+### Config onboarding (`onboarding_config`)
+
+Table singleton (`id = 1`). Accès exclusivement via `createServiceClient()` (bypass RLS).
+
+- `GET /api/onboarding/config` — lecture publique, fallback sur `config/onboarding.ts`
+- `PATCH /api/admin/settings/onboarding` — écriture, requiert `role = admin`
+
+Si la table est vide ou `video_url = ''`, le GET retourne les constantes de `config/onboarding.ts`.
+
 ## Règles importantes
 
 - `lib/supabase/server.ts` (service_role) : JAMAIS importé depuis un Client Component
