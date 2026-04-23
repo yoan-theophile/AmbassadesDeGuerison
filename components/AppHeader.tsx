@@ -6,8 +6,8 @@ export default function AppHeader() {
   return (
     <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0 z-10">
       <Link href="/" className="flex items-center gap-2">
-        <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-          <Home className="w-4 h-4 text-white" />
+        <div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center">
+          <Home className="w-4 h-4 text-indigo-600" />
         </div>
         <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
       </Link>
