@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { MessageSquare, Check, X } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { MessageSquare, Check, X, AlertTriangle } from 'lucide-react';
 
 interface Testimonial {
   id: string;
@@ -20,6 +20,33 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingDecline, setPendingDecline] = useState<string | null>(null);
+  const prevCountRef = useRef<number | null>(null);
+
+  function playBeep(frequency = 660) {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (prevCountRef.current !== null && testimonials.length > prevCountRef.current) {
+      playBeep(660);
+      const orig = document.title;
+      document.title = `🔔 Témoignage — ${orig}`;
+      setTimeout(() => { document.title = orig; }, 5000);
+    }
+    prevCountRef.current = testimonials.length;
+  }, [testimonials.length]);
 
   const fetchTestimonials = useCallback(async () => {
     setRefreshing(true);
@@ -35,12 +62,13 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
 
   useEffect(() => {
     fetchTestimonials();
-    const interval = setInterval(fetchTestimonials, 10_000);
+    const interval = setInterval(fetchTestimonials, 5_000);
     return () => clearInterval(interval);
   }, [fetchTestimonials]);
 
   async function handleAction(id: string, action: 'approve' | 'decline') {
     setProcessing((prev) => new Set(prev).add(id));
+    setPendingDecline(null);
     try {
       await fetch(`/api/testimonials/${id}`, {
         method: 'PATCH',
@@ -84,6 +112,7 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
         {testimonials.map((t) => {
           const hp = t.host_profiles;
           const isProcessing = processing.has(t.id);
+          const isConfirmingDecline = pendingDecline === t.id;
           const author = hp
             ? `${hp.first_name} — ${hp.city}, ${hp.country}`
             : t.visitor_name
@@ -107,23 +136,48 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
                     {new Date(t.created_at).toLocaleTimeString('fr-FR')}
                   </p>
                 </div>
+
                 <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => handleAction(t.id, 'approve')}
-                    disabled={isProcessing}
-                    className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    Publier
-                  </button>
-                  <button
-                    onClick={() => handleAction(t.id, 'decline')}
-                    disabled={isProcessing}
-                    className="flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Refuser
-                  </button>
+                  {isConfirmingDecline ? (
+                    <>
+                      <div className="flex items-center gap-1 text-xs text-red-700 mr-1">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Supprimer ?
+                      </div>
+                      <button
+                        onClick={() => handleAction(t.id, 'decline')}
+                        disabled={isProcessing}
+                        className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      >
+                        Oui
+                      </button>
+                      <button
+                        onClick={() => setPendingDecline(null)}
+                        className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors"
+                      >
+                        Annuler
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleAction(t.id, 'approve')}
+                        disabled={isProcessing}
+                        className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Publier
+                      </button>
+                      <button
+                        onClick={() => setPendingDecline(t.id)}
+                        disabled={isProcessing}
+                        className="flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Refuser
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

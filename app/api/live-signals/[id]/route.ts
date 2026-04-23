@@ -46,15 +46,19 @@ export async function PATCH(
   }
 
   // Envoie l'email si approuvé et notifications activées
+  let emailSent = false;
   if (action === 'approve' && FEATURES.EMAIL_NOTIFICATIONS) {
     const hp = signal.host_profiles as any;
     const ev = signal.events as any;
     if (hp?.email && ev?.live_link) {
-      await sendSignalApproved(hp.email, hp.first_name, ev.live_link).catch(() => {
-        // Email failure non bloquant
-      });
+      try {
+        await sendSignalApproved(hp.email, hp.first_name, ev.live_link);
+        emailSent = true;
+      } catch {
+        emailSent = false;
+      }
     }
   }
 
-  return NextResponse.json({ success: true, status: newStatus });
+  return NextResponse.json({ success: true, status: newStatus, emailSent });
 }

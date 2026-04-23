@@ -7,6 +7,8 @@ import {
   CheckCircle2, Copy, Home, LogOut, Radio, Share2,
   MessageSquare, Send, ExternalLink, Play,
 } from 'lucide-react';
+
+const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
 import { ONBOARDING } from '@/config/onboarding';
 
@@ -54,6 +56,7 @@ export default function DashboardPage() {
   const [signalDescription, setSignalDescription] = useState('');
   const [signalSent, setSignalSent] = useState(false);
   const [signalLoading, setSignalLoading] = useState(false);
+  const [approvedLiveLink, setApprovedLiveLink] = useState<string | null>(null);
 
   // Share ambassade
   const [linkCopied, setLinkCopied] = useState(false);
@@ -65,8 +68,8 @@ export default function DashboardPage() {
   const [testimonialsSentCount, setTestimonialsSentCount] = useState(0);
   const [testimonialError, setTestimonialError] = useState('');
 
-  // Event courant (indépendant des activations)
-  const [currentEventId, setCurrentEventId] = useState<string | null>(null);
+  // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
+  const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
 
   const supabase = createClient();
 
@@ -100,21 +103,60 @@ export default function DashboardPage() {
           .limit(20)
       : { data: [] };
 
-    const { data: latestEvent } = await supabase
+    const windowMs = LIVE_WINDOW_HOURS * 60 * 60 * 1000;
+    const now = new Date();
+    const { data: activeEvent } = await supabase
       .from('events')
-      .select('id')
+      .select('id, live_link')
+      .gte('event_date', new Date(now.getTime() - windowMs).toISOString())
+      .lte('event_date', new Date(now.getTime() + windowMs).toISOString())
       .order('event_date', { ascending: false })
       .limit(1)
       .single();
 
+    const event = activeEvent ? { id: activeEvent.id, live_link: activeEvent.live_link ?? null } : null;
+
+    // Vérifie si un signal de cet ambassadeur a déjà été approuvé pour ce live
+    if (event) {
+      const { data: approved } = await supabase
+        .from('live_signals')
+        .select('id')
+        .eq('host_profile_id', prof.id)
+        .eq('event_id', event.id)
+        .eq('status', 'approved')
+        .limit(1)
+        .single();
+      if (approved) setApprovedLiveLink(event.live_link);
+    }
+
     setProfile(prof);
     setActivations((acts as unknown as Activation[]) ?? []);
     setContactRequests(reqs ?? []);
-    setCurrentEventId(latestEvent?.id ?? null);
+    setCurrentEvent(event);
     setLoading(false);
   }, [router, supabase]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Poll toutes les 5s pour détecter l'approbation de David quand un signal est en attente
+  useEffect(() => {
+    if (!signalSent || !profile || !currentEvent) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('live_signals')
+        .select('id')
+        .eq('host_profile_id', profile.id)
+        .eq('event_id', currentEvent.id)
+        .eq('status', 'approved')
+        .limit(1)
+        .single();
+      if (data) {
+        setApprovedLiveLink(currentEvent.live_link);
+        setSignalSent(false);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [signalSent, profile, currentEvent, supabase]);
 
   useEffect(() => {
     fetch('/api/onboarding/config')
@@ -147,21 +189,20 @@ export default function DashboardPage() {
   }
 
   async function sendLiveSignal() {
-    if (!signalDescription.trim() || !profile || !currentEventId) return;
+    if (!signalDescription.trim() || !profile || !currentEvent) return;
     setSignalLoading(true);
     await fetch('/api/live-signals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         host_profile_id: profile.id,
-        event_id: currentEventId,
+        event_id: currentEvent.id,
         description: signalDescription.trim(),
       }),
     });
     setSignalSent(true);
     setSignalDescription('');
     setSignalLoading(false);
-    setTimeout(() => setSignalSent(false), 15000);
   }
 
   async function copyAmbassadeLink() {
@@ -184,7 +225,7 @@ export default function DashboardPage() {
   }
 
   async function submitTestimonial() {
-    if (!testimonialContent.trim() || !profile || !currentEventId) return;
+    if (!testimonialContent.trim() || !profile || !currentEvent) return;
     setTestimonialSubmitting(true);
     setTestimonialError('');
     try {
@@ -193,7 +234,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           host_profile_id: profile.id,
-          event_id: currentEventId,
+          event_id: currentEvent.id,
           timing: testimonialTiming,
           content: testimonialContent.trim(),
         }),
@@ -338,43 +379,67 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* [NEW-A] Lever la main pour témoigner en live */}
-        {profile.status === 'active' && currentEventId && (
-          <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-indigo-300" />
-              <p className="font-semibold">Témoigner en live</p>
-            </div>
-
-            {signalSent ? (
-              <div className="flex items-center gap-2 text-indigo-100 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                Signal envoyé ! David verra votre témoignage.
+        {/* Signal live — visible uniquement pendant la fenêtre du live (±LIVE_WINDOW_HOURS) */}
+        {profile.status === 'active' && currentEvent && (
+          approvedLiveLink ? (
+            /* État 3 : David a accepté → afficher le lien */
+            <div className="bg-emerald-600 text-white rounded-2xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-emerald-200 animate-pulse" />
+                <p className="font-semibold">David vous invite à témoigner !</p>
               </div>
-            ) : (
-              <>
-                <p className="text-indigo-200 text-sm">
-                  Décrivez ce qui s'est passé dans votre ambassade — guérison, transformation, moment fort.
-                  David lira votre message et pourra vous inviter à partager en direct.
-                </p>
-                <textarea
-                  value={signalDescription}
-                  onChange={(e) => setSignalDescription(e.target.value)}
-                  rows={3}
-                  placeholder="Ex : Marie a été guérie d'une douleur chronique pendant la prière…"
-                  className="w-full bg-indigo-700 text-white placeholder-indigo-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                />
-                <button
-                  onClick={sendLiveSignal}
-                  disabled={signalLoading || !signalDescription.trim()}
-                  className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
-                >
-                  <Send className="w-4 h-4" />
-                  {signalLoading ? 'Envoi…' : 'Lever la main pour témoigner'}
-                </button>
-              </>
-            )}
-          </div>
+              <p className="text-emerald-100 text-sm">
+                Rejoignez le live maintenant et partagez ce que Dieu a fait dans votre ambassade.
+              </p>
+              <a
+                href={approvedLiveLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-white text-emerald-700 px-5 py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Rejoindre le live
+              </a>
+            </div>
+          ) : signalSent ? (
+            /* État 2 : signal envoyé, en attente de l'approbation */
+            <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse" />
+                <p className="font-semibold text-sm">Signal envoyé — en attente de David…</p>
+              </div>
+              <p className="text-indigo-200 text-sm">
+                Si David vous accepte, le lien pour rejoindre le live apparaîtra ici automatiquement.
+              </p>
+            </div>
+          ) : (
+            /* État 1 : formulaire */
+            <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-indigo-300" />
+                <p className="font-semibold">Témoigner en live</p>
+              </div>
+              <p className="text-indigo-200 text-sm">
+                Décrivez ce qui s'est passé dans votre ambassade — guérison, transformation, moment fort.
+                David lira votre message et pourra vous inviter à partager en direct.
+              </p>
+              <textarea
+                value={signalDescription}
+                onChange={(e) => setSignalDescription(e.target.value)}
+                rows={3}
+                placeholder="Ex : Marie a été guérie d'une douleur chronique pendant la prière…"
+                className="w-full bg-indigo-700 text-white placeholder-indigo-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+              />
+              <button
+                onClick={sendLiveSignal}
+                disabled={signalLoading || !signalDescription.trim()}
+                className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                {signalLoading ? 'Envoi…' : 'Lever la main pour témoigner'}
+              </button>
+            </div>
+          )
         )}
 
         {/* Mes lives */}
@@ -420,7 +485,7 @@ export default function DashboardPage() {
         )}
 
         {/* [5] Formulaire témoignage */}
-        {currentEventId && (
+        {currentEvent && (
           <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-emerald-600" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Mic, Check, X } from 'lucide-react';
 
 interface Signal {
@@ -17,10 +17,39 @@ interface Signal {
   };
 }
 
+type EmailToast = { id: string; sent: boolean };
+
 export default function AdminFeed({ eventId }: { eventId: string | null }) {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [emailToast, setEmailToast] = useState<EmailToast | null>(null);
+  const prevCountRef = useRef<number | null>(null);
+
+  function playBeep(frequency = 880) {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (prevCountRef.current !== null && signals.length > prevCountRef.current) {
+      playBeep(880);
+      const orig = document.title;
+      document.title = `🔔 Signal — ${orig}`;
+      setTimeout(() => { document.title = orig; }, 5000);
+    }
+    prevCountRef.current = signals.length;
+  }, [signals.length]);
 
   const fetchSignals = useCallback(async () => {
     setRefreshing(true);
@@ -45,11 +74,16 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
   async function handleAction(id: string, action: 'approve' | 'decline') {
     setProcessing((prev) => new Set(prev).add(id));
     try {
-      await fetch(`/api/live-signals/${id}`, {
+      const res = await fetch(`/api/live-signals/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
+      if (action === 'approve' && res.ok) {
+        const data = await res.json();
+        setEmailToast({ id, sent: data.emailSent ?? false });
+        setTimeout(() => setEmailToast(null), 4000);
+      }
       // Retire le signal du feed
       setSignals((prev) => prev.filter((s) => s.id !== id));
     } finally {
@@ -65,7 +99,7 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-slate-700">
-          Signaux en attente ({signals.length})
+          En attente d'invitation ({signals.length})
         </h2>
         {refreshing && (
           <svg className="animate-spin w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none">
@@ -74,6 +108,20 @@ export default function AdminFeed({ eventId }: { eventId: string | null }) {
           </svg>
         )}
       </div>
+
+      {emailToast && (
+        <div className={`mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
+          emailToast.sent
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-red-50 text-red-700'
+        }`}>
+          {emailToast.sent ? (
+            <><Check className="w-4 h-4 flex-shrink-0" /> Lien YouTube envoyé par e-mail</>
+          ) : (
+            <><X className="w-4 h-4 flex-shrink-0" /> Approuvé, mais l'e-mail n'est pas parti</>
+          )}
+        </div>
+      )}
 
       {signals.length === 0 && (
         <div className="text-center py-16 text-slate-400">
