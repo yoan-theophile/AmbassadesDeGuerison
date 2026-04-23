@@ -7,20 +7,26 @@ import AppHeader from '@/components/AppHeader';
 import { createClient } from '@/lib/supabase/browser';
 import { ONBOARDING } from '@/config/onboarding';
 
-export function buildVideoUrl(url: string): string {
+export function buildVideoUrl(url: string, origin = ''): string {
   if (!url) return url;
   const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}enablejsapi=1`;
+  let result = `${url}${sep}enablejsapi=1`;
+  if (origin) result += `&origin=${encodeURIComponent(origin)}`;
+  return result;
 }
 
 export function parseYouTubeMessage(data: unknown): 'playing' | 'paused' | 'ended' | null {
   try {
     const parsed = typeof data === 'string' ? JSON.parse(data as string) : data;
-    if ((parsed as Record<string, unknown>)?.event !== 'onStateChange') return null;
-    const info = (parsed as Record<string, unknown>).info;
-    if (info === 1) return 'playing';
-    if (info === 2) return 'paused';
-    if (info === 0) return 'ended';
+    const p = parsed as Record<string, unknown>;
+    if (p?.event !== 'onStateChange') return null;
+    // YouTube uses `info` in most versions, older embeds used `data`
+    const state = typeof p.info === 'number' ? p.info
+                : typeof p.data === 'number' ? p.data
+                : null;
+    if (state === 1) return 'playing';
+    if (state === 2) return 'paused';
+    if (state === 0) return 'ended';
     return null;
   } catch {
     return null;
@@ -74,7 +80,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
-      if (!['https://www.youtube.com', 'https://www.youtube-nocookie.com'].includes(e.origin)) return;
+      if (!e.origin.includes('youtube.com')) return;
       if (parseYouTubeMessage(e.data) === 'playing') setVideoStarted(true);
     }
     window.addEventListener('message', handleMessage);
@@ -132,7 +138,7 @@ export default function OnboardingPage() {
             </div>
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
-                src={buildVideoUrl(config.video_url)}
+                src={buildVideoUrl(config.video_url, window.location.origin)}
                 title="Formation ambassadeur — David Théry"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

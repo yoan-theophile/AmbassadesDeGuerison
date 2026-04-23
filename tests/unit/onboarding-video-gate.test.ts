@@ -15,6 +15,21 @@ describe('buildVideoUrl — ajout de enablejsapi=1', () => {
   it('retourne la chaîne vide inchangée', () => {
     expect(buildVideoUrl('')).toBe('');
   });
+
+  it('ajoute origin encodé quand fourni', () => {
+    expect(buildVideoUrl('https://www.youtube.com/embed/ABC123', 'http://localhost:3000'))
+      .toBe('https://www.youtube.com/embed/ABC123?enablejsapi=1&origin=http%3A%2F%2Flocalhost%3A3000');
+  });
+
+  it('ajoute origin avec & si la URL a déjà des paramètres', () => {
+    expect(buildVideoUrl('https://www.youtube.com/embed/ABC123?rel=0', 'https://example.com'))
+      .toBe('https://www.youtube.com/embed/ABC123?rel=0&enablejsapi=1&origin=https%3A%2F%2Fexample.com');
+  });
+
+  it('sans origin, ne pas ajouter le paramètre origin', () => {
+    const url = buildVideoUrl('https://www.youtube.com/embed/ABC123');
+    expect(url).not.toContain('origin=');
+  });
 });
 
 describe('parseYouTubeMessage — décodage des événements iframe', () => {
@@ -53,5 +68,17 @@ describe('parseYouTubeMessage — décodage des événements iframe', () => {
 
   it('retourne null pour info=3 (buffering — non géré)', () => {
     expect(parseYouTubeMessage({ event: 'onStateChange', info: 3 })).toBeNull();
+  });
+
+  it('détecte "playing" via le champ data (format embed ancien)', () => {
+    expect(parseYouTubeMessage({ event: 'onStateChange', data: 1 })).toBe('playing');
+  });
+
+  it('détecte "ended" via le champ data', () => {
+    expect(parseYouTubeMessage({ event: 'onStateChange', data: 0 })).toBe('ended');
+  });
+
+  it('info est prioritaire sur data quand les deux sont présents', () => {
+    expect(parseYouTubeMessage({ event: 'onStateChange', info: 2, data: 1 })).toBe('paused');
   });
 });
