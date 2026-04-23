@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/browser';
 import { Mail, MailCheck, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
@@ -17,16 +16,15 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
 
-    const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-      },
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
 
-    if (err) {
-      setError(err.message);
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? 'Une erreur est survenue.');
     } else {
       setSent(true);
     }
