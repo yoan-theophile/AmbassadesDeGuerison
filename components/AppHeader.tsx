@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, UserPlus } from 'lucide-react';
+import { Home, UserPlus, MessageSquare } from 'lucide-react';
 import MonEspaceLink from '@/components/MonEspaceLink';
 
 export default function AppHeader() {
@@ -12,6 +12,13 @@ export default function AppHeader() {
         <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
       </Link>
       <nav className="flex items-center gap-1">
+        <Link
+          href="/temoignages"
+          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span className="hidden sm:inline">Témoignages</span>
+        </Link>
         <Link
           href="/inscription"
           className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
