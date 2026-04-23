@@ -33,12 +33,11 @@ export default function PlanningClient({ events }: { events: Event[] }) {
   const displayed = filter === 'upcoming' ? upcomingAll : pastAll;
   const filtered = search.trim()
     ? displayed.filter((e) => {
-        const q = search.trim().toLowerCase();
-        return (
-          e.title.toLowerCase().includes(q) ||
-          (e.description?.toLowerCase().includes(q) ?? false) ||
-          (e.live_link?.toLowerCase().includes(q) ?? false)
-        );
+        const haystack = [e.title, e.description, e.live_link]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return search.trim().toLowerCase().split(/\s+/).every((word) => haystack.includes(word));
       })
     : displayed;
 
