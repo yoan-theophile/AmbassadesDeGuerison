@@ -132,8 +132,8 @@ Le parcours pour devenir un nouvel ambassadeur, avec saisie de ville intelligent
    - Consignes : Appartement 3ème étage, porte gauche
    - Cliquer sur « Continuer »
 4. **Étape 3 — Contact :**
-   - Mode de contact : E-mail
-   - Récapitulatif visible
+   - Lien groupe WhatsApp (optionnel) : laisser vide
+   - Récapitulatif visible (prénom, ville, type, capacité)
    - Cliquer sur « Envoyer ma demande »
 5. Page de confirmation avec **share CTA** :
    - Bouton « Copier le lien » → copie l'URL de la carte
