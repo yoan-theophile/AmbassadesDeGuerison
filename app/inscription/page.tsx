@@ -8,10 +8,8 @@ import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 const TYPES = [
-  { value: 'domicile', label: 'Domicile' },
-  { value: 'salle', label: 'Salle communautaire' },
-  { value: 'eglise', label: 'Église / lieu de culte' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'individual', label: 'Domicile / particulier' },
+  { value: 'church', label: 'Église / lieu de culte' },
 ];
 const CONTACT_MODES = [
   { value: 'email', label: 'E-mail' },
@@ -34,7 +32,7 @@ export default function InscriptionPage() {
     country: 'France',
     lat: undefined as number | undefined,
     lng: undefined as number | undefined,
-    type: 'domicile',
+    type: 'individual',
     capacity: '10',
     contact_mode: 'email',
     address_private: '',
