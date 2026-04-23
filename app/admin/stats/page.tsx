@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { Home, Globe, Mail, MessageSquare, type LucideIcon } from 'lucide-react';
-import Link from 'next/link';
+import AdminLayout from '@/components/AdminLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +19,18 @@ async function getKpis() {
     return { lastEvent: null, kpis: null };
   }
 
+  const { data: acts } = await supabase
+    .from('host_activations')
+    .select('id')
+    .eq('event_id', lastEvent.id);
+
+  const actIds = (acts ?? []).map((a) => a.id);
+  const safeActIds = actIds.length > 0 ? actIds : ['00000000-0000-0000-0000-000000000000'];
+
   const [activations, countries, contacts, testimonials] = await Promise.all([
     supabase.from('host_activations').select('id', { count: 'exact' }).eq('event_id', lastEvent.id).eq('is_active', true),
     supabase.from('host_profiles').select('country').eq('status', 'active'),
-    supabase.from('contact_requests').select('id', { count: 'exact' }).eq('host_activations.event_id', lastEvent.id),
+    supabase.from('contact_requests').select('id', { count: 'exact', head: true }).in('host_activation_id', safeActIds),
     supabase.from('testimonials').select('id', { count: 'exact' }).eq('is_visible', true),
   ]);
 
@@ -43,19 +51,10 @@ export default async function AdminStatsPage() {
   const { lastEvent, kpis } = await getKpis();
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-semibold text-slate-800">Tableau de bord</h1>
-          <p className="text-xs text-slate-400 mt-0.5">KPIs en temps réel</p>
-        </div>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/admin/moderation" className="text-slate-500 hover:text-slate-800 transition-colors">Modération</Link>
-          <Link href="/" className="text-slate-400 hover:text-slate-600 transition-colors text-xs">← Carte publique</Link>
-        </nav>
-      </header>
+    <AdminLayout>
+      <div className="px-6 py-8">
+        <h1 className="text-base font-semibold text-slate-800 mb-1">Vue générale</h1>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
         {lastEvent ? (
           <>
             <div className="flex items-center gap-2 mb-6">
@@ -67,11 +66,11 @@ export default async function AdminStatsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl">
               <KpiCard label="Ambassades actives" value={kpis!.activeAmbassades} Icon={Home} color="indigo" />
               <KpiCard label="Pays représentés" value={kpis!.uniqueCountries} Icon={Globe} color="violet" />
               <KpiCard label="Demandes de contact" value={kpis!.contactRequests} Icon={Mail} color="sky" />
-              <KpiCard label="Témoignages" value={kpis!.testimonials} Icon={MessageSquare} color="emerald" />
+              <KpiCard label="Témoignages visibles" value={kpis!.testimonials} Icon={MessageSquare} color="emerald" />
             </div>
           </>
         ) : (
@@ -80,7 +79,7 @@ export default async function AdminStatsPage() {
           </div>
         )}
       </div>
-    </main>
+    </AdminLayout>
   );
 }
 

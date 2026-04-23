@@ -255,15 +255,15 @@ async function run() {
   console.log('\n→ Témoignages...');
   const temoignages = [
     {
-      email: 'marie.dubois@demo.fr', timing: 'after',
+      email: 'marie.dubois@demo.fr', timing: 'after', is_visible: true,
       content: "Ce live a été un moment de grâce extraordinaire. Nous étions 12 réunis dans la paix et la joie. Le message de David a touché nos cœurs. Merci !",
     },
     {
-      email: 'jp.martin@demo.fr', timing: 'during',
+      email: 'jp.martin@demo.fr', timing: 'during', is_visible: true,
       content: "Notre église a accueilli plus de 60 personnes pour ce live. Une atmosphère de ferveur et d'unité. Nous recommencerons avec joie au prochain live.",
     },
     {
-      email: 'samuel.eko@demo.fr', timing: 'after',
+      email: 'samuel.eko@demo.fr', timing: 'after', is_visible: false,
       content: "Magnifique soirée ! La connexion entre les ambassades à travers le monde donne un sens profond à cette expérience de communauté.",
     },
   ];
@@ -277,7 +277,7 @@ async function run() {
         event_id: evtPasse.id,
         content: t.content,
         timing: t.timing,
-        is_visible: false,
+        is_visible: t.is_visible,
       });
       console.log(`  ✓ Témoignage de ${t.email.split('.')[0]}`);
     } catch (e) {

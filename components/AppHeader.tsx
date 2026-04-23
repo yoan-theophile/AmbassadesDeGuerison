@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Home, UserPlus, LayoutDashboard } from 'lucide-react';
+import { Home, UserPlus } from 'lucide-react';
+import MonEspaceLink from '@/components/MonEspaceLink';
 
 export default function AppHeader() {
   return (
@@ -18,13 +19,7 @@ export default function AppHeader() {
           <UserPlus className="w-4 h-4" />
           <span className="hidden sm:inline">Devenir ambassadeur</span>
         </Link>
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          <span className="hidden sm:inline">Mon espace</span>
-        </Link>
+        <MonEspaceLink />
       </nav>
     </header>
   );
