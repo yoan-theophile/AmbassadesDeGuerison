@@ -7,6 +7,7 @@ import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
+import { ambassadorWhatsAppUrl } from '@/lib/share/messages';
 const TYPES = [
   { value: 'individual', label: 'Domicile / particulier' },
   { value: 'church', label: 'Église / lieu de culte' },
@@ -65,13 +66,11 @@ export default function InscriptionPage() {
   }
 
   if (success) {
-    const shareText = encodeURIComponent(
-      `Je viens de m'inscrire comme ambassadeur des lives de guérison avec David Théry 🙏\nRejoignez la carte des ambassades : ${typeof window !== 'undefined' ? window.location.origin : ''}`
-    );
+    const origin = window.location.origin;
 
     async function copyShareLink() {
       try {
-        await navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.origin : '');
+        await navigator.clipboard.writeText(origin);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch { /* fallback ignoré */ }
@@ -104,7 +103,7 @@ export default function InscriptionPage() {
                   {copied ? 'Copié !' : 'Copier le lien'}
                 </button>
                 <a
-                  href={`https://wa.me/?text=${shareText}`}
+                  href={ambassadorWhatsAppUrl(origin)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 flex-1 justify-center bg-emerald-500 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-emerald-600 transition-colors"
