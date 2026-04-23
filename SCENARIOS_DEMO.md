@@ -341,7 +341,17 @@ Deux comptes admin sont créés par le seed (rôle admin déjà configuré) :
 | `david.thery@demo.fr` | Compte démo David |
 | `theo.nelson.ia@gmail.com` | Compte développeur |
 
-Se connecter via magic link : `http://localhost:3000/auth` → saisir l'e-mail → cliquer le lien reçu.
+> **⚠️ Resend sandbox** : avec `onboarding@resend.dev` comme sender, Resend ne livre qu'à l'e-mail du propriétaire du compte. Les autres adresses (dont `david.thery@demo.fr`) ne reçoivent rien.
+
+**Connexion sans e-mail — via terminal :**
+
+```bash
+node scripts/magic-link.js david.thery@demo.fr
+```
+
+Le script affiche directement l'URL de connexion à ouvrir dans le navigateur. Valable 1 heure.
+
+Pour le compte développeur (`theo.nelson.ia@gmail.com`), la magic link arrive normalement dans la boîte mail.
 
 ---
 
