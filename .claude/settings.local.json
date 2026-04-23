@@ -18,7 +18,9 @@
       "Bash(supabase projects *)",
       "Bash(supabase db *)",
       "Bash(npx tsc *)",
-      "Skill(qa)"
+      "Skill(qa)",
+      "Skill(plan-ceo-review)",
+      "WebSearch"
     ]
   }
 }
