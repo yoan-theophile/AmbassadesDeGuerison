@@ -21,6 +21,37 @@ Tests DB (triggers, RLS) : nécessite `supabase start` (Docker).
 - Leaflet + OpenStreetMap : carte publique
 - PWA : manifest + service worker (cache Leaflet tiles)
 
+## Développement local
+
+### Connexion admin sans e-mail (Resend sandbox)
+
+`RESEND_FROM_EMAIL=onboarding@resend.dev` ne livre qu'à l'e-mail du propriétaire du compte Resend. Les adresses de démo (`david.thery@demo.fr`) ne reçoivent rien.
+
+Générer un lien de connexion directement via le terminal :
+
+```bash
+node scripts/magic-link.js david.thery@demo.fr
+node scripts/magic-link.js theo.nelson.ia@gmail.com
+```
+
+Ouvrir l'URL affichée dans le navigateur. Valable 1 heure.
+
+### Reset base de données
+
+```bash
+supabase db query --linked --file scripts/reset-db.sql   # recrée le schéma
+node scripts/seed.js                                      # insère les données de démo
+```
+
+### Comptes de démo créés par le seed
+
+| E-mail | Rôle |
+|--------|------|
+| `david.thery@demo.fr` | admin |
+| `theo.nelson.ia@gmail.com` | admin |
+| `marie.dubois@demo.fr` | ambassadeur (actif) |
+| `jp.martin@demo.fr` | ambassadeur (actif, complet) |
+
 ## Règles importantes
 
 - `lib/supabase/server.ts` (service_role) : JAMAIS importé depuis un Client Component
