@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import Link from 'next/link';
-import { MapPin, MessageSquare } from 'lucide-react';
+import { MapPin, MessageSquare, Send } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +67,7 @@ export default async function TemoignagesPage() {
             </div>
           )}
 
-          <div className="mt-12 text-center">
+          <div className="mt-12 space-y-4 text-center">
             <Link
               href="/"
               className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-700 transition-colors"
@@ -75,6 +75,17 @@ export default async function TemoignagesPage() {
               <MapPin className="w-4 h-4" />
               Rejoindre une ambassade
             </Link>
+
+            <div className="border-t border-slate-100 pt-6">
+              <p className="text-slate-400 text-sm mb-3">Vous êtes ambassadeur ?</p>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 text-indigo-600 text-sm font-medium hover:underline"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Partager votre témoignage
+              </Link>
+            </div>
           </div>
         </div>
       </main>

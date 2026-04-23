@@ -59,6 +59,9 @@ export default function DashboardPage() {
   const [testimonialsSentCount, setTestimonialsSentCount] = useState(0);
   const [testimonialError, setTestimonialError] = useState('');
 
+  // Event courant (indépendant des activations)
+  const [currentEventId, setCurrentEventId] = useState<string | null>(null);
+
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -90,17 +93,22 @@ export default function DashboardPage() {
           .limit(20)
       : { data: [] };
 
+    const { data: latestEvent } = await supabase
+      .from('events')
+      .select('id')
+      .order('event_date', { ascending: false })
+      .limit(1)
+      .single();
+
     setProfile(prof);
     setActivations((acts as unknown as Activation[]) ?? []);
     setContactRequests(reqs ?? []);
+    setCurrentEventId(latestEvent?.id ?? null);
     setLoading(false);
   }, [router, supabase]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Activation la plus récente (pour live signal + témoignage)
-  const latestActivation = activations[0] ?? null;
-  const latestEventId = latestActivation?.event_id ?? null;
 
   async function toggleActivation(id: string, currentValue: boolean) {
     await fetch(`/api/host-activations/${id}`, {
@@ -125,14 +133,14 @@ export default function DashboardPage() {
   }
 
   async function sendLiveSignal() {
-    if (!signalDescription.trim() || !profile || !latestEventId) return;
+    if (!signalDescription.trim() || !profile || !currentEventId) return;
     setSignalLoading(true);
     await fetch('/api/live-signals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         host_profile_id: profile.id,
-        event_id: latestEventId,
+        event_id: currentEventId,
         description: signalDescription.trim(),
       }),
     });
@@ -162,7 +170,7 @@ export default function DashboardPage() {
   }
 
   async function submitTestimonial() {
-    if (!testimonialContent.trim() || !profile || !latestEventId) return;
+    if (!testimonialContent.trim() || !profile || !currentEventId) return;
     setTestimonialSubmitting(true);
     setTestimonialError('');
     try {
@@ -171,7 +179,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           host_profile_id: profile.id,
-          event_id: latestEventId,
+          event_id: currentEventId,
           timing: testimonialTiming,
           content: testimonialContent.trim(),
         }),
@@ -238,7 +246,7 @@ export default function DashboardPage() {
           </div>
           <span className="font-semibold text-slate-800 text-sm hidden sm:block">Ambassades de Guérison</span>
         </Link>
-        <button onClick={handleSignOut} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={handleSignOut} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
           <LogOut className="w-3.5 h-3.5" />
           Déconnexion
         </button>
@@ -300,7 +308,7 @@ export default function DashboardPage() {
         )}
 
         {/* [NEW-A] Lever la main pour témoigner en live */}
-        {profile.status === 'active' && latestEventId && (
+        {profile.status === 'active' && currentEventId && (
           <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 text-indigo-300" />
@@ -381,7 +389,7 @@ export default function DashboardPage() {
         )}
 
         {/* [5] Formulaire témoignage */}
-        {latestEventId && (
+        {currentEventId && (
           <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-emerald-600" />
