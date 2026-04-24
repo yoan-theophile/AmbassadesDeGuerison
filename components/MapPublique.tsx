@@ -39,8 +39,11 @@ export default function MapPublique() {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
+  const hostsRef = useRef<HostPin[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [mapZoom, setMapZoom] = useState(3);
 
   // Polling 30s pour les activations
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function MapPublique() {
         const res = await fetch('/api/host-activations');
         if (res.ok) {
           const data = await res.json();
+          hostsRef.current = data;
           setHosts(data);
         }
       } catch {
@@ -97,6 +101,17 @@ export default function MapPublique() {
       });
       new LocateControl({ position: 'bottomright' }).addTo(map);
       map.on('locationerror', () => { /* permission refusée — silencieux */ });
+
+      function updateViewport() {
+        const bounds = map.getBounds();
+        const zoom = map.getZoom();
+        const visible = hostsRef.current.filter(
+          (h) => h.lat && h.lng && bounds.contains([h.lat, h.lng] as [number, number])
+        );
+        setVisibleCount(visible.length);
+        setMapZoom(zoom);
+      }
+      map.on('moveend zoomend', updateViewport);
     }
 
     initMap();
@@ -143,11 +158,23 @@ export default function MapPublique() {
     }
 
     updatePins();
+
+    // Recalcule les pins visibles après chaque mise à jour des hosts
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      const zoom = mapRef.current.getZoom();
+      const visible = hosts.filter(
+        (h) => h.lat && h.lng && bounds.contains([h.lat, h.lng] as [number, number])
+      );
+      setVisibleCount(visible.length);
+      setMapZoom(zoom);
+    }
   }, [hosts]);
 
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
+      {/* Zéro ambassadeur dans le monde entier */}
       {loaded && hosts.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-lg px-6 py-5 text-center max-w-xs pointer-events-auto">
@@ -158,6 +185,20 @@ export default function MapPublique() {
               className="mt-3 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
             >
               Devenir ambassadeur
+            </a>
+          </div>
+        </div>
+      )}
+      {/* Ambassadeurs existent ailleurs mais pas dans le viewport actuel */}
+      {loaded && hosts.length > 0 && visibleCount === 0 && mapZoom >= 7 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 text-center pointer-events-auto">
+            <p className="text-slate-600 text-xs">Pas encore de groupe dans cette zone</p>
+            <a
+              href="/inscription"
+              className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
+            >
+              Ouvrir une ambassade ici →
             </a>
           </div>
         </div>
