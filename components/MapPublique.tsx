@@ -206,7 +206,7 @@ export default function MapPublique() {
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
       {/* Barre de recherche par ville */}
-      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 pointer-events-auto">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-56 sm:w-64 pointer-events-auto">
         <input
           type="text"
           value={searchQuery}
@@ -232,7 +232,7 @@ export default function MapPublique() {
                   <button
                     type="button"
                     onMouseDown={() => handleResultClick(r.lat, r.lon)}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
+                    className="w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 transition-colors"
                   >
                     <span className="font-medium text-slate-800">{city}</span>
                     {country !== city && <span className="text-slate-400 text-xs ml-1.5">{country}</span>}
