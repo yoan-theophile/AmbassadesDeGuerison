@@ -23,7 +23,10 @@
       "WebSearch",
       "Skill(investigate)",
       "Skill(design-consultation)",
-      "Skill(plan-eng-review)"
+      "Skill(plan-eng-review)",
+      "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp status)",
+      "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp diff --stat)",
+      "Bash(git *)"
     ]
   }
 }
