@@ -11,7 +11,7 @@ export default function AppHeader() {
         </div>
         <div className="hidden sm:flex flex-col leading-tight">
           <span className="font-semibold text-slate-800 text-sm">Ambassades de Guérison</span>
-          <span className="text-slate-400 text-xs">Groupes de visionnage — lives de David Théry</span>
+          <span className="text-slate-400 text-xs">Groupes de prière — lives de guérison</span>
         </div>
       </Link>
       <nav className="flex items-center gap-1">

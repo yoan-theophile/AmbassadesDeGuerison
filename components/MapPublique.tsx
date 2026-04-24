@@ -145,7 +145,7 @@ export default function MapPublique() {
             <div style="min-width:190px;padding:2px 0">
               <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
-              <p class="text-xs text-indigo-500 mt-1">Groupe de visionnage — lives David Théry</p>
+              <p class="text-xs text-indigo-500 mt-1">Lieu de prière — lives de guérison</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
               ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
               ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
@@ -193,12 +193,12 @@ export default function MapPublique() {
       {loaded && hosts.length > 0 && visibleCount === 0 && mapZoom >= 7 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 text-center pointer-events-auto">
-            <p className="text-slate-600 text-xs">Pas encore de groupe dans cette zone</p>
+            <p className="text-slate-600 text-xs">Pas d&apos;ambassade dans ta ville&nbsp;?</p>
             <a
               href="/inscription"
               className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
             >
-              Ouvrir une ambassade ici →
+              Sois le premier ambassadeur ici →
             </a>
           </div>
         </div>
