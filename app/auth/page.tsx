@@ -72,7 +72,6 @@ export default function AuthPage() {
               <Mail className="w-5 h-5 text-indigo-600" />
             </div>
             <h1 className="text-xl font-semibold text-slate-800">Espace ambassadeur</h1>
-            <p className="text-slate-500 text-sm mt-1">Connexion par lien magique</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

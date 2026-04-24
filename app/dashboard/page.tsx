@@ -75,7 +75,7 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push('/auth'); return; }
+    if (!user) { router.replace('/auth'); return; }
 
     const { data: prof } = await supabase
       .from('host_profiles')
@@ -83,7 +83,7 @@ export default function DashboardPage() {
       .eq('user_id', user.id)
       .single();
 
-    if (!prof) { setLoading(false); return; }
+    if (!prof) { router.replace('/inscription'); return; }
     if (prof.status === 'pending_onboarding') { router.replace('/onboarding'); return; }
 
     const { data: acts } = await supabase
@@ -263,17 +263,6 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 text-slate-400 text-sm">
           <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
           Chargement…
-        </div>
-      </main>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">Aucun profil ambassadeur trouvé pour ce compte.</p>
-          <Link href="/inscription" className="text-indigo-600 underline text-sm">S'inscrire</Link>
         </div>
       </main>
     );
