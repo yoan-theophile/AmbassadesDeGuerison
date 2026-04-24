@@ -27,7 +27,7 @@ async function getEvents() {
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('events')
-    .select('id, title')
+    .select('id, title, event_date')
     .order('event_date', { ascending: false })
     .limit(20);
   return data ?? [];
@@ -91,7 +91,7 @@ export default async function TemoignagesPage({
           {/* Filtre par live */}
           {events.length > 0 && (
             <TemoignageLiveFilter
-              events={events.map((e) => ({ id: e.id as string, title: e.title as string }))}
+              events={events.map((e) => ({ id: e.id as string, title: e.title as string, event_date: e.event_date as string }))}
               currentLive={live}
               activeEventTitle={activeEvent?.title as string | undefined}
             />
