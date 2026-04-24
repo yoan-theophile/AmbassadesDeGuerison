@@ -1,5 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+async function getAuthHostProfileId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll() {},
+        },
+      }
+    );
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) return null;
+
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from('host_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+    return data?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
@@ -35,16 +66,18 @@ export async function POST(request: NextRequest) {
   const validTimings = ['during', 'after'];
   const safeTiming = typeof timing === 'string' && validTimings.includes(timing) ? timing : 'after';
 
+  const hostProfileId = await getAuthHostProfileId();
+
   const { data, error } = await supabase
     .from('testimonials')
     .insert({
       event_id,
       content: content.trim(),
-      visitor_name: typeof submitter_name === 'string' ? submitter_name.trim() || null : null,
-      submitter_city: typeof submitter_city === 'string' ? submitter_city.trim() || null : null,
+      visitor_name: hostProfileId ? null : (typeof submitter_name === 'string' ? submitter_name.trim() || null : null),
+      submitter_city: hostProfileId ? null : (typeof submitter_city === 'string' ? submitter_city.trim() || null : null),
       timing: safeTiming,
       is_visible: false,
-      host_profile_id: null,
+      host_profile_id: hostProfileId,
       contact_request_id: null,
     })
     .select('id')
@@ -54,5 +87,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ id: data.id }, { status: 201 });
+  return NextResponse.json({ id: data.id, linked: !!hostProfileId }, { status: 201 });
 }
