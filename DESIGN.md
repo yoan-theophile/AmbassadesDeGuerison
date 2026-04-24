@@ -1,7 +1,7 @@
 # Design System — Ambassades de Guérison
 
 ## Product Context
-- **What this is:** Carte interactive des groupes de visionnage des lives de David Théry (pasteur, guérison, francophonie)
+- **What this is:** Carte interactive des groupes de prière pour les lives de guérison de David Théry (pasteur, guérison, francophonie)
 - **Who it's for:** Ambassadeurs (hôtes) + visiteurs qui cherchent un groupe près de chez eux — audience 65-70% mobile, forte présence africaine francophone
 - **Space/industry:** Application communautaire chrétienne francophone
 - **Project type:** Web app — carte publique + dashboard ambassadeur + espace admin
