@@ -44,6 +44,10 @@ export default function MapPublique() {
   const [loaded, setLoaded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [mapZoom, setMapZoom] = useState(3);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ lat: string; lon: string; display_name: string }[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Polling 30s pour les activations
   useEffect(() => {
@@ -171,9 +175,74 @@ export default function MapPublique() {
     }
   }, [hosts]);
 
+  // Nominatim (OSM) : politique d'usage = 1 req/s par IP.
+  // Le debounce 400ms est suffisant pour un usage normal (< ~50 req/min par utilisateur).
+  // TODO: migrer vers Photon (Komoot) ou Mapbox Geocoding si la base d'ambassadeurs
+  // dépasse ~200 actifs et que le trafic simultané devient significatif (>50 users).
+  // Photon est self-hostable et gratuit ; Mapbox nécessite une clé API.
+  async function searchCity(query: string) {
+    if (query.length < 2) { setSearchResults([]); setSearchOpen(false); return; }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=fr`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      setSearchResults(data);
+      setSearchOpen(data.length > 0);
+    } catch {
+      // réseau indisponible
+    }
+  }
+
+  function handleResultClick(lat: string, lon: string) {
+    mapRef.current?.flyTo([parseFloat(lat), parseFloat(lon)], 10);
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  }
+
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
+      {/* Barre de recherche par ville */}
+      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 pointer-events-auto">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => {
+            const q = e.target.value;
+            setSearchQuery(q);
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+            searchTimeoutRef.current = setTimeout(() => searchCity(q), 400);
+          }}
+          onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+          onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+          placeholder="Rechercher une ville…"
+          className="w-full bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl shadow-md px-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow"
+        />
+        {searchOpen && searchResults.length > 0 && (
+          <ul className="absolute top-full mt-1 w-full bg-white border border-slate-100 rounded-xl shadow-lg overflow-hidden">
+            {searchResults.map((r, i) => {
+              const parts = r.display_name.split(', ');
+              const city = parts[0];
+              const country = parts[parts.length - 1];
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onMouseDown={() => handleResultClick(r.lat, r.lon)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="font-medium text-slate-800">{city}</span>
+                    {country !== city && <span className="text-slate-400 text-xs ml-1.5">{country}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
       {/* Zéro ambassadeur dans le monde entier */}
       {loaded && hosts.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
@@ -190,7 +259,7 @@ export default function MapPublique() {
         </div>
       )}
       {/* Ambassadeurs existent ailleurs mais pas dans le viewport actuel */}
-      {loaded && hosts.length > 0 && visibleCount === 0 && mapZoom >= 7 && (
+      {loaded && hosts.length > 0 && visibleCount === 0 && mapZoom >= 5 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 text-center pointer-events-auto">
             <p className="text-slate-600 text-xs">Pas d&apos;ambassade dans ta ville&nbsp;?</p>
