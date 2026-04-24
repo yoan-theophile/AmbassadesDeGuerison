@@ -92,15 +92,17 @@ Si la table est vide ou `video_url = ''`, le GET retourne les constantes de `con
 ## Page d'accueil publique (`/`)
 
 Carte Leaflet plein écran avec :
-- **Header** (`AppHeader`) : sous-titre "Groupes de visionnage — lives de David Théry" visible desktop (`hidden sm:block`), sous le nom.
+- **Header** (`AppHeader`) : sous-titre "Groupes de prière — lives de guérison" visible desktop (`hidden sm:block`), sous le nom.
 - **EventBanner** : bandeau flottant sur la carte — 4 états selon `liveInProgress` + `nextEvent` + `lastEvent` :
   1. `liveInProgress = true` (event_date ≤ now ≤ event_date + `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`) → *"Live en cours — rejoignez-nous"* (indigo, Radio pulsing)
   2. `nextEvent` dans < 7 jours → *"Prochain live dans Xj Xh Xmin"* (countdown, indigo)
   3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
   4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
 - **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
-- **Popup des pins** : contient une ligne "Groupe de visionnage — lives David Théry" pour contextualiser l'action Contacter.
-- **État vide** (`MapPublique`) : si `hosts.length === 0` après le 1er fetch, overlay centré avec CTA "Devenir ambassadeur" (conditionné à `loaded` pour éviter le flash).
+- **Popup des pins** : contient une ligne "Lieu de prière — lives de guérison" pour contextualiser l'action Contacter.
+- **État vide** (`MapPublique`) — deux comportements distincts :
+  - `hosts.length === 0` (aucun ambassadeur dans le monde) → overlay full-screen centré avec CTA "Devenir ambassadeur" (conditionné à `loaded`).
+  - `hosts.length > 0` mais viewport vide au zoom ≥ 7 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
 
 ## Page témoignages publique (`/temoignages`)
 
