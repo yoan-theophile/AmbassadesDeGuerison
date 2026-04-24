@@ -62,10 +62,17 @@ Flux self-service déclenché après l'inscription :
 ```
 
 - `PATCH /api/onboarding/complete` : auth cookie obligatoire, idempotent si déjà `active` (200 no-op), rejette tout statut autre que `pending_onboarding` (400). Déclenche deux e-mails non-bloquants : `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
-- Le dashboard (`app/dashboard/page.tsx`) gère trois cas dans l'ordre : pas de session → `router.replace('/auth')` ; session sans `host_profile` → `router.replace('/inscription')` ; profil `pending_onboarding` → `router.replace('/onboarding')`.
+- Le dashboard (`app/dashboard/page.tsx`) gère trois cas dans l'ordre : pas de session → `router.replace('/auth')` ; session sans `host_profile` → `router.replace('/inscription')` ; profil `pending_onboarding` → `router.replace('/onboarding')`. Après ces guards, un `if (!profile) return null` évite les erreurs TS sur `profile` potentiellement null.
 - Le dashboard redirige automatiquement vers `/onboarding` si `status = pending_onboarding`.
 - **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
 - Un admin peut ensuite `Suspendre` (`active → suspended`) ou `Réactiver` (`suspended → active`) via `PATCH /api/admin/ambassadeurs/[id]`.
+
+## Formulaire d'inscription (`/inscription`)
+
+- **`CityInput`** (`components/ui/CityInput.tsx`) : autocomplétion Nominatim via `/api/geocode`. Le `onChange` expose `(city, lat?, lng?, country?)`. `country` est transmis uniquement lors d'une sélection dans le dropdown (pas lors d'une saisie libre).
+- **Validation géocodage** : le bouton "Continuer" (étape 1) est désactivé tant que `form.lat` est absent. Un hint ambre s'affiche si du texte est tapé sans sélection dans la liste — évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`).
+- **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
+- **`CountrySelect`** (`components/ui/CountrySelect.tsx`) : expose le nom du pays (`"Cameroun"`), pas le code ISO. Pays épinglés : FR, BE, CH, CA, LU, MA, SN, CI, CM.
 
 ## Pages admin
 

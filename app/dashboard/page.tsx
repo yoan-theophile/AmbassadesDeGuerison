@@ -268,6 +268,8 @@ export default function DashboardPage() {
     );
   }
 
+  if (!profile) return null;
+
   const statusLabels: Record<string, string> = {
     pending_onboarding: 'Inscription à finaliser',
     active: 'Actif',
