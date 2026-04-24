@@ -72,6 +72,52 @@ Voir TODO-2 ci-dessus.
 
 ---
 
+## TODO-7 : IA — Détection des témoignages forts
+
+**Quoi :** Appel Anthropic API (Claude Haiku) qui lit les N témoignages d'un live et retourne les 2-3 plus impactants (spécificité, émotion, authenticité). Résultat stocké en mémoire côté client ou en cache DB.
+
+**Pourquoi :** David reçoit parfois 20+ témoignages après un live. Trouver le meilleur à la main lui prend 10 minutes. L'IA peut le faire en 3 secondes.
+
+**Pros :** Réduit le travail de modération de David. Valeur immédiate dès le premier live avec ≥ 5 témoignages.
+
+**Cons :** Coût par requête (~$0.001 pour Haiku). Nécessite `ANTHROPIC_API_KEY` en prod. Risque de classement inattendu dans un contexte ministériel (prompt à calibrer soigneusement).
+
+**Contexte :** Déféré car les fonctionnalités sans-IA (stats bar + bouton partage) suffisent pour v1. À activer quand David aura son premier live avec ≥ 10 témoignages et exprimera le besoin de trouver les meilleurs plus vite. Point de départ : `components/TemoignagesAdmin.tsx` + nouvelle route `app/api/admin/temoignages/highlights/route.ts`.
+
+**Dépend de :** `ANTHROPIC_API_KEY` en prod + décision sur le modèle (Haiku = rapide/pas cher, Sonnet = meilleure qualité).
+
+---
+
+## TODO-8 : IA — Génération de post WhatsApp/newsletter
+
+**Quoi :** Bouton "Générer le résumé" dans le bandeau "Live sélectionné". L'IA lit les témoignages publiés du live et génère un texte prêt à copier-coller (style WhatsApp, voix de David).
+
+**Pourquoi :** David copie-colle ses témoignages sur WhatsApp manuellement aujourd'hui. Un résumé généré lui économise 15-20 min par live.
+
+**Pros :** Fort ROI pour David. Démonstration concrète de l'IA dans le workflow.
+
+**Cons :** Prompt à valider avec David pour respecter son style et sa voix. L'output doit être relu avant d'être envoyé — introduire une étape de validation UI.
+
+**Contexte :** Déféré pour les mêmes raisons que TODO-7. Dépend de la même infrastructure API. À designer avec David sur un exemple réel (demander les témoignages d'un live passé pour calibrer le prompt).
+
+**Dépend de :** TODO-7 (même infra API Anthropic).
+
+---
+
+## TODO-9 : IA — Modération assistée
+
+**Quoi :** L'IA scanne les nouveaux témoignages et signale ceux qui sont suspects (trop vagues, hors-sujet, potentiellement spam ou inventés). Badge visuel sur la carte — David valide ou ignore.
+
+**Pourquoi :** Protège la page publique de témoignages de mauvaise qualité sans que David ait à lire chaque entrée.
+
+**Cons :** Définir "suspect" dans un contexte charismatique est subtil — un témoignage de guérison miraculeuse ne doit pas être flaggé. Nécessite un prompt très soigné et une révision humaine obligatoire.
+
+**Contexte :** Le moins urgent des trois TODOs IA. À activer si le volume dépasse 50+ témoignages par live.
+
+**Dépend de :** TODO-7 (même infra). Trigger : volume ≥ 50 témoignages/live.
+
+---
+
 ## TODO-6 (DÉFÉRÉ CEO REVIEW) : Push notifications (PWA v2)
 
 **Quoi :** Web Push Notifications via PWA Service Worker.

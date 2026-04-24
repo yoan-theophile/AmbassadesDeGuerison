@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight, X, Tv2, Link2, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 
@@ -106,25 +106,30 @@ export default function TemoignagesAdmin({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [items, setItems] = useState(temoignages);
-  const [filter, setFilter] = useState<Filter>('hidden');
+  const [filter, setFilter] = useState<Filter>(initialEventTitle ? 'all' : 'hidden');
   const [search, setSearch] = useState('');
   const [eventFilter, setEventFilter] = useState(initialEventTitle ?? '');
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [page, setPage] = useState(1);
   const [batchLoading, setBatchLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const eventTitles = Array.from(
     new Set(items.map((t) => t.event?.[0]?.title).filter(Boolean) as string[])
   ).sort();
 
-  const byTab = items.filter((t) => {
+  const byEvent = eventFilter
+    ? items.filter((t) => t.event?.[0]?.title === eventFilter)
+    : items;
+
+  const byTab = byEvent.filter((t) => {
     if (filter === 'visible') return t.is_visible;
     if (filter === 'hidden') return !t.is_visible;
     return true;
   });
 
-  const bySearch = search.trim()
+  const filtered = search.trim()
     ? byTab.filter((t) => {
         const haystack = [
           t.content,
@@ -142,10 +147,6 @@ export default function TemoignagesAdmin({
           .every((word) => haystack.includes(word));
       })
     : byTab;
-
-  const filtered = eventFilter
-    ? bySearch.filter((t) => t.event?.[0]?.title === eventFilter)
-    : bySearch;
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -196,17 +197,82 @@ export default function TemoignagesAdmin({
     { value: 'all', label: 'Tous' },
   ];
 
+  const pendingCount = eventFilter
+    ? byEvent.filter((t) => !t.is_visible).length
+    : 0;
+
+  const statsSource = eventFilter ? byEvent : items;
+  const statsPublished = statsSource.filter((t) => t.is_visible).length;
+  const statsCities = new Set(
+    statsSource.map((t) => t.host_profile?.[0]?.city).filter(Boolean) as string[]
+  ).size;
+
+  function handleCopyLink() {
+    const url = `${window.location.origin}/temoignages`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   return (
     <div className="max-w-2xl">
+
+      {/* Bandeau live actif */}
+      {eventFilter && (
+        <div className="flex items-center gap-3 mb-5 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+          <Tv2 className="w-4 h-4 text-indigo-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-indigo-500 font-medium uppercase tracking-wide mb-0.5">Live sélectionné</p>
+            <p className="text-sm font-semibold text-indigo-900 truncate">{eventFilter}</p>
+          </div>
+          {pendingCount > 0 && (
+            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+              {pendingCount} en attente
+            </span>
+          )}
+          <button
+            onClick={() => { setEventFilter(''); resetPage(); }}
+            title="Voir tous les témoignages"
+            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-indigo-300 hover:text-indigo-600 hover:bg-indigo-100 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Stats + lien partage */}
+      <div className="flex items-center gap-4 mb-4 px-1 flex-wrap">
+        <span className="text-xs text-slate-500">
+          <span className="font-semibold text-slate-800">{statsSource.length}</span>{' '}
+          témoignage{statsSource.length !== 1 ? 's' : ''}
+        </span>
+        <span className="text-xs text-slate-500">
+          <span className="font-semibold text-emerald-600">{statsPublished}</span> publié{statsPublished !== 1 ? 's' : ''}
+        </span>
+        {statsCities > 0 && (
+          <span className="text-xs text-slate-500">
+            <span className="font-semibold text-slate-800">{statsCities}</span> ville{statsCities !== 1 ? 's' : ''}
+          </span>
+        )}
+        <button
+          onClick={handleCopyLink}
+          className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 transition-colors"
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Link2 className="w-3.5 h-3.5" />}
+          {copied ? 'Lien copié !' : 'Copier le lien'}
+        </button>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {FILTER_TABS.map((f) => {
           const count =
             f.value === 'all'
-              ? items.length
+              ? byEvent.length
               : f.value === 'visible'
-              ? items.filter((t) => t.is_visible).length
-              : items.filter((t) => !t.is_visible).length;
+              ? byEvent.filter((t) => t.is_visible).length
+              : byEvent.filter((t) => !t.is_visible).length;
           return (
             <button
               key={f.value}

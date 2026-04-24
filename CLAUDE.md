@@ -62,6 +62,7 @@ Flux self-service déclenché après l'inscription :
 ```
 
 - `PATCH /api/onboarding/complete` : auth cookie obligatoire, idempotent si déjà `active` (200 no-op), rejette tout statut autre que `pending_onboarding` (400). Déclenche deux e-mails non-bloquants : `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
+- Le dashboard (`app/dashboard/page.tsx`) gère trois cas dans l'ordre : pas de session → `router.replace('/auth')` ; session sans `host_profile` → `router.replace('/inscription')` ; profil `pending_onboarding` → `router.replace('/onboarding')`.
 - Le dashboard redirige automatiquement vers `/onboarding` si `status = pending_onboarding`.
 - **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
 - Un admin peut ensuite `Suspendre` (`active → suspended`) ou `Réactiver` (`suspended → active`) via `PATCH /api/admin/ambassadeurs/[id]`.
@@ -74,7 +75,7 @@ Flux self-service déclenché après l'inscription :
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/planning` | Gestion des événements (création, modification) |
-| `/admin/temoignages` | Modération témoignages — combobox event, recherche multi-mots, pagination, Tout publier |
+| `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 
 `/admin/moderation` redirige vers `/admin/live`.
