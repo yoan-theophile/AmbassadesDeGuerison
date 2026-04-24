@@ -110,10 +110,15 @@ export default function InscriptionPage() {
                 id="city"
                 required
                 value={form.city}
-                onChange={(city, lat, lng) =>
-                  setForm((prev) => ({ ...prev, city, lat, lng }))
+                onChange={(city, lat, lng, country) =>
+                  setForm((prev) => ({ ...prev, city, lat, lng, ...(country ? { country } : {}) }))
                 }
               />
+              {form.city && !form.lat && (
+                <p className="text-xs text-amber-600 -mt-1">
+                  Sélectionnez votre ville dans la liste pour confirmer votre position sur la carte.
+                </p>
+              )}
               <CountrySelect
                 label="Pays"
                 id="country"
@@ -124,7 +129,7 @@ export default function InscriptionPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.first_name || !form.email || !form.city}
+                disabled={!form.first_name || !form.email || !form.city || !form.lat}
                 className={`${btnPrimary} flex items-center gap-2 justify-center`}
               >
                 Continuer <ArrowRight className="w-4 h-4" />

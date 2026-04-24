@@ -13,7 +13,7 @@ interface CityResult {
 
 interface CityInputProps {
   value: string;
-  onChange: (city: string, lat?: number, lng?: number) => void;
+  onChange: (city: string, lat?: number, lng?: number, country?: string) => void;
   id?: string;
   label?: string;
   placeholder?: string;
@@ -69,7 +69,7 @@ export default function CityInput({
     setQuery(r.city);
     setOpen(false);
     setResults([]);
-    onChange(r.city, r.lat, r.lng);
+    onChange(r.city, r.lat, r.lng, r.country);
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
