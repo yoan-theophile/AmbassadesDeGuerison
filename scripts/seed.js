@@ -39,31 +39,56 @@ async function req(method, endpoint, body) {
   return text ? JSON.parse(text) : null;
 }
 
-async function del(endpoint) {
-  const res = await fetch(`${BASE_URL}/rest/v1${endpoint}`, { method: 'DELETE', headers });
+async function patch(endpoint, body) {
+  const res = await fetch(`${BASE_URL}/rest/v1${endpoint}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const t = await res.text();
-    console.log(`  · DELETE ${endpoint} → ${t.slice(0, 100)}`);
+    throw new Error(`PATCH ${endpoint} → ${res.status}: ${t.slice(0, 120)}`);
   }
+}
+
+async function authReq(method, path, body) {
+  const res = await fetch(`${BASE_URL}/auth/v1${path}`, {
+    method,
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${res.status}: ${text.slice(0, 200)}`);
+  return text ? JSON.parse(text) : null;
+}
+
+function daysAgo(n) {
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function daysFromNow(n) {
+  return new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
 }
 
 async function run() {
   console.log('🌱 Seed DavidTheryApp');
   console.log(`   ${BASE_URL}\n`);
 
-  // ── Nettoyage ────────────────────────────────────────────────────────────
+  // ── 1. Nettoyage ─────────────────────────────────────────────────────────
   console.log('→ Nettoyage...');
-  await del('/live_signals?id=neq.00000000-0000-0000-0000-000000000000');
-  await del('/contact_requests?id=neq.00000000-0000-0000-0000-000000000000');
-  await del('/testimonials?id=neq.00000000-0000-0000-0000-000000000000');
-  await del('/host_activations?id=neq.00000000-0000-0000-0000-000000000000');
-  await del('/host_profiles?id=neq.00000000-0000-0000-0000-000000000000');
-  await del('/events?id=neq.00000000-0000-0000-0000-000000000000');
+  const noop = '?id=neq.00000000-0000-0000-0000-000000000000';
+  for (const table of ['live_signals', 'testimonials', 'contact_requests', 'host_activations', 'host_profiles', 'events']) {
+    const res = await fetch(`${BASE_URL}/rest/v1/${table}${noop}`, { method: 'DELETE', headers });
+    if (!res.ok) console.log(`  · ${table}: ${(await res.text()).slice(0, 80)}`);
+  }
   console.log('  ✓ Tables vidées\n');
 
-  // ── Hôtes ────────────────────────────────────────────────────────────────
-  // Insérés EN PREMIER — le trigger fn_auto_activate_hosts_for_event
-  // a besoin des hôtes actifs avant la création des events.
+  // ── 2. Ambassadeurs ───────────────────────────────────────────────────────
+  // Insérés AVANT les events → trigger auto-activate peut les trouver.
   console.log('→ Ambassadeurs...');
   const hostsData = [
     {
@@ -113,7 +138,16 @@ async function run() {
       host_type: 'church', contact_mode: 'whatsapp', capacity: 120,
       address_private: 'Carrefour Anono, Cocody, Abidjan',
       consignes: 'Temple évangélique Lumière. Grande salle climatisée.',
+      whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupAbidjan456',
       lat: 5.3600, lng: -4.0083, status: 'active',
+    },
+    {
+      first_name: 'Aminata', email: 'aminata.sow@demo.fr',
+      city: 'Dakar', country: 'Sénégal',
+      host_type: 'church', contact_mode: 'whatsapp', capacity: 60,
+      address_private: 'Quartier Almadies, Dakar',
+      consignes: 'Centre communautaire Foi & Vie. Salle principale, rez-de-chaussée.',
+      lat: 14.7645, lng: -17.3660, status: 'active',
     },
     {
       first_name: 'Sophie', email: 'sophie.leroux@demo.fr',
@@ -130,7 +164,7 @@ async function run() {
     try {
       const [row] = await req('POST', '/host_profiles', h);
       hostIds[h.email] = row.id;
-      console.log(`  ✓ ${h.first_name} (${h.city}, cap ${h.capacity}, ${h.status})`);
+      console.log(`  ✓ ${h.first_name.padEnd(12)} ${h.city}, ${h.country} — cap ${h.capacity} — ${h.status}`);
     } catch (e) {
       console.log(`  ✗ ${h.first_name}: ${e.message.slice(0, 120)}`);
     }
@@ -138,191 +172,257 @@ async function run() {
 
   const activeHosts = hostsData.filter(h => h.status === 'active');
 
-  // ── Events ───────────────────────────────────────────────────────────────
-  // Insérés APRÈS les hôtes → le trigger active automatiquement les hôtes actifs.
+  // ── 3. Événements ─────────────────────────────────────────────────────────
+  // Insérés APRÈS les hôtes → trigger active automatiquement les hôtes actifs.
   console.log('\n→ Événements...');
-  const now = new Date();
 
-  const [evtPasse] = await req('POST', '/events', {
-    title: 'Live Guérison #14 — Brisez les chaînes',
-    description: 'Live de prière et de guérison animé par David Thery. Diffusé depuis Paris.',
+  const [evtOld] = await req('POST', '/events', {
+    title: 'Live Guérison — Foi sans frontières',
+    description: 'Live de guérison et de délivrance animé depuis La Réunion.',
     youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    event_date: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(),
+    event_date: daysAgo(60),
   });
-  console.log(`  ✓ Event passé : ${evtPasse.title}`);
+  console.log(`  ✓ [J-60] ${evtOld.title}`);
+
+  const [evtMid] = await req('POST', '/events', {
+    title: 'Live Guérison — Touché par la grâce',
+    description: 'Une soirée de prière et de guérisons avec David Théry.',
+    youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    event_date: daysAgo(30),
+  });
+  console.log(`  ✓ [J-30] ${evtMid.title}`);
+
+  const [evtRecent] = await req('POST', '/events', {
+    title: 'Nuit de Prière — Souffle nouveau',
+    description: 'Nuit de prière collective depuis les ambassades du monde entier.',
+    youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    event_date: daysAgo(7),
+  });
+  console.log(`  ✓ [J-7]  ${evtRecent.title}  ← event principal (admin/live, modération)`);
 
   const [evtFutur] = await req('POST', '/events', {
-    title: "Live Guérison #15 — La puissance de l'Amour",
-    description: "Rejoignez David Thery pour une soirée de prière collective depuis votre ambassade locale.",
+    title: "Live Guérison — La puissance de l'Amour",
+    description: "Rejoignez David Théry pour une soirée de prière collective depuis votre ambassade locale.",
     youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     live_link: 'https://youtube.com/live/example15',
-    event_date: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+    event_date: daysFromNow(10),
   });
-  console.log(`  ✓ Event futur  : ${evtFutur.title}`);
+  console.log(`  ✓ [J+10] ${evtFutur.title}`);
 
-  // ── Activations event passé ───────────────────────────────────────────────
-  // Le trigger a créé les lignes avec accepted_count=0.
-  // On PATCH uniquement les comptages pour simuler les participations réelles.
-  console.log('\n→ Activations event passé (comptages)...');
-  const passedAccepted = { Marie: 9, 'Jean-Pierre': 80, Fatou: 24, Samuel: 7, Claire: 4, Kofi: 72 };
-  const patchHeaders = { ...headers, 'Prefer': 'return=minimal' };
+  // ── 4. Accepted_count events passés (simulation) ──────────────────────────
+  // Patch direct — remplace la valeur initiale 0 par un compte réaliste.
+  console.log('\n→ Comptages participations (events passés)...');
 
-  for (const h of activeHosts) {
-    const hid = hostIds[h.email];
-    if (!hid) continue;
-    const accepted = passedAccepted[h.first_name] ?? 0;
-    const isFull = accepted >= h.capacity;
-    const url = `${BASE_URL}/rest/v1/host_activations?host_profile_id=eq.${hid}&event_id=eq.${evtPasse.id}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: patchHeaders,
-      body: JSON.stringify({ accepted_count: accepted, is_full: isFull }),
-    });
-    if (res.ok) {
-      console.log(`  ✓ ${h.first_name} — ${accepted}/${h.capacity}${isFull ? ' (COMPLET)' : ''}`);
-    } else {
-      const t = await res.text();
-      console.log(`  ✗ ${h.first_name}: ${t.slice(0, 120)}`);
+  const countsOld    = { Marie: 12, 'Jean-Pierre': 65, Fatou: 30, Samuel: 8, Claire: 6, Kofi: 90, Aminata: 45 };
+  const countsMid    = { Marie: 14, 'Jean-Pierre': 78, Fatou: 35, Samuel: 11, Claire: 7, Kofi: 110, Aminata: 52 };
+  const countsRecent = { Marie: 15, 'Jean-Pierre': 80, Fatou: 38, Samuel: 10, Claire: 8, Kofi: 118, Aminata: 58 };
+
+  for (const [evtId, counts, label] of [
+    [evtOld.id, countsOld, 'J-60'],
+    [evtMid.id, countsMid, 'J-30'],
+    [evtRecent.id, countsRecent, 'J-7'],
+  ]) {
+    for (const h of activeHosts) {
+      const hid = hostIds[h.email];
+      if (!hid) continue;
+      const accepted = counts[h.first_name] ?? 0;
+      const isFull = accepted >= h.capacity;
+      try {
+        await patch(
+          `/host_activations?host_profile_id=eq.${hid}&event_id=eq.${evtId}`,
+          { accepted_count: accepted, is_full: isFull }
+        );
+      } catch (e) {
+        console.log(`  ✗ [${label}] ${h.first_name}: ${e.message.slice(0, 80)}`);
+      }
     }
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    console.log(`  ✓ [${label}] ${total} participants au total`);
   }
 
-  // ── Vérification activations event futur ─────────────────────────────────
-  console.log('\n→ Vérification activations event futur (trigger)...');
-  const futureActs = await req('GET', `/host_activations?event_id=eq.${evtFutur.id}&select=host_profile_id,capacity,accepted_count`);
-  if (futureActs && futureActs.length > 0) {
-    for (const act of futureActs) {
-      const host = hostsData.find(h => hostIds[h.email] === act.host_profile_id);
-      if (host) console.log(`  ✓ ${host.first_name} — 0/${act.capacity}`);
-    }
-  } else {
-    console.log('  ⚠ Aucune activation créée par le trigger.');
-    console.log('    → Exécuter scripts/reset-db.sql puis relancer ce script.');
-  }
-
-  // ── Demandes de contact ───────────────────────────────────────────────────
+  // ── 5. Demandes de contact (event récent) ─────────────────────────────────
   console.log('\n→ Demandes de contact...');
-  const activationsPasse = await req('GET',
-    `/host_activations?event_id=eq.${evtPasse.id}&is_active=eq.true&select=id,host_profile_id`
+  const activationsRecent = await req('GET',
+    `/host_activations?event_id=eq.${evtRecent.id}&is_active=eq.true&select=id,host_profile_id`
   );
-  const findAct = email => activationsPasse.find(a => a.host_profile_id === hostIds[email]);
+  const actBy = email => activationsRecent.find(a => a.host_profile_id === hostIds[email]);
 
-  const contactData = [
-    {
-      email: 'marie.dubois@demo.fr', first: 'Pierre',
-      msg: 'Je serai avec ma femme, nous sommes deux.',
-      whatsapp: '+33612345678', status: 'pending', onboarding_completed: true,
-    },
-    {
-      email: 'marie.dubois@demo.fr', first: 'Nathalie',
-      msg: null, whatsapp: null, status: 'pending', onboarding_completed: false,
-    },
-    {
-      email: 'jp.martin@demo.fr', first: 'Ahmed',
-      msg: 'Merci pour cette initiative, je viens seul.',
-      whatsapp: '+33698765432', status: 'pending', onboarding_completed: true,
-    },
-    {
-      email: 'fatou.diallo@demo.fr', first: 'Laure',
-      msg: null, whatsapp: null, status: 'declined', onboarding_completed: false,
-    },
-    {
-      email: 'samuel.eko@demo.fr', first: 'Emmanuel',
-      msg: "J'habite à 10 minutes, avec plaisir !",
-      whatsapp: '+15141234567', status: 'pending', onboarding_completed: true,
-    },
+  const contactsData = [
+    { host: 'marie.dubois@demo.fr', first: 'Pierre',    email: 'pierre.moreau@mail.com',   whatsapp: '+33612345678', msg: 'Je viens avec ma femme, nous sommes deux.', status: 'pending', onboarded: true  },
+    { host: 'marie.dubois@demo.fr', first: 'Nathalie',  email: 'nathalie.v@mail.com',       whatsapp: null,           msg: null,                                         status: 'pending', onboarded: false },
+    { host: 'marie.dubois@demo.fr', first: 'Luc',       email: 'luc.fontaine@mail.com',     whatsapp: '+33688112233', msg: 'Premier live pour moi, hâte d\'y être !',     status: 'pending', onboarded: true  },
+    { host: 'jp.martin@demo.fr',    first: 'Ahmed',     email: 'ahmed.mansour@mail.com',    whatsapp: '+33698765432', msg: 'Merci pour cette initiative, je viens seul.', status: 'pending', onboarded: true  },
+    { host: 'jp.martin@demo.fr',    first: 'Isabelle',  email: 'isabelle.r@mail.com',       whatsapp: null,           msg: 'Ma famille sera là aussi, 5 personnes.',      status: 'pending', onboarded: false },
+    { host: 'fatou.diallo@demo.fr', first: 'Laure',     email: 'laure.d@mail.com',          whatsapp: null,           msg: null,                                         status: 'declined',onboarded: false },
+    { host: 'fatou.diallo@demo.fr', first: 'Thomas',    email: 'thomas.b@mail.com',         whatsapp: '+32478001122', msg: 'Je suis en déplacement à Bruxelles ce soir.', status: 'pending', onboarded: true  },
+    { host: 'samuel.eko@demo.fr',   first: 'Emmanuel',  email: 'emmanuel.b@mail.com',       whatsapp: '+15141234567', msg: "J'habite à 10 minutes, avec plaisir !",        status: 'pending', onboarded: true  },
+    { host: 'kofi.asante@demo.fr',  first: 'Bénédicte', email: 'benedicte.k@mail.com',      whatsapp: '+2250701234567', msg: 'Notre groupe viendra en bus depuis Yopougon.', status: 'pending', onboarded: true },
+    { host: 'aminata.sow@demo.fr',  first: 'Oumar',     email: 'oumar.dia@mail.com',        whatsapp: '+221771234567', msg: 'Présent avec ma communauté.',                status: 'pending', onboarded: true  },
   ];
 
-  for (const c of contactData) {
-    const act = findAct(c.email);
-    if (!act) { console.log(`  · Activation manquante pour ${c.first}`); continue; }
+  let contactCreated = 0;
+  for (const c of contactsData) {
+    const act = actBy(c.host);
+    if (!act) { console.log(`  · Activation manquante pour ${c.first} (${c.host})`); continue; }
     try {
       await req('POST', '/contact_requests', {
         host_activation_id: act.id,
         visitor_first_name: c.first,
-        visitor_email: `${c.first.toLowerCase()}.demo@mail.com`,
+        visitor_email: c.email,
         visitor_whatsapp: c.whatsapp,
         visitor_message: c.msg,
         status: c.status,
-        onboarding_completed: c.onboarding_completed,
+        onboarding_completed: c.onboarded,
       });
-      console.log(`  ✓ ${c.first} → ${c.email.split('.')[0]} (${c.status}${c.onboarding_completed ? ', onboarded' : ''})`);
+      contactCreated++;
     } catch (e) {
       console.log(`  ✗ ${c.first}: ${e.message.slice(0, 120)}`);
     }
   }
+  console.log(`  ✓ ${contactCreated} demandes créées (trigger accepted_count actif)`);
 
-  // ── Témoignages ───────────────────────────────────────────────────────────
+  // ── 6. Témoignages ────────────────────────────────────────────────────────
   console.log('\n→ Témoignages...');
-  const temoignages = [
-    {
-      email: 'marie.dubois@demo.fr', timing: 'after', is_visible: true,
-      content: "Nous étions 12 ce soir. À un moment de prière, une sœur a senti une chaleur intense dans son dos — elle souffrait depuis trois ans. Elle a pleuré de joie. Dieu est fidèle.",
-    },
-    {
-      email: 'jp.martin@demo.fr', timing: 'during', is_visible: true,
-      content: "Plus de 60 personnes réunies dans notre église. Pendant la prière des mains levées, des gens ont témoigné de douleurs qui partaient. Une atmosphère de ferveur comme rarement vécue. Rendez-vous au prochain live !",
-    },
-    {
-      email: 'fatou.diallo@demo.fr', timing: 'after', is_visible: true,
-      content: "Mon mari était sceptique au départ. Il est venu par amour pour moi. À la fin du live il priait les mains levées, les yeux fermés. Il m'a dit : 'Je ne sais pas ce que j'ai ressenti, mais je veux revenir.' Merci David.",
-    },
-    {
-      email: 'kofi.asante@demo.fr', timing: 'during', is_visible: true,
-      content: "Abidjan était en feu ce soir. 120 frères et sœurs. Quand David a prié pour les guérisons, un homme dans notre salle — muet de l'oreille droite depuis l'enfance — a commencé à entendre. Nous avons tous pleuré.",
-    },
-    {
-      email: 'samuel.eko@demo.fr', timing: 'after', is_visible: true,
-      content: "Magnifique soirée à Montréal. La connexion avec les ambassades du monde entier donne un sens profond à cette communauté. Dieu n'a pas de frontières. On se retrouve la prochaine fois.",
-    },
-    {
-      email: 'claire.bernard@demo.fr', timing: 'after', is_visible: true,
-      content: "Nous étions 7 dans mon appartement. Petite assemblée mais présence forte. Une amie qui souffrait de migraines chroniques a eu la tête complètement dégagée pendant la prière. Elle dormait à poing fermé après le live — première fois depuis des mois.",
-    },
+
+  // Ambassadeurs — event J-60 (2 témoignages)
+  const tOld = [
+    { email: 'kofi.asante@demo.fr', timing: 'during', visible: true,
+      content: "Abidjan était en feu. Les gens priaient debout, les bras levés. Un homme qui boitait depuis des années a recommencé à marcher normalement pendant la prière. Nous avons vu de nos yeux." },
+    { email: 'samuel.eko@demo.fr', timing: 'after', visible: true,
+      content: "Un frère de Montréal qui traversait une dépression profonde depuis six mois m'a dit après le live : 'Pour la première fois depuis longtemps, j'ai envie de me lever.' Dieu est là." },
   ];
 
-  for (const t of temoignages) {
+  // Ambassadeurs — event J-30 (3 témoignages)
+  const tMid = [
+    { email: 'marie.dubois@demo.fr', timing: 'after', visible: true,
+      content: "Nous étions 14 ce soir dans mon salon. À un moment de prière intense, une sœur qui souffrait de migraines chroniques a senti sa tête se libérer complètement. Elle pleurait de joie." },
+    { email: 'fatou.diallo@demo.fr', timing: 'during', visible: true,
+      content: "Mon mari était sceptique. Il est venu par amour pour moi. À la fin du live il priait les mains levées, les yeux fermés. Il m'a dit : 'Je ne sais pas ce que j'ai ressenti, mais je veux revenir.'" },
+    { email: 'claire.bernard@demo.fr', timing: 'after', visible: true,
+      content: "7 personnes dans mon appartement. Ambiance intime mais présence forte. Une amie souffrant d'insomnies chroniques a dormi d'un trait cette nuit-là — première fois depuis des mois." },
+  ];
+
+  // Ambassadeurs — event récent J-7 (4 témoignages visibles + 1 en attente)
+  const tRecent = [
+    { email: 'jp.martin@demo.fr', timing: 'during', visible: true,
+      content: "Plus de 78 personnes réunies dans notre église. Pendant la prière des mains levées, des gens témoignaient de douleurs qui disparaissaient en temps réel. Une atmosphère de ferveur comme rarement vécue depuis des années." },
+    { email: 'aminata.sow@demo.fr', timing: 'during', visible: true,
+      content: "Dakar était connecté ! 58 frères et sœurs chez nous. Quand David a déclaré la guérison pour les maladies de dos, trois personnes ont immédiatement témoigné que la douleur avait quitté. Nous avons chanté jusqu'à minuit." },
+    { email: 'kofi.asante@demo.fr', timing: 'during', visible: true,
+      content: "Le Seigneur a visité Abidjan cette nuit. 118 présents. Un homme sourd d'une oreille depuis l'enfance a commencé à entendre pendant la prière de David. Nous avons tous pleuré. Que son nom soit béni." },
+    { email: 'marie.dubois@demo.fr', timing: 'after', visible: true,
+      content: "15 présents à Paris. La soirée était puissante. Une participante qui n'avait pas pu travailler depuis 3 semaines à cause de douleurs dorsales s'est levée et a dit : 'C'est parti.' On attendait déjà le prochain live." },
+    // En attente de modération (ambassador)
+    { email: 'samuel.eko@demo.fr', timing: 'after', visible: false,
+      content: "Live intense à Montréal. Petite assemblée mais Dieu était là. Un ami qui luttait contre l'anxiété depuis des mois est reparti avec une paix inexplicable. Il m'a texté le lendemain : 'Je vais bien.' C'est tout." },
+  ];
+
+  // Témoignages anonymes (formulaire public) — event J-7 (3 visibles + 1 en attente)
+  const tAnon = [
+    { event_id: evtRecent.id, timing: 'during', visible: true,
+      visitor_name: 'Grâce', submitter_city: 'Nantes',
+      content: "Je regardais seule chez moi. Quand David a prié pour les genoux, les miens brûlaient et puis d'un coup, plus rien. Je n'osais pas y croire. J'ai recommencé à monter les escaliers sans m'arrêter." },
+    { event_id: evtRecent.id, timing: 'after', visible: true,
+      visitor_name: 'Patrick', submitter_city: 'Marseille',
+      content: "C'est ma première fois sur un live de David. Ma sœur m'avait dit de regarder. Je suis athée. Ce que j'ai ressenti pendant la prière, je ne peux pas l'expliquer. Je cherche des réponses." },
+    { event_id: evtMid.id, timing: 'after', visible: true,
+      visitor_name: 'Christelle', submitter_city: 'Douala',
+      content: "Nous regardions à plusieurs dans un appartement à Douala. L'atmosphère était lourde et tout d'un coup une paix est descendue. Ma voisine qui avait des problèmes aux yeux depuis longtemps a pleuré et dit : 'Je vois mieux.'" },
+    // En attente de modération (anonyme)
+    { event_id: evtRecent.id, timing: 'during', visible: false,
+      visitor_name: null, submitter_city: null,
+      content: "J'ai suivi le live depuis mon téléphone dans le métro. Ce n'est pas le meilleur endroit pour prier mais j'ai quand même senti quelque chose. Je reviendrai depuis chez moi la prochaine fois." },
+  ];
+
+  let tCreated = 0;
+
+  for (const t of [...tOld, ...tMid, ...tRecent]) {
     const hid = hostIds[t.email];
     if (!hid) continue;
+    let eventId;
+    if (tOld.includes(t)) eventId = evtOld.id;
+    else if (tMid.includes(t)) eventId = evtMid.id;
+    else eventId = evtRecent.id;
     try {
       await req('POST', '/testimonials', {
         host_profile_id: hid,
-        event_id: evtPasse.id,
+        event_id: eventId,
         content: t.content,
         timing: t.timing,
-        is_visible: t.is_visible,
+        is_visible: t.visible,
       });
-      const host = hostsData.find(h => h.email === t.email);
-      console.log(`  ✓ ${host?.first_name} (${host?.city})`);
+      tCreated++;
     } catch (e) {
-      console.log(`  ✗ ${e.message.slice(0, 120)}`);
+      console.log(`  ✗ Ambassador ${t.email}: ${e.message.slice(0, 80)}`);
     }
   }
 
-  // ── Comptes admin ────────────────────────────────────────────────────────
-  // Créés via l'API Auth admin (service_role) — aucun email envoyé.
-  console.log('\n→ Comptes admin...');
-
-  async function authReq(method, path, body) {
-    const res = await fetch(`${BASE_URL}/auth/v1${path}`, {
-      method,
-      headers: {
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`${res.status}: ${text.slice(0, 200)}`);
-    return text ? JSON.parse(text) : null;
+  for (const t of tAnon) {
+    try {
+      await req('POST', '/testimonials', {
+        host_profile_id: null,
+        contact_request_id: null,
+        visitor_name: t.visitor_name,
+        submitter_city: t.submitter_city,
+        event_id: t.event_id,
+        content: t.content,
+        timing: t.timing,
+        is_visible: t.visible,
+      });
+      tCreated++;
+    } catch (e) {
+      console.log(`  ✗ Anonyme ${t.visitor_name ?? '(sans nom)'}: ${e.message.slice(0, 80)}`);
+    }
   }
 
-  const admins = [
-    { email: 'david.thery@demo.fr',      label: 'David Théry (démo)' },
-    { email: 'theo.nelson.ia@gmail.com',  label: 'Théophile (dev)'    },
+  const visibleCount = [...tOld, ...tMid, ...tRecent, ...tAnon].filter(t => t.visible).length;
+  const pendingCount = [...tOld, ...tMid, ...tRecent, ...tAnon].filter(t => !t.visible).length;
+  console.log(`  ✓ ${tCreated} témoignages — ${visibleCount} publiés, ${pendingCount} en attente de modération`);
+
+  // ── 7. Signaux live (event récent) ────────────────────────────────────────
+  console.log('\n→ Signaux live...');
+
+  const signalsData = [
+    { email: 'jp.martin@demo.fr',   status: 'approved', link_shared: true,
+      description: 'Salle pleine. Les gens prient debout, les bras levés. Ambiance de ferveur exceptionnelle.' },
+    { email: 'kofi.asante@demo.fr', status: 'approved', link_shared: true,
+      description: 'Abidjan en feu ! 118 présents. Guérison témoignée en direct — homme sourd qui entend. Gloire à Dieu.' },
+    { email: 'aminata.sow@demo.fr', status: 'pending', link_shared: false,
+      description: '58 frères et sœurs à Dakar. Trois témoignages de guérison de dos pendant la prière.' },
+    { email: 'marie.dubois@demo.fr', status: 'used', link_shared: true,
+      description: 'Paris, 15 présents. Atmosphère de paix. Une sœur libérée de migraines chroniques.' },
+    { email: 'fatou.diallo@demo.fr', status: 'declined', link_shared: false,
+      description: 'Bruxelles — live difficile à suivre ce soir, connexion instable. On revient au prochain.' },
   ];
 
-  // Charge les utilisateurs existants une seule fois pour éviter les doublons
+  let sigCreated = 0;
+  for (const s of signalsData) {
+    const hid = hostIds[s.email];
+    if (!hid) continue;
+    try {
+      await req('POST', '/live_signals', {
+        host_profile_id: hid,
+        event_id: evtRecent.id,
+        description: s.description,
+        status: s.status,
+        link_shared: s.link_shared,
+      });
+      sigCreated++;
+      const host = hostsData.find(h => h.email === s.email);
+      console.log(`  ✓ ${host.first_name.padEnd(12)} [${s.status}] ${s.description.slice(0, 55)}…`);
+    } catch (e) {
+      console.log(`  ✗ ${s.email}: ${e.message.slice(0, 80)}`);
+    }
+  }
+
+  // ── 8. Comptes admin ──────────────────────────────────────────────────────
+  console.log('\n→ Comptes admin...');
+
+  const admins = [
+    { email: 'david.thery@demo.fr',     label: 'David Théry (démo)' },
+    { email: 'theo.nelson.ia@gmail.com', label: 'Théophile (dev)'    },
+  ];
+
   let existingAuthUsers = [];
   try {
     const res = await authReq('GET', '/admin/users?per_page=1000');
@@ -335,7 +435,6 @@ async function run() {
     const existing = existingAuthUsers.find(u => u.email === admin.email);
     try {
       if (existing) {
-        // Garantit user_metadata.role = 'admin' même si le compte existait déjà
         await authReq('PUT', `/admin/users/${existing.id}`, {
           user_metadata: { ...(existing.user_metadata ?? {}), role: 'admin' },
         });
@@ -352,10 +451,10 @@ async function run() {
       console.log(`  ✗ ${admin.label}: ${e.message.slice(0, 100)}`);
     }
   }
-  console.log('  → Connexion via magic link sur http://localhost:3000/auth\n');
+  console.log('  → node scripts/magic-link.js <email> pour se connecter\n');
 
-  // ── Config onboarding ─────────────────────────────────────────────────────
-  console.log('\n→ Config onboarding...');
+  // ── 9. Config onboarding ──────────────────────────────────────────────────
+  console.log('→ Config onboarding...');
   try {
     const res = await fetch(`${BASE_URL}/rest/v1/onboarding_config`, {
       method: 'POST',
@@ -363,27 +462,37 @@ async function run() {
       body: JSON.stringify({ id: 1, video_url: '', pdf_url: '/docs/guide-ambassade.pdf' }),
     });
     if (res.ok) {
-      console.log('  ✓ Config onboarding initialisée (video_url vide → fallback config)');
+      console.log('  ✓ Config initialisée (video_url vide → fallback config/onboarding.ts)');
     } else {
-      const t = await res.text();
-      console.log(`  ✗ Config onboarding: ${t.slice(0, 120)}`);
+      console.log(`  ✗ ${(await res.text()).slice(0, 80)}`);
     }
   } catch (e) {
-    console.log(`  ✗ Config onboarding: ${e.message.slice(0, 120)}`);
+    console.log(`  ✗ ${e.message.slice(0, 80)}`);
   }
 
-  // ── Résumé ────────────────────────────────────────────────────────────────
+  // ── 10. Résumé ────────────────────────────────────────────────────────────
   console.log('\n📊 Résumé :');
-  const tables = ['events', 'host_profiles', 'host_activations', 'contact_requests', 'testimonials'];
-  for (const t of tables) {
-    const res = await fetch(`${BASE_URL}/rest/v1/${t}?select=id`, {
+  const tables = [
+    ['events', 'events'],
+    ['host_profiles', 'host_profiles'],
+    ['host_activations', 'host_activations'],
+    ['contact_requests', 'contact_requests'],
+    ['testimonials', 'testimonials'],
+    ['live_signals', 'live_signals'],
+  ];
+  for (const [label, table] of tables) {
+    const res = await fetch(`${BASE_URL}/rest/v1/${table}?select=id`, {
       headers: { ...headers, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
     });
     const total = (res.headers.get('content-range') ?? '?/?').split('/')[1] ?? '?';
-    console.log(`  ${t.padEnd(20)} ${total} lignes`);
+    console.log(`  ${label.padEnd(22)} ${total} lignes`);
   }
 
-  console.log('\n✅ Seed terminé ! → npm run dev → http://localhost:3000');
+  console.log('\n✅ Seed terminé !');
+  console.log('   → npm run dev → http://localhost:3000');
+  console.log('   → /admin/live    : 5 signaux (approved/pending/declined/used)');
+  console.log('   → /admin/temoignages : 2 témoignages en attente de modération');
+  console.log('   → /temoignages   : 10 publiés (ambassadeurs + anonymes), filtre 3 events');
 }
 
 run().catch(e => {
