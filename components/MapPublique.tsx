@@ -259,7 +259,7 @@ export default function MapPublique() {
         </div>
       )}
       {/* Ambassadeurs existent ailleurs mais pas dans le viewport actuel */}
-      {loaded && hosts.length > 0 && visibleCount === 0 && mapZoom >= 5 && (
+      {loaded && hosts.length > 0 && mapZoom >= 5 && (mapZoom < 8 || visibleCount === 0) && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 text-center pointer-events-auto">
             <p className="text-slate-600 text-xs">Pas d&apos;ambassade dans ta ville&nbsp;?</p>
