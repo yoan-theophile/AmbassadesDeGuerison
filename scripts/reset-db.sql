@@ -99,14 +99,13 @@ CREATE TABLE testimonials (
   host_profile_id       UUID REFERENCES host_profiles(id) ON DELETE CASCADE,
   contact_request_id    UUID REFERENCES contact_requests(id) ON DELETE SET NULL,
   visitor_name          TEXT,
+  submitter_city        TEXT,
   event_id              UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   content               TEXT NOT NULL,
   photo_url             TEXT,
   timing                TEXT CHECK (timing IN ('during', 'after')),
   is_visible            BOOLEAN DEFAULT FALSE,
-  created_at            TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT chk_testimonial_author
-    CHECK (host_profile_id IS NOT NULL OR contact_request_id IS NOT NULL)
+  created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE live_signals (
@@ -304,6 +303,10 @@ CREATE POLICY "testimonials_host_full" ON testimonials
 CREATE POLICY "testimonials_visitor_insert" ON testimonials
   FOR INSERT WITH CHECK (
     contact_request_id IS NOT NULL AND host_profile_id IS NULL
+  );
+CREATE POLICY "testimonials_anon_insert" ON testimonials
+  FOR INSERT WITH CHECK (
+    host_profile_id IS NULL AND contact_request_id IS NULL
   );
 CREATE POLICY "testimonials_admin_full" ON testimonials
   FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');

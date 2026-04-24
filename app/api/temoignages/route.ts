@@ -1,0 +1,58 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/server';
+
+export async function POST(request: NextRequest) {
+  const supabase = createServiceClient();
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Corps JSON invalide.' }, { status: 400 });
+  }
+
+  const { event_id, content, submitter_name, submitter_city, timing } = body as {
+    event_id?: string;
+    content?: string;
+    submitter_name?: string;
+    submitter_city?: string;
+    timing?: string;
+  };
+
+  if (!event_id || typeof event_id !== 'string') {
+    return NextResponse.json({ error: 'event_id est requis.' }, { status: 400 });
+  }
+  if (!content || typeof content !== 'string' || !content.trim()) {
+    return NextResponse.json({ error: 'Le témoignage ne peut pas être vide.' }, { status: 400 });
+  }
+  if (content.trim().length < 20) {
+    return NextResponse.json({ error: 'Le témoignage doit faire au moins 20 caractères.' }, { status: 400 });
+  }
+  if (content.trim().length > 2000) {
+    return NextResponse.json({ error: 'Le témoignage ne peut pas dépasser 2000 caractères.' }, { status: 400 });
+  }
+
+  const validTimings = ['during', 'after'];
+  const safeTiming = typeof timing === 'string' && validTimings.includes(timing) ? timing : 'after';
+
+  const { data, error } = await supabase
+    .from('testimonials')
+    .insert({
+      event_id,
+      content: content.trim(),
+      visitor_name: typeof submitter_name === 'string' ? submitter_name.trim() || null : null,
+      submitter_city: typeof submitter_city === 'string' ? submitter_city.trim() || null : null,
+      timing: safeTiming,
+      is_visible: false,
+      host_profile_id: null,
+      contact_request_id: null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ id: data.id }, { status: 201 });
+}
