@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ambassades de Guérison
 
-## Getting Started
+Application web pour le réseau d'ambassades de David Théry — groupes de prière qui se réunissent localement lors des lives de guérison.
 
-First, run the development server:
+## Vision
+
+Lors de chaque live, des milliers de personnes regardent seules chez elles. Les Ambassades de Guérison créent un réseau de lieux d'accueil — maisons ou églises — où les gens se retrouvent pour prier ensemble, en communion avec le message de David diffusé en direct.
+
+## Ce que fait l'application
+
+**Pour les visiteurs**
+- Trouver une ambassade près de chez soi sur une carte mondiale interactive
+- Envoyer une demande de contact à un ambassadeur
+- Recevoir un lien sécurisé avec l'adresse de l'ambassade (révélée après 24h)
+- Soumettre un témoignage après le live
+
+**Pour les ambassadeurs**
+- S'inscrire et gérer son profil (lieu, capacité, consignes)
+- Recevoir les demandes de visiteurs pour chaque live
+- Envoyer un signal "main levée" pendant le live
+- Partager des témoignages
+
+**Pour David (admin)**
+- Planifier les lives
+- Voir en direct les signaux des ambassadeurs pendant le live
+- Modérer et publier les témoignages
+- Suivre les KPIs : ambassades actives, pays, demandes, témoignages
+
+## Stack technique
+
+- **Next.js 15** — App Router, TypeScript
+- **Supabase** — PostgreSQL, Auth (magic links), RLS
+- **Tailwind CSS** — design system
+- **Leaflet + OpenStreetMap** — carte publique
+- **Resend** — e-mails transactionnels
+- **Nominatim** — géocodage des villes
+
+## Lancer en local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copier `.env.local.example` en `.env.local` et renseigner les clés Supabase et Resend.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Réinitialiser les données de démo
 
-## Learn More
+```bash
+# Recréer le schéma (Supabase SQL Editor)
+supabase db query --linked --file scripts/reset-db.sql
 
-To learn more about Next.js, take a look at the following resources:
+# Insérer les données de démo
+node scripts/seed.js
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Connexion admin en local
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node scripts/magic-link.js david.thery@demo.fr
+```
 
-## Deploy on Vercel
+## État du projet
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Ce projet est en développement actif. Les fonctionnalités ci-dessus sont construites et testées. Des évolutions sont prévues sur la base des retours de David Théry.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Licence
+
+Code source privé — tous droits réservés.
