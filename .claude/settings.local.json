@@ -26,7 +26,8 @@
       "Skill(plan-eng-review)",
       "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp status)",
       "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp diff --stat)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Skill(office-hours)"
     ]
   }
 }
