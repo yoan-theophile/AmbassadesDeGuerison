@@ -158,3 +158,59 @@ Voir TODO-2 ci-dessus.
 
 _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
+---
+
+## TODO-17 : Vérification mobile réelle des touch targets
+
+**Quoi :** Émuler un viewport mobile (390x844 iPhone 14) et confirmer visuellement que les nav links du header rendent à ~40px de hauteur en dessous de 640px.
+
+**Pourquoi :** Le fix `py-2.5 sm:py-1.5` (commit `bdbc9c7`) est mathématiquement correct mais n'a été testé qu'en desktop pendant `/design-review` (le resize_window via Chrome MCP n'a pas affecté la rendition CSS effective).
+
+**Pros :** 30 secondes de DevTools pour confirmer ce qui devrait déjà marcher.
+
+**Cons :** Aucun. À faire avant la première démo mobile à un visiteur.
+
+**Contexte :** Issu du design-review 2026-05-02. Si le rendu mobile ne correspond pas à 40px, ajuster `py-2.5` → `py-3`.
+
+---
+
+## TODO-18 : Pass design sur les 3 directions homepage `/preview/*`
+
+**Quoi :** Lancer un audit `/design-review` ciblé sur `/preview/homepage-poster`, `/preview/homepage-annuaire`, `/preview/homepage-storytelling`. Rédiger une fiche comparative pour aider David à choisir la direction.
+
+**Pourquoi :** David doit choisir une des 3 directions le jour de la démo. Une fiche "ici les forces / faiblesses de chaque direction vs DESIGN.md" facilite la décision.
+
+**Pros :** Active une décision difficile à prendre à froid. Permet d'éliminer les directions qui violent la palette/typo dès maintenant.
+
+**Cons :** Légère pression sur David si on présente comme "voici notre recommandation". À garder neutre.
+
+**Contexte :** Pages preview construites, gardées intentionnellement comme variantes. Post-démo, la direction choisie devient `app/page.tsx` et les 2 autres sont supprimées (décision prise dans le checkpoint Ordre 8).
+
+---
+
+## TODO-19 : Pins inactifs — différenciation visuelle `is_active=false`
+
+**Quoi :** Sur la carte, distinguer visuellement les ambassades activées pour le live courant (`is_active=true`) vs celles non encore confirmées (`is_active=false`). Piste : même teinte indigo mais opacité 60% + point gris sur les inactifs.
+
+**Pourquoi :** Actuellement les 7 pins sont identiques visuellement. En état `live`, un visiteur peut cliquer sur un pin "inactif" et envoyer une demande à un hôte qui n'a pas confirmé sa participation — friction inutile.
+
+**Pros :** Information visible avant le clic. Réduit les demandes "à vide".
+
+**Cons :** Risque de paraître "moins peuplée" la carte. À tester si la différenciation aide ou décourage.
+
+**Contexte :** Issu du design-review 2026-05-02. À traiter quand on a un vrai event en `live` avec mix `is_active=true/false` (le seed actuel a déjà les conditions).
+
+---
+
+## TODO-20 : Audit classes `dark:` orphelines
+
+**Quoi :** `grep -r "dark:" app/ components/` pour trouver les classes Tailwind dark mode oubliées dans les composants. Les retirer toutes (DESIGN.md = no dark mode v1).
+
+**Pourquoi :** La media query `@media (prefers-color-scheme: dark)` a été retirée de `globals.css` (commit `b78968f`), mais des classes Tailwind `dark:bg-...` peuvent traîner dans des composants. Elles ne s'activeront jamais (Tailwind dark mode pas configuré) mais polluent le code.
+
+**Pros :** Code plus propre. Pas de surprise si on active dark mode plus tard.
+
+**Cons :** Aucun. Pure cleanup.
+
+**Contexte :** Issu du design-review 2026-05-02. À faire quand on a un moment calme — non bloquant.
+

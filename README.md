@@ -10,9 +10,9 @@ Lors de chaque live, des milliers de personnes regardent seules chez elles. Les 
 
 **Pour les visiteurs**
 - Trouver une ambassade près de chez soi sur une carte mondiale interactive
-- Envoyer une demande de contact à un ambassadeur
-- Recevoir un lien sécurisé avec l'adresse de l'ambassade (révélée après 24h)
-- Soumettre un témoignage après le live
+- Envoyer une demande de visite à un ambassadeur pour un live précis
+- Recevoir l'adresse par e-mail dès que l'ambassadeur accepte la demande
+- Soumettre un témoignage après le live (lien public, sans compte requis)
 
 **Pour les ambassadeurs**
 - S'inscrire et gérer son profil (lieu, capacité, consignes)

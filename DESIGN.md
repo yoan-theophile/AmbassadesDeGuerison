@@ -41,7 +41,7 @@
 - **Neutral strong:** `slate-800` (#1e293b) — titres, labels importants
 - **Success (emerald-600):** `#059669` — WhatsApp, states positifs, badges actifs
 - **Error (red-600):** `#dc2626` — actions destructives (Suspendre, Supprimer)
-- **Dark mode:** Non implémenté en v1. Ignorer la media query dans globals.css.
+- **Dark mode:** Non implémenté en v1. Aucune `@media (prefers-color-scheme: dark)` dans `globals.css`.
 
 ## Spacing
 - **Base unit:** 4px (Tailwind default)
@@ -149,3 +149,7 @@ items-start obligatoire — les hauteurs de colonnes sont libres
 | 2026-04-24 | Admin sidebar icon-only (pas hamburger) | David = admin solo, icon-only suffit, zéro JS |
 | 2026-04-24 | maxWidth popup Leaflet : 280px | 240px trop étroit sur mobile portrait |
 | 2026-04-24 | items-start obligatoire sur card grids | Évite l'étirement des colonnes quand une card est expand |
+| 2026-05-02 | Geist appliqué via `geist.className` sur body (`layout.tsx`) | Précédemment, `globals.css` référençait `var(--font-geist-sans)` mais la variable était nommée `--font-geist` côté `layout.tsx` → fallback `Arial, Helvetica` partout. Pattern canonique Next.js : `geist.className` directement sur body. |
+| 2026-05-02 | Pin églises = indigo-700 (était `#7c3aed` violet-600) | DESIGN.md ne définit pas de violet ; "no purple gradient" est un anti-pattern explicite. La forme SVG (maison vs église) distingue déjà le type ; la teinte indigo claire vs foncée renforce la lecture. |
+| 2026-05-02 | Touch targets header : `py-2.5 sm:py-1.5` | Mobile = 40px conforme à la règle "Boutons principaux : py-2.5 minimum". Desktop reste compact à 32px (`sm:py-1.5`). Concerne `AppHeader.tsx` + `MonEspaceLink.tsx`. |
+| 2026-05-02 | Event J+10 démo fixé à 18h UTC dans `seed.js` | Avant : `daysFromNow(10)` héritait de l'heure du run du seed → EventBanner pouvait afficher des heures aberrantes (ex "00:23"). 18h UTC = 22h Réunion / 20h Paris été / 18h Abidjan : créneau soir cohérent pour la francophonie. |
