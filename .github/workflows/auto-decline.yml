@@ -1,0 +1,23 @@
+name: Auto Decline Expired Requests
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  auto-decline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke auto-decline API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/auto-decline")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: auto-decline returned $STATUS"
+            exit 1
+          fi

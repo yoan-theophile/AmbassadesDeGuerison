@@ -1,0 +1,23 @@
+name: Send Feedback Emails
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  feedback-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke send-feedback-emails API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/send-feedback-emails")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: send-feedback-emails returned $STATUS"
+            exit 1
+          fi
