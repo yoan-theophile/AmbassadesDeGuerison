@@ -74,6 +74,16 @@ function daysFromNow(n) {
   return new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// Soir de live "plausible" : 18h UTC = 22h La Réunion (soirée David Théry)
+// = 20h Paris (heure d'été) / 19h Paris (hiver) / 18h Abidjan.
+// Évite les heures bizarres (00:23, 03:14, etc.) liées au moment du seed.
+function eveningInDays(n) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + n);
+  d.setUTCHours(18, 0, 0, 0);
+  return d.toISOString();
+}
+
 async function run() {
   console.log('Seed DavidTheryApp (pivot live-driven v2)');
   console.log(`   ${BASE_URL}\n`);
@@ -256,7 +266,7 @@ async function run() {
     description: "Rejoignez David Théry pour une soirée de prière collective depuis votre ambassade locale.",
     youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     live_link: 'https://youtube.com/live/example15',
-    event_date: daysFromNow(10),
+    event_date: eveningInDays(10),
   });
   console.log(`  OK [J+10] ${evtFutur.title}  (prochain live)`);
 
