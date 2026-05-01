@@ -108,9 +108,11 @@ node scripts/magic-link.js david.thery@demo.fr
 ### Accès et guards
 
 - [ ] Sans session → redirige vers `/auth`
-- [ ] Session avec profil `pending_review` → affiche état "en attente de validation"
-- [ ] Session avec profil `pending_onboarding` → redirige vers `/onboarding`
-- [ ] Session avec profil `validated` → dashboard complet s'affiche
+- [ ] Session sans `host_profile` → redirige vers `/inscription`
+- [ ] Session avec profil `pending_review` → affiche état "en attente de validation" (pas d'encart questionnaire)
+- [ ] Session avec profil `pre_approved` → encart indigo "Félicitations, tu as été pré-approuvé !" + bouton "Compléter mon profil →" vers `/dashboard/questionnaire`
+- [ ] Session avec profil `enrichment_pending` → encart violet "Ton dossier est en cours d'examen"
+- [ ] Session avec profil `validated` → dashboard complet s'affiche (sans encart statut)
 
 ### Contenu dashboard (état `upcoming`)
 
@@ -125,6 +127,12 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] Cliquer "Accepter" sur Pierre → statut passe à `accepted`, `accepted_count` augmente
 - [ ] Cliquer "Refuser" sur Nathalie → statut passe à `declined`
 - [ ] Double-clic sur "Accepter" ne crée pas de doublon (idempotent)
+
+### Activation de l'ambassade (is_active)
+
+- [ ] Section "Mon ambassade" visible avec le toggle d'activation (`is_active`)
+- [ ] Toggler `is_active` → appel `PATCH /api/host-activations/[id]` → RLS vérifie que l'user est bien l'hôte (403 si autre user)
+- [ ] `is_full` n'est PAS modifiable via l'UI (badge statique si l'ambassade est pleine)
 
 ### Photos (upload)
 
@@ -190,12 +198,14 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Étape 1 — Informations personnelles
 
-- [ ] Champs obligatoires : prénom, email, ville, pays, capacité
+- [ ] Champs obligatoires : prénom, email, ville, pays
+- [ ] Champ **téléphone** (optionnel) visible après l'email — label "Téléphone (optionnel)", type tel, maxLength 20, note de confidentialité sous le champ
 - [ ] `CityInput` : saisir "Paris" → dropdown Nominatim apparaît → sélectionner "Paris, Île-de-France" → coordonnées lat/lng renseignées
 - [ ] Sans sélection dans le dropdown → hint ambre "Sélectionnez une ville dans la liste"
 - [ ] Bouton "Continuer" désactivé si `lat` est absent
 - [ ] Sélectionner une ville étrangère (ex: "Yaoundé") → pays bascule automatiquement sur "Cameroun"
 - [ ] `CountrySelect` : pays épinglés (FR, BE, CH, CA, LU, MA, SN, CI, CM) visibles en premier
+- [ ] Soumettre avec un téléphone → `host_profiles.phone` sauvegardé en DB
 
 ### Étape 2 — Type d'ambassade
 
@@ -205,23 +215,18 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Soumission
 
-- [ ] Succès → profil créé avec statut `pending_review` → redirection vers `/onboarding`
+- [ ] Succès → profil créé avec statut `pending_review` → message inline "Demande envoyée !" (plus de redirect vers `/onboarding`)
 - [ ] Email déjà existant → message d'erreur "Email déjà utilisé"
 - [ ] Honeypot rempli → 200 silencieux
 
 ---
 
-## Module 9 — Onboarding `/onboarding`
+## Module 9 — Onboarding `/onboarding` *(flux legacy — non utilisé dans le pipeline actuel)*
 
-> Se connecter avec Sophie (`sophie.leroux@demo.fr`, statut `pending_onboarding`)
+> ⚠️ Le flux principal est désormais admin-driven (`pending_review → pre_approved → questionnaire → enrichment_pending → validated`). La page `/onboarding` reste accessible mais n'est plus le chemin critique. Le statut `pending_onboarding` n'existe pas en DB.
 
-- [ ] La page charge avec la vidéo YouTube configurée
-- [ ] La case d'engagement et le bouton "Valider" sont **désactivés** avant tout clic dans la vidéo
-- [ ] Cliquer dans la vidéo (focus sur l'iframe) → la case s'active
-- [ ] Cocher la case → bouton "Valider mon engagement" s'active
-- [ ] Cliquer "Valider" → `PATCH /api/onboarding/complete` → statut passe à `validated`
-- [ ] Redirection vers `/dashboard` après validation
-- [ ] Un profil déjà `validated` accédant à `/onboarding` est redirigé vers `/dashboard`
+- [ ] La page `/onboarding` charge sans erreur 500
+- [ ] Un profil `validated` accédant à `/onboarding` est redirigé vers `/dashboard`
 
 ---
 
@@ -293,15 +298,29 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 15 — Admin : ambassadeurs `/admin/ambassadeurs`
 
 - [ ] La page charge avec la datatable (8 ambassadeurs dans le seed)
-- [ ] Colonne statut : `validated` pour 7, `pending_review` pour Sophie
+- [ ] Colonne statut : badges `Validé`, `En examen`, `Pré-approuvé`, `Questionnaire`, `Suspendu`, `Refusé`
+- [ ] Filtre "Questionnaire" visible dans la barre de filtres (en plus des autres)
 - [ ] Champ de recherche : saisir "Marie" → seule Marie apparaît
-- [ ] Filtre par statut : "validated" → seuls les 7 actifs
+- [ ] Filtre par statut : "validated" → seuls les 7 validés
 - [ ] Filtre par statut : "pending_review" → seulement Sophie
-- [ ] Pagination : si plus de N ambassadeurs, les pages fonctionnent
-- [ ] Bouton "Suspendre" sur Marie → statut passe à `suspended`
-- [ ] Bouton "Réactiver" sur Marie (suspendue) → statut repasse à `validated`
-- [ ] Bouton "Pré-approuver" sur Sophie → statut passe à `pre_approved`
-- [ ] Bouton "Rejeter" sur Sophie → statut passe à `rejected`
+- [ ] Pagination fonctionnelle si > 20 ambassadeurs
+
+### Chevron expand/collapse
+
+- [ ] Chaque ligne a un chevron (▾/▴) en première colonne
+- [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau "Questionnaire ambassadeur" s'ouvre
+- [ ] Si questionnaire non rempli → message "Questionnaire non encore rempli"
+- [ ] Si questionnaire rempli → champs affichés : téléphone, fréquentation église, dénomination, Défi Guérison (Oui/Non), Conférence DT (Oui/Non), parcours spirituel, livres/formations
+
+### Actions par statut
+
+- [ ] Sophie (`pending_review`) → boutons "Pré-approuver" + "Refuser"
+- [ ] Sophie (`pre_approved`) → bouton "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard)
+- [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
+- [ ] Marie (`validated`) → bouton "Suspendre"
+- [ ] Marie (`suspended`) → bouton "Réactiver"
+- [ ] Cliquer "Valider (bypass)" depuis `pre_approved` → statut `validated`, log `bypass_enrichment` créé dans `moderation_log`
+- [ ] Cliquer "Valider" depuis `enrichment_pending` → statut `validated`
 
 ---
 
@@ -379,7 +398,11 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 22 — Admin : calendrier campagnes `/admin/calendrier`
 
 - [ ] La page charge sans erreur
-- [ ] Interface de création de campagne e-mail visible
+- [ ] Section "Campagnes planifiées" visible avec form de création
+- [ ] Form création : champs — live (select), type (Ambassadeurs / Visiteurs), date d'envoi, message optionnel
+- [ ] Créer une campagne `type=ambassadeurs` → `POST /api/admin/campaigns` → snapshot de TOUS les `host_profiles` à `status=validated` dans `campaign_recipients`
+- [ ] Si l'INSERT des destinataires échoue → la campagne est rollbackée (pas de campagne orpheline)
+- [ ] La campagne créée apparaît dans la liste avec son statut `pending` et le nombre de destinataires
 
 ---
 
@@ -458,6 +481,8 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] `GET /accueillir/invalid-token` → 404 ou message d'erreur clair
 - [ ] `GET /refuser/invalid-token` → 404 ou message d'erreur clair
 - [ ] `GET /visitor/invalid-token` → 404 ou message d'erreur clair
+- [ ] `GET /unsubscribe/invalid-token` → 200 avec message générique (pas d'info leak)
+- [ ] `POST /api/campaign-activations` avec token inexistant → 404 JSON
 
 ---
 
@@ -484,17 +509,72 @@ npm run test:e2e
 
 ## Module 30 — Cycle de statut ambassadeur (admin)
 
-> Tester depuis `/admin/ambassadeurs`
+> Tester depuis `/admin/ambassadeurs`. Utiliser Sophie (`pending_review`) et Marie (`validated`).
 
-| Transition | Action | Résultat attendu |
+| Transition | Action admin | Résultat attendu |
 |---|---|---|
-| `pending_review → pre_approved` | Pré-approuver Sophie | Statut `pre_approved`, email questionnaire envoyé |
-| `pre_approved → enrichment_pending` | Sophie soumet questionnaire sur `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin |
-| `enrichment_pending → validated` | Valider Sophie (admin) | Statut `validated` |
-| `validated → suspended` | Suspendre Marie | Statut `suspended`, pin disparaît de la carte |
-| `suspended → validated` | Réactiver Marie | Statut `validated`, pin réapparaît |
-| `pending_review → rejected` | Rejeter Sophie | Statut `rejected` |
-| ~~`pre_approved → validated`~~ | ~~Bypass questionnaire~~ | **BLOQUÉ** — transition directe interdite |
+| `pending_review → pre_approved` | Bouton "Pré-approuver" | Statut `pre_approved`, email avec CTA questionnaire envoyé |
+| `pre_approved → enrichment_pending` | Sophie ouvre `/dashboard/questionnaire` et soumet | Statut `enrichment_pending`, notif admin reçue |
+| `enrichment_pending → validated` | Bouton "Valider" (standard) | Statut `validated`, email bienvenue envoyé |
+| `pre_approved → validated` (bypass) | Bouton "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
+| `validated → suspended` | Bouton "Suspendre" | Statut `suspended`, pin disparaît de la carte |
+| `suspended → validated` | Bouton "Réactiver" | Statut `validated`, pin réapparaît |
+| `pending_review → rejected` | Bouton "Refuser" | Statut `rejected` |
+| ~~`pre_approved → validated` (API directe)~~ | POST action=`validated` sur un `pre_approved` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire" |
+
+---
+
+## Module 31 — Questionnaire ambassadeur `/dashboard/questionnaire`
+
+> Se connecter avec un compte `pre_approved` (passer Sophie à `pre_approved` via admin).
+
+- [ ] Un profil `pending_review` accédant à `/dashboard/questionnaire` → message "Ce questionnaire n'est accessible que pour les candidats pré-approuvés" + lien retour
+- [ ] Un profil `validated` accédant → même message de blocage
+- [ ] Un profil `pre_approved` → le formulaire s'affiche complet
+- [ ] Champs présents : case "J'ai suivi le Défi Guérison", case "J'ai déjà assisté à une conférence de David Théry", select fréquentation église (3 options), champ dénomination (optionnel), textarea parcours spirituel (max 500 chars), textarea livres (max 300 chars), champ téléphone (optionnel)
+- [ ] Compteur caractères visible sous le textarea parcours (ex : "42/500")
+- [ ] Soumettre → `PATCH /api/ambassadeur/enrichissement` → statut passe à `enrichment_pending`
+- [ ] Après soumission → écran de confirmation "Profil envoyé !" + lien retour dashboard
+- [ ] Soumettre 2 fois → 403 (statut déjà `enrichment_pending`, plus `pre_approved`)
+- [ ] Champs enregistrés en DB : vérifier dans `/admin/ambassadeurs` → panneau détail
+
+---
+
+## Module 32 — Activation campagne email `/accueillir/activer/[token]`
+
+> Prérequis : créer une campagne `type=ambassadeurs` dans `/admin/calendrier`, puis déclencher le cron `POST /api/cron/dispatch-campaigns` manuellement (ou inspecter les `campaign_recipients` pour récupérer un `activation_token`).
+
+- [ ] Token valide non encore activé → page affiche titre du live, date, et bouton "Je m'inscris comme ambassadeur"
+- [ ] Cliquer "Je m'inscris" → `POST /api/campaign-activations` → `host_activations.is_active = true`
+- [ ] Page reste sur place après le clic (pas de redirect) → confirmation visuelle inline
+- [ ] Recharger la page avec le même token → état "Vous êtes déjà inscrit comme ambassadeur pour ce live"
+- [ ] Token invalide → message d'erreur "Lien invalide ou expiré"
+- [ ] L'activation est **sans auth** (l'ambassadeur clique depuis son email)
+
+---
+
+## Module 33 — Désabonnement visiteur `/unsubscribe/[token]`
+
+> Prérequis : récupérer un `unsubscribe_token` depuis `campaign_recipients` (table DB).
+
+- [ ] Token valide → page affiche message de confirmation sobre (désabonné avec succès)
+- [ ] Lien retour vers `/` présent
+- [ ] Token invalide → 200 avec message générique (pas d'info leak sur l'existence du token)
+- [ ] Après désabonnement : `campaign_recipients.status = 'unsubscribed'` en DB
+- [ ] Idempotent : réutiliser le même token → 200 sans erreur
+
+---
+
+## Module 34 — Cron dispatch campagnes `/api/cron/dispatch-campaigns`
+
+> Tester avec `curl -X POST http://localhost:3000/api/cron/dispatch-campaigns -H "X-Cron-Secret: [secret]"` ou via GH Actions.
+
+- [ ] Sans header `X-Cron-Secret` → 401
+- [ ] Secret invalide → 401
+- [ ] Aucune campagne pending → 200 JSON `{ dispatched: 0 }`
+- [ ] Campagne pending avec destinataires → emails envoyés, `campaign_recipients.status = 'sent'`, `sent_at` renseigné
+- [ ] Si un envoi échoue → `attempts++`, statut reste `pending` (pas `sent`). Après 3 échecs : `status = 'failed'`
+- [ ] Pagination cursor (pas OFFSET) : tester avec > 100 destinataires si possible
 
 ---
 
