@@ -5,6 +5,9 @@ import { FEATURES } from '@/config/features';
 
 const DELAY_HOURS = 24;
 
+// DEPRECATED: utiliser POST /api/visit-requests qui exige event_id explicite
+// Cette route utilise "dernier live" comme fallback — problématique si deux lives proches
+// Conservée pour les anciens liens tokenisés uniquement. Ne pas appeler depuis le nouvel UI.
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const body = await request.json();

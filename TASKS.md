@@ -92,7 +92,7 @@
 - [x] **#24 — Honeypot field caché sur tous les forms public**
   Champ `<input type="text" name="website" tabIndex={-1} className="hidden" />` dans tous les forms public (visit-request, inscriptions, temoignages, feedbacks, visitor-help-request). Côté backend : si champ rempli, return 200 silencieusement (bot trap). Codex Finding #14.
 
-- [ ] **#25 — Audit `event_id` mandatory end-to-end (Codex #2)**
+- [x] **#25 — Audit `event_id` mandatory end-to-end (Codex #2)** — nouvelles routes exigent event_id explicite; contact-requests dépréciée (commentaire ajouté)
   Auditer `app/admin/stats/page.tsx` (résolution event), `app/api/contact-requests/route.ts` (event sur INSERT), et toute route qui utilise "latest live <= now" comme fallback. Forcer `event_id` obligatoire dans l'URL ou le body partout. Tests : back-to-back lives ne mélangent pas les data.
 
 ---
