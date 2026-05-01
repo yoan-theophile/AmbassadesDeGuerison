@@ -39,11 +39,11 @@ export default async function VisitorConfirmationPage({ params }: Props) {
       icon: CheckCircle2,
       done: true,
       current: status === 'pending',
-      detail: `${host?.first_name ?? 'L'ambassadeur'} a reçu votre demande.`,
+      detail: `${host?.first_name ?? "L'ambassadeur"} a reçu votre demande.`,
     },
     {
       id: 'reply',
-      label: `${host?.first_name ?? 'L'ambassadeur'} répond`,
+      label: `${host?.first_name ?? "L'ambassadeur"} répond`,
       icon: Clock,
       done: ['accepted', 'declined'].includes(status),
       current: status === 'pending',
@@ -60,7 +60,7 @@ export default async function VisitorConfirmationPage({ params }: Props) {
       done: status === 'accepted',
       current: status === 'accepted',
       detail: status === 'accepted'
-        ? `Vous recevrez les coordonnées de ${host?.first_name ?? 'l'ambassadeur'} par e-mail.`
+        ? `Vous recevrez les coordonnées de ${host?.first_name ?? "l'ambassadeur"} par e-mail.`
         : 'Transmise par e-mail à la confirmation.',
     },
   ];

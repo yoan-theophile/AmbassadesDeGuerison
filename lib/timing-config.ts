@@ -32,7 +32,7 @@ export const getTimingConfig = unstable_cache(
       .eq('id', 1)
       .single();
 
-    return data ?? DEFAULTS;
+    return (data as TimingConfig | null) ?? DEFAULTS;
   },
   ['event-timing-config'],
   { revalidate: 60 }

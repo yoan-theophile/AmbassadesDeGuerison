@@ -104,7 +104,7 @@ export default function AccueillirClient({
           disabled={!!loading}
           className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          {loading === 'accept' ? 'En cours…' : 'J'accueille'}
+          {loading === 'accept' ? 'En cours…' : "J'accueille"}
         </button>
         <button
           onClick={() => handleAction('decline')}

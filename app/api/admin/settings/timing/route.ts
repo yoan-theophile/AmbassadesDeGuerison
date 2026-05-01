@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag('timing-config');
+  revalidateTag('timing-config', 'default');
 
   return NextResponse.json({ success: true, updated: updates });
 }

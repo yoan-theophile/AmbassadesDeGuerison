@@ -20,9 +20,12 @@ export default async function AdminFeedbackPage() {
     .order('report_status', { ascending: true })
     .order('created_at', { ascending: false });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const typed = (feedbacks ?? []) as any[];
+
   return (
     <AdminLayout>
-      <FeedbackModerationClient feedbacks={feedbacks ?? []} />
+      <FeedbackModerationClient feedbacks={typed} />
     </AdminLayout>
   );
 }

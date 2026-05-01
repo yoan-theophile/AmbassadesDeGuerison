@@ -75,7 +75,7 @@ export default async function VisitRequestPage({ params }: Props) {
               <div className="text-center py-4">
                 <p className="text-slate-500 text-sm">
                   {!activation?.is_active
-                    ? 'Cette ambassade n'accueille pas pour ce live.'
+                    ? "Cette ambassade n'accueille pas pour ce live."
                     : 'Cette ambassade est complète pour ce live.'}
                 </p>
               </div>
