@@ -206,7 +206,7 @@ export default function MapPublique() {
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
       {/* Barre de recherche par ville */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-56 sm:w-64 pointer-events-auto">
+      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 pointer-events-auto">
         <input
           type="text"
           value={searchQuery}
