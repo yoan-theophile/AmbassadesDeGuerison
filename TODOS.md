@@ -4,7 +4,11 @@ Généré le 2026-04-19. Items différés ou à planifier après le premier live
 
 ---
 
-## TODO-1 : Rate limiting sur `/api/contact-requests/*/acknowledge`
+## TODO-1 : Rate limiting sur `/api/contact-requests/*/acknowledge` — **sans objet en phase de conception**
+
+**Statut mis à jour mai 2026 :** la route `/accueil-invite/[token]` (et donc l'endpoint acknowledge) sera supprimée en Phase 2 du pivot live-driven (suppression du système 24h auto-révélation, remplacé par mail unique acceptation côté hôte). Ce TODO devient **sans objet** sauf si on revient en arrière sur le pivot. À archiver quand Phase 2 livrée.
+
+
 
 **Quoi :** Vercel Edge Middleware — 10 req/min par IP sur cet endpoint.
 
@@ -101,6 +105,26 @@ Voir TODO-2 ci-dessus.
 **Contexte :** Déféré pour les mêmes raisons que TODO-7. Dépend de la même infrastructure API. À designer avec David sur un exemple réel (demander les témoignages d'un live passé pour calibrer le prompt).
 
 **Dépend de :** TODO-7 (même infra API Anthropic).
+
+---
+
+## TODO-10 : Retry mail Resend bounce (visiteur acceptation) — **reporté en pré-production**
+
+**Statut :** sans objet en phase de conception (pas de vrais visiteurs). À activer quand David annonce la date du premier live public et qu'on a des mails Resend qui partent vers de vraies adresses.
+
+
+
+**Quoi :** Job qui re-essaie 1x à H+1 quand le mail "Marie t'accueille — voici l'adresse" bounce à la livraison Resend. Si bounce persiste, notif admin pour appel manuel au visiteur (le tel est dans la demande).
+
+**Pourquoi :** Sans retry, un visiteur accepté qui ne reçoit pas l'adresse vit un silent failure : il croit Marie l'a accepté (Étape 2/3 affichée côté frontend), mais l'adresse n'arrive jamais. Pour un mail de guérison, c'est trahir la confiance — exactement ce qu'on veut éviter.
+
+**Pros :** Évite le silent failure, défense en profondeur, donne à l'admin une opportunité d'appeler à la main.
+
+**Cons :** Resend a déjà son propre retry interne, on peut surveiller le webhook bounce avant d'investir.
+
+**Contexte :** Ressort de l'eng review du pivot live-driven (2026-05-01). À évaluer après Phase 4. Si volume bounce > 1% au premier mois post-lancement, activer ce TODO.
+
+**Dépend de :** Phase 2 livrée (suppression `/accueil-invite/[token]`). Resend webhook bounce events configurés.
 
 ---
 

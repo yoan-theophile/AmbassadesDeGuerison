@@ -195,6 +195,7 @@ Ajouter un formulaire
 ! blacklist par mail / numéro de téléphone
 ! possibilité de désactiver 
 On a un calendrier: on envoie un mail à tous les ambassadeurs actifs.
+
 Est-ce que vous êtes intéressés ou non ?
 on met un lien pour activer leur ambassade sur la carte.
 voici la prochaine date: click sur oui => activer sur la carte, sinon la carte s'efface
