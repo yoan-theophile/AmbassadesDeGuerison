@@ -29,7 +29,7 @@ beforeAll(async () => {
       city: 'Paris',
       country: 'France',
       contact_mode: 'public',
-      status: 'active',
+      status: 'validated',
     })
     .select('id')
     .single();
@@ -85,10 +85,10 @@ describe('fn_auto_activate_host_for_existing_events', () => {
       .single();
 
     // Crée un event futur (doit déjà exister via testEventId)
-    // Passe l'hôte à active
+    // Passe l'hôte à validated (nouveau cycle de statut v2)
     await supabase
       .from('host_profiles')
-      .update({ status: 'active' })
+      .update({ status: 'validated' })
       .eq('id', host!.id);
 
     // Le trigger doit avoir créé l'activation pour les events futurs
