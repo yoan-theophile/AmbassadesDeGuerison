@@ -79,7 +79,7 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
   }
 
   if (actionToken) {
-    const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/accueil-invite/${actionToken}`;
+    const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/visitor/${actionToken}`;
     return (
       <div className="py-4 space-y-4">
         <div className="text-center">
