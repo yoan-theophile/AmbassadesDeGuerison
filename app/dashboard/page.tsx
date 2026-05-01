@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, Copy, Home, LogOut, Radio, Share2,
-  MessageSquare, Send, ExternalLink, Play,
+  MessageSquare, Send, ExternalLink, Play, UserCheck, UserX,
 } from 'lucide-react';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
@@ -33,8 +33,9 @@ interface ContactRequest {
   id: string;
   visitor_first_name: string;
   visitor_email: string;
-  visitor_whatsapp: string | null;
+  visitor_phone: string | null;
   visitor_message: string;
+  nb_personnes: number | null;
   status: string;
   created_at: string;
   action_token: string;
@@ -63,10 +64,12 @@ export default function DashboardPage() {
 
   // Testimonial
   const [testimonialContent, setTestimonialContent] = useState('');
-  const [testimonialTiming, setTestimonialTiming] = useState<'during' | 'after'>('after');
   const [testimonialSubmitting, setTestimonialSubmitting] = useState(false);
   const [testimonialsSentCount, setTestimonialsSentCount] = useState(0);
   const [testimonialError, setTestimonialError] = useState('');
+
+  // Accept/decline loading state
+  const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
 
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
@@ -97,7 +100,7 @@ export default function DashboardPage() {
     const { data: reqs } = activationIds.length > 0
       ? await supabase
           .from('contact_requests')
-          .select('id, visitor_first_name, visitor_email, visitor_whatsapp, visitor_message, status, created_at, action_token')
+          .select('id, visitor_first_name, visitor_email, visitor_phone, visitor_message, nb_personnes, status, created_at, action_token')
           .in('host_activation_id', activationIds)
           .order('created_at', { ascending: false })
           .limit(20)
@@ -164,7 +167,6 @@ export default function DashboardPage() {
       .then((d) => setOnboardingConfig({ video_url: d.video_url, pdf_url: d.pdf_url }))
       .catch(() => {});
   }, []);
-
 
   async function toggleActivation(id: string, currentValue: boolean) {
     await fetch(`/api/host-activations/${id}`, {
@@ -235,7 +237,6 @@ export default function DashboardPage() {
         body: JSON.stringify({
           host_profile_id: profile.id,
           event_id: currentEvent.id,
-          timing: testimonialTiming,
           content: testimonialContent.trim(),
         }),
       });
@@ -250,6 +251,18 @@ export default function DashboardPage() {
       setTestimonialError('Erreur réseau.');
     }
     setTestimonialSubmitting(false);
+  }
+
+  async function handleContactAction(token: string, action: 'accept' | 'decline') {
+    setRequestActionLoading(token);
+    const res = await fetch(`/api/visit-requests/${token}/${action}`, { method: 'POST' });
+    if (res.ok) {
+      const newStatus = action === 'accept' ? 'accepted' : 'declined';
+      setContactRequests((prev) =>
+        prev.map((r) => (r.action_token === token ? { ...r, status: newStatus } : r))
+      );
+    }
+    setRequestActionLoading(null);
   }
 
   async function handleSignOut() {
@@ -271,14 +284,29 @@ export default function DashboardPage() {
   if (!profile) return null;
 
   const statusLabels: Record<string, string> = {
+    pending_review:     'Candidature en cours',
+    pre_approved:       'Pré-approuvé',
+    enrichment_pending: 'Questionnaire à compléter',
+    validated:          'Actif',
+    suspended:          'Suspendu',
+    rejected:           'Refusé',
     pending_onboarding: 'Inscription à finaliser',
-    active: 'Actif',
-    suspended: 'Suspendu',
   };
   const statusColors: Record<string, string> = {
+    pending_review:     'bg-amber-50 text-amber-700',
+    pre_approved:       'bg-blue-50 text-blue-700',
+    enrichment_pending: 'bg-purple-50 text-purple-700',
+    validated:          'bg-emerald-50 text-emerald-700',
+    suspended:          'bg-red-50 text-red-700',
+    rejected:           'bg-slate-100 text-slate-500',
     pending_onboarding: 'bg-amber-50 text-amber-700',
-    active: 'bg-emerald-50 text-emerald-700',
-    suspended: 'bg-red-50 text-red-700',
+  };
+
+  const REQUEST_STATUS: Record<string, { label: string; cls: string }> = {
+    pending:                  { label: 'En attente',  cls: 'bg-amber-50 text-amber-700'    },
+    accepted:                 { label: 'Acceptée',    cls: 'bg-emerald-50 text-emerald-700' },
+    declined:                 { label: 'Refusée',     cls: 'bg-red-50 text-red-700'         },
+    cancelled_no_response:    { label: 'Expirée',     cls: 'bg-slate-100 text-slate-500'    },
   };
 
   const ambassadeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/ambassade/${profile.id}`;
@@ -328,8 +356,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* [4] Partager mon ambassade */}
-        {profile.status === 'active' && (
+        {/* Partager mon ambassade */}
+        {profile.status === 'validated' && (
           <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
               <Share2 className="w-4 h-4 text-indigo-500" />
@@ -370,10 +398,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Signal live — visible uniquement pendant la fenêtre du live (±LIVE_WINDOW_HOURS) */}
-        {profile.status === 'active' && currentEvent && (
+        {/* Signal live — visible uniquement pendant la fenêtre du live */}
+        {profile.status === 'validated' && currentEvent && (
           approvedLiveLink ? (
-            /* État 3 : David a accepté → afficher le lien */
             <div className="bg-emerald-600 text-white rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-emerald-200 animate-pulse" />
@@ -393,7 +420,6 @@ export default function DashboardPage() {
               </a>
             </div>
           ) : signalSent ? (
-            /* État 2 : signal envoyé, en attente de l'approbation */
             <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse" />
@@ -404,7 +430,6 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            /* État 1 : formulaire */
             <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-indigo-300" />
@@ -475,7 +500,7 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* [5] Formulaire témoignage */}
+        {/* Formulaire témoignage */}
         {currentEvent && (
           <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
@@ -507,26 +532,6 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Moment</label>
-              <div className="flex gap-2">
-                {(['during', 'after'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTestimonialTiming(t)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      testimonialTiming === t
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {t === 'during' ? 'Pendant le live' : 'Après le live'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {testimonialError && (
               <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
             )}
@@ -542,41 +547,65 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Demandes de contact */}
+        {/* Mes demandes */}
         <section>
-          <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Demandes de contact</h2>
+          <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes demandes</h2>
           {contactRequests.length === 0 ? (
             <p className="text-slate-400 text-sm">Aucune demande pour l'instant.</p>
           ) : (
             <div className="space-y-3">
-              {contactRequests.map((r) => (
-                <div key={r.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
-                      <p className="text-slate-500 text-xs">{r.visitor_email}</p>
-                      {r.visitor_whatsapp && (
-                        <p className="text-slate-500 text-xs">WhatsApp : {r.visitor_whatsapp}</p>
-                      )}
-                      {r.visitor_message && (
-                        <p className="text-slate-600 text-sm mt-1 italic">"{r.visitor_message}"</p>
-                      )}
-                      <p className="text-slate-400 text-xs mt-1">
-                        {new Date(r.created_at).toLocaleDateString('fr-FR')}
-                      </p>
+              {contactRequests.map((r) => {
+                const s = REQUEST_STATUS[r.status] ?? { label: r.status, cls: 'bg-slate-100 text-slate-500' };
+                const isPending = r.status === 'pending';
+                const isActioning = requestActionLoading === r.action_token;
+                return (
+                  <div key={r.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
+                        <p className="text-slate-500 text-xs">{r.visitor_email}</p>
+                        {r.visitor_phone && (
+                          <p className="text-slate-500 text-xs">Tél : {r.visitor_phone}</p>
+                        )}
+                        {r.nb_personnes && (
+                          <p className="text-slate-500 text-xs">{r.nb_personnes} personne{r.nb_personnes > 1 ? 's' : ''}</p>
+                        )}
+                        {r.visitor_message && (
+                          <p className="text-slate-600 text-sm mt-1 italic line-clamp-2">"{r.visitor_message}"</p>
+                        )}
+                        <p className="text-slate-400 text-xs mt-1">
+                          {new Date(r.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${s.cls}`}>
+                          {s.label}
+                        </span>
+                        {isPending && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => handleContactAction(r.action_token, 'accept')}
+                              disabled={isActioning}
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              Accepter
+                            </button>
+                            <button
+                              onClick={() => handleContactAction(r.action_token, 'decline')}
+                              disabled={isActioning}
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                            >
+                              <UserX className="w-3.5 h-3.5" />
+                              Refuser
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full shrink-0 font-medium ${
-                        r.status === 'declined'
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-emerald-50 text-emerald-700'
-                      }`}
-                    >
-                      {r.status === 'declined' ? 'Refusée' : 'Confirmée'}
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
