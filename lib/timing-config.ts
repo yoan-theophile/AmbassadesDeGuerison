@@ -1,4 +1,3 @@
-import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export type TimingConfig = {
@@ -19,21 +18,18 @@ export const DEFAULTS: TimingConfig = {
   queue_aging_days: 5,
 };
 
-export const getTimingConfig = unstable_cache(
-  async (): Promise<TimingConfig> => {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .from('event_timing_config')
-      .select(
-        'campaign_ambassadors_days_before, campaign_visitors_days_before, ' +
-        'host_reminder_days_before, visitor_auto_decline_days_before, ' +
-        'feedback_days_after, queue_aging_days'
-      )
-      .eq('id', 1)
-      .single();
+// Fonction plain async — crons sont ponctuels, pas besoin de cache entre appels (Next.js 16)
+export async function getTimingConfig(): Promise<TimingConfig> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from('event_timing_config')
+    .select(
+      'campaign_ambassadors_days_before, campaign_visitors_days_before, ' +
+      'host_reminder_days_before, visitor_auto_decline_days_before, ' +
+      'feedback_days_after, queue_aging_days'
+    )
+    .eq('id', 1)
+    .single();
 
-    return (data as TimingConfig | null) ?? DEFAULTS;
-  },
-  ['event-timing-config'],
-  { revalidate: 60 }
-);
+  return (data as TimingConfig | null) ?? DEFAULTS;
+}
