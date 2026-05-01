@@ -11,6 +11,9 @@ import {
   Settings,
   ChevronLeft,
   LogOut,
+  AlertTriangle,
+  Ban,
+  Shield,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 
@@ -20,6 +23,9 @@ const NAV = [
   { href: '/admin/live',          label: 'Live en cours', Icon: Radio           },
   { href: '/admin/planning',      label: 'Planning',      Icon: Calendar        },
   { href: '/admin/temoignages',   label: 'Témoignages',   Icon: MessageSquare   },
+  { href: '/admin/feedback',      label: 'Signalements',  Icon: AlertTriangle   },
+  { href: '/admin/blacklist',     label: 'Blocages',      Icon: Ban             },
+  { href: '/admin/team',          label: 'Équipe',        Icon: Shield          },
   { href: '/admin/settings',      label: 'Paramètres',    Icon: Settings        },
 ];
 

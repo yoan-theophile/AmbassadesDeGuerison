@@ -10,7 +10,7 @@ export type TimingConfig = {
   queue_aging_days: number;
 };
 
-const DEFAULTS: TimingConfig = {
+export const DEFAULTS: TimingConfig = {
   campaign_ambassadors_days_before: 7,
   campaign_visitors_days_before: 3,
   host_reminder_days_before: 2,
