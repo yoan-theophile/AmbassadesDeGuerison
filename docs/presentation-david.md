@@ -36,16 +36,32 @@ pour vivre l'expérience en communauté plutôt que seul devant son écran.
    - Prénom, ville, pays
    - Type d'ambassade : chez lui (individuel) ou en église
    - Capacité d'accueil (ex: 5 personnes)
-   - Mode de contact : adresse publique / formulaire / validation manuelle
 5. Il regarde les **vidéos d'onboarding** obligatoires (formations David)
 6. Il accepte la **charte** de l'ambassadeur
-7. Son profil devient **actif** — il apparaît sur la carte publique
+7. Son profil est soumis **en attente de validation** — David reçoit une notification
+
+**Pipeline de validation (côté admin) :**
+
+```
+Inscription → en attente → David pré-approuve → Ambassadeur reçoit un email
+                                                          │
+                                                          ▼
+                                              Il remplit le questionnaire
+                                              d'enrichissement (parcours
+                                              spirituel, formation, etc.)
+                                                          │
+                                                          ▼
+                                              David valide → Profil VALIDÉ
+```
+
+Ce n'est qu'une fois **validé** que l'hôte peut être activé pour un live.
 
 ### Ce que l'hôte fait avant chaque live
 
-- Il se connecte à son tableau de bord (via le lien magique reçu par email)
-- Il clique **"Je suis disponible pour ce live"** pour s'activer
-- S'il est plein ou indisponible, il se désactive en un clic
+- Il reçoit un **email de David** avec un lien d'activation pour le live à venir
+- Il clique le lien → son ambassade s'active → il apparaît sur la carte publique
+- S'il n'est pas disponible, il ignore l'email (il n'apparaît pas sur la carte)
+- Pendant le live, si son ambassade est complète, il le signale depuis son tableau de bord
 
 ### Ce que l'hôte fait pendant le live
 
@@ -62,14 +78,12 @@ pour vivre l'expérience en communauté plutôt que seul devant son écran.
 2. David mentionne l'application et l'URL de la carte
 3. Le visiteur ouvre l'application — il voit une **carte des ambassades actives**
 4. Il clique sur une ambassade près de chez lui
-5. Selon le mode choisi par l'hôte :
-   - **Mode public** : l'adresse est affichée directement
-   - **Mode formulaire** : le visiteur envoie un message, l'hôte le reçoit
-   - **Mode approbation** : l'hôte doit accepter avant que l'adresse soit révélée
-6. Une fois accepté, le visiteur reçoit l'adresse par email + les consignes de l'hôte
+5. Il remplit un **formulaire de contact** (prénom, message)
+6. L'hôte reçoit une notification par email
+7. L'hôte **accepte** → le visiteur reçoit l'adresse et les consignes par email
 
 > **Note vie privée :** L'adresse exacte de l'hôte n'est jamais visible publiquement.
-> Elle est transmise uniquement après acceptation.
+> Elle est transmise uniquement après acceptation explicite de l'hôte.
 
 ---
 
@@ -79,7 +93,10 @@ pour vivre l'expérience en communauté plutôt que seul devant son écran.
 
 1. David crée un **événement** dans l'admin : titre, date, lien YouTube, lien StreamYard/Zoom
 2. Il envoie son email Mailchimp habituel avec le lien vers l'application
-3. Les hôtes actifs reçoivent une notification et s'activent d'eux-mêmes
+3. Dans l'admin (`/admin/calendrier`), il crée une **campagne email** pour le live :
+   - Il choisit la date d'envoi et un message personnalisé
+   - L'application envoie automatiquement un email à tous les ambassadeurs validés
+   - Chaque email contient un lien personnalisé — un clic suffit pour s'activer
 4. David consulte le **tableau de bord admin** : nombre d'hôtes actifs, pays, capacité totale
 
 ### Pendant le live

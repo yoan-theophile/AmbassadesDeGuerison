@@ -24,7 +24,7 @@
 
 1. **Le recrutement des ambassadeurs** — Comment ça se passe aujourd'hui ? Via WhatsApp ? Réseaux ? Vous les connaissez personnellement tous ? L'app doit-elle rester fermée (vous activez chaque ambassadeur) ou ouverte (n'importe qui peut s'inscrire) ?
 
-2. **Le délai de 24h** — Quand un visiteur demande à rejoindre une ambassade, l'adresse n'est révélée qu'au bout de 24h. L'hôte peut refuser sans s'expliquer. Est-ce que ça vous semble juste pour protéger vos ambassadeurs ?
+2. **L'acceptation explicite** — Quand un visiteur demande à rejoindre une ambassade, l'hôte reçoit un email et choisit d'accepter ou non. S'il accepte, le visiteur reçoit les coordonnées par email. L'hôte peut refuser sans s'expliquer. Est-ce que ce flux vous semble juste ?
 
 3. **Les signaux "main levée"** — Pendant le live, vous auriez `/admin/live` ouvert sur un deuxième écran. Vous voyez les ambassadeurs qui veulent vous passer un témoignage en direct. Vous avez besoin de ça, ou c'est trop complexe à gérer pendant que vous animez ?
 
@@ -46,7 +46,7 @@
 | Claire | Genève | Suisse | 8 places | actif |
 | Kofi | Abidjan | Côte d'Ivoire | 120 places | actif |
 | Aminata | Dakar | Sénégal | 60 places | actif |
-| Sophie | Bordeaux | France | 10 places | pending_onboarding |
+| Sophie | Bordeaux | France | 10 places | pending_review |
 
 ### 4 événements
 | Label | Titre | Statut |
@@ -112,23 +112,16 @@ La carte mondiale avec les épingles des ambassades actives + le bandeau événe
 - La barre de recherche permet à n'importe quel visiteur de trouver une ambassade près de chez lui
 - Si le visiteur zoome dans une zone sans ambassade (≥ niveau pays), un hint discret apparaît : *"Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →"*
 - Actualisation automatique toutes les 30 secondes sans rechargement de page
-- Sophie (Bordeaux) n'apparaît pas : statut `pending_onboarding`, pas encore visible
+- Sophie (Bordeaux) n'apparaît pas : statut `pending_review`, pas encore validée par l'admin
 
 ---
 
 ## Scénario 2 — Demande de contact (parcours visiteur)
- ! je viens avec combien de places ?
- ! envoie de demande, pas de réponse automatique | on mets juste dans l'email réponse
- De l'autre côté, Aminata peut dire oui ou non. et c'est après qu'elle recevra son adresse mail. Aminata reçoit le mail ou le numéro.
-
- avoir les process: Etape 1 ensuite 2.
- on garde le lien whatsapp.
-
 
 **Ce que montre ce scénario :**
-Un visiteur qui veut rejoindre une ambassade pour le prochain live. Le nouveau flux : auto-acceptation après 24h, pas de validation explicite de l'hôte.
+Un visiteur qui veut rejoindre une ambassade pour le prochain live. Flux actuel : le visiteur envoie sa demande → l'ambassadeur reçoit un email avec un lien → l'ambassadeur accepte ou refuse explicitement → si accepté, le visiteur reçoit les coordonnées par email.
 
-**Étapes :**
+**Étapes — côté visiteur :**
 1. Depuis la carte, cliquer sur **Marie (Paris)** → « Contacter → »
    - URL : `http://localhost:3000/ambassade/{id}`
 2. La page affiche :
@@ -141,13 +134,17 @@ Un visiteur qui veut rejoindre une ambassade pour le prochain live. Le nouveau f
    - **WhatsApp** (optionnel) : +33 6 12 34 56 78 — sélectionner le drapeau France
    - **Message** : Je viendrai avec mon épouse, nous sommes deux.
 4. Cliquer sur « Envoyer la demande »
-5. Message de confirmation : *"Un lien d'accès vous a été envoyé par e-mail. L'adresse de Marie sera disponible dans 24 heures."*
+5. Message de confirmation : *"Votre demande a été envoyée à Marie. Elle vous répondra par e-mail."*
+
+**Suite — côté ambassadeur (voir Scénario 6) :**
+- Marie reçoit un email avec le résumé de la demande et un bouton « Accepter »
+- Elle clique → page `/accueillir/{token}` → elle accepte
+- Thomas reçoit les coordonnées de Marie par email
 
 **Points clés :**
-- L'adresse privée n'est jamais visible avant l'expiration du délai de 24h
+- L'adresse de l'ambassadeur n'est jamais affichée sur le site — elle est envoyée par email uniquement après acceptation explicite de l'hôte
 - Le champ WhatsApp accepte n'importe quel indicatif pays (sélecteur de drapeau)
-- La demande est en statut `pending` — l'hôte peut refuser, sinon c'est automatique
-- Le visiteur reçoit un lien `/accueil-invite/{token}` par e-mail
+- La demande est en statut `pending` jusqu'à la décision de l'hôte — pas d'auto-acceptation
 
 ---
 
@@ -175,118 +172,7 @@ Une ambassade d'église avec lien WhatsApp direct.
 ## Scénario 4 — Inscription comme ambassadeur
 
 **Ce que montre ce scénario :**
-Le parcours pour devenir un nouvel ambassadeur, avec saisie de ville intelligente et sélection de pays complète.
-
-! L'adresse ne sera pas sur la carte
-! acceptée une fois que vous avez acccepeté
-à la placde de Adresse complète (privée)*
-! lien whatsapp: popup pour expliquer comment créer un lien de groupe whatsapp
-! envoyer la vidéo d'onboarding par email
-! RAjouter le bouton "j'accepte" dans l'email
-! Rajouter dans l'email la vidéo et le bouton
-! rendez vous dans votre boîte mail pour finaliser l'inscription
-cliquer sur le bouton.
-! vérifier le process pour entrer dans une famille
-! idée: grosse ville: géolocaliser à partir de l'adresse, par quartier par exemple ou menu déroulant
-! bug à résoudre: ambassade non activée
-
-On va recevoir beaucoup mais les gens doivent pouvoir choisir les dates auxquelles ils veulent participer.
-Ajouter un formulaire
-! blacklist par mail / numéro de téléphone
-! possibilité de désactiver 
-On a un calendrier: on envoie un mail à tous les ambassadeurs actifs.
-
-Est-ce que vous êtes intéressés ou non ?
-on met un lien pour activer leur ambassade sur la carte.
-voici la prochaine date: click sur oui => activer sur la carte, sinon la carte s'efface
-Si un visiteur a un problème,comme sur airbnb, les participants doivent pouvoir évaluer ce qu'ils ont vécu. C'est dans les deux sens. Chacun peut évaluer l'autre.
-
-onboarding:
-lire vidéo
-lire la charte
-on leur propose un autre mail pour qu'ils puissent nous parler d'eux.
-juste le prénom sur la carte
-nous on veut avoir juste le prénom
-on veut avoir leur numéro de téléphone: on n'affiche pas mais David peut les appeler
-système de visionnage(public) : téléphone, écran, portable
-avez-vous fait le défi de guérison ? formation vraiment libre ?
-est-ce que vous fréquentez une église ?
-catholique / protestant ?
-Avez-vous déjà lu un de mes livres ?
-Assisté à une conférence.
-
-Avec leur email dans mailchimp, on peut voir tous leurs tags.
-Avoir un mot pour dire qu'à la fin du formulaire, on peut les accepter ou pas.
-Savoir le poul des gens. Automatiser au maximum mais ça reste des gens.
-
-Qu'est-ce qui serait un drapeau rouge.
-- Prendre une photo du salon.
-- hérésie
-- 15 chats/insalubrité
-- homme qui cherche une femme
-
-Comment enlever de la friction par rapport aux personnes qui ont peur d'arriver.
-photo de profil: sourire, idée de la personne(insalubre, drapeau rouge)
-photo de leur salon(privé chez l'admin)
-ça montre que c'est du sérieux tout en enlevant de la carte
-
-prévalidation manuelle dans laquelle on valide que la personne est un candidat potentiel
-comme une certification
-la personne décidera d'elle-même des lives qu'elle va suivre
-cool si statut intermédiaire: approuvé, en attente, examen approfondi.
-peut-être elle(la sécrétaire de Camille) pourra appeler la personne
-
-Après le live, les participants reçoivent un mail pour savoir s'ils sont venus ensuite d'évaluer avec quelques critères:
-évaluation avec des étoiles: accueil, propreté, convivialité
-responsable peut aussi évaluer: signaler quand c'était pas bien ou good
-
-les gens puissent évoluer l'hôte
-à la fin du live, les gens puissent partager leurs feedbacks:
-est-ce qu'il y a un point à remonter, par exemple signaler un drapeau rouge
-l'assisante pourra le voir et prendre des mesures à ce sujet.
-
-super. 
-envisager une traduction en temps réel
-une application où 
-être sur plusieurs canaux, sur plusieurs pays
-il y a un niveau de filtre: 
-
-Serveur O2Switch
-Depôt: 
-Lien public: 
-
-Principe de faire confiance aux gens qui vontn ouvrir leur maison, des gens qui vont aller chez le gens, des guérisons.
-
-Intégrer l'IA
-Des gens qui posent des questions, avoir une FAQ.
-Volume: sondage d'intérêt.
-250 personnes qui disent "je suis prêt à ouvrir mon église"
-512 ça m'intéresse
-Générer des finances
-
-Pays:
-- France
-- Mexique
-- Espagne
-- Italie
-- Nouvelle Calidonie
-
-Système:
-Calibrer pour supporter 1000 ambassades
-Fonctionner par quartier
-Témoignages
-live samedi après midi (québequoi, france, réunion)
-
-Idée: celui qui soif doit avoir accès
-FAQ: questions - réponses
-public parfois agés
-
-
-Gestion des mails.
-
-Code réduction pour les bouquins.
-
-
+Le parcours pour devenir un nouvel ambassadeur. Le candidat remplit le formulaire → statut `pending_review` → l'admin pré-approuve → le candidat reçoit un email pour compléter son profil (questionnaire enrichissement) → l'admin valide définitivement.
 
 **Étapes :**
 1. Depuis la carte, cliquer sur « Devenir ambassadeur » (bouton indigo en haut à droite)
@@ -313,13 +199,13 @@ Code réduction pour les bouquins.
    - Bouton « WhatsApp » → partage pré-rempli : *"Je viens de m'inscrire comme ambassadeur…"*
 
 **Points clés :**
-- La ville avec autocomplete est géocodée → l'épingle apparaîtra précisément sur la carte une fois activé
+- La ville avec autocomplete est géocodée → l'épingle apparaîtra précisément sur la carte une fois validé et activé
 - Le pays se remplit automatiquement depuis le geocoding (ex : sélectionner "Yaoundé" → pays = "Cameroun")
 - Le bouton "Continuer" est bloqué tant qu'une ville n'a pas été sélectionnée dans la liste (pas de saisie libre)
 - 200+ pays disponibles, francophones épinglés en tête
-- L'adresse est stockée mais jamais visible publiquement avant activation
-- La candidature arrive dans la modération admin
-- Dès la confirmation, l'ambassadeur est incité à partager — viralité dès le premier contact
+- L'adresse est stockée mais jamais visible publiquement
+- La candidature arrive dans la modération admin avec statut `pending_review` — **pas d'auto-activation**
+- L'ambassadeur n'apparaît sur la carte qu'après validation complète + activation manuelle pour un live
 
 
 ---
@@ -350,55 +236,54 @@ La vue de pilotage pour David.
 
 ---
 
-## Scénario 6 — L'invitation visiteur (nouveau flux auto-accept)
+## Scénario 6 — L'ambassadeur reçoit et accepte une demande
 
 **Ce que montre ce scénario :**
-Ce que reçoit un visiteur après avoir soumis une demande. L'adresse est masquée 24h puis révélée automatiquement.
+Ce que voit l'ambassadeur quand un visiteur lui demande de rejoindre son ambassade. L'hôte accepte ou refuse explicitement — aucune auto-validation.
 
-**Contexte :** Pierre a envoyé une demande à Marie (Paris). Sa demande est en statut `pending`. Il a déjà consulté son lien (onboarding_completed = true).
+**Contexte :** Nathalie a envoyé une demande à Marie (Paris). Marie reçoit un email avec un lien tokenisé.
 
-**Simuler l'état « délai écoulé » (adresse visible) :**
-1. Dans Supabase Dashboard → Table `contact_requests`
-2. Trouver la ligne de **Pierre** (visitor_email = `pierre.moreau@mail.com`)
-3. Copier la valeur de `action_token`
-4. Modifier `created_at` à une date d'il y a plus de 24h (ex : `2026-04-20 10:00:00`)
-5. Ouvrir : `http://localhost:3000/accueil-invite/{action_token}`
-6. La page affiche directement l'adresse : *"12 rue de la Paix, 75001 Paris"*
-
-**Simuler l'état « en attente » (< 24h, adresse masquée) :**
-1. Même chemin, mais `created_at` laissé à maintenant
-2. Ouvrir le lien → page « Bienvenue chez Marie »
-3. Les règles générales + consignes de Marie s'affichent
-4. Cliquer sur « J'ai bien pris note »
-5. Message : *"Votre adresse sera disponible dans X heures"* (compte à rebours)
-
-**Points clés :**
-- L'adresse n'est dévoilée qu'après 24h (évaluation lazy, pas de cron)
-- Le visiteur peut consulter son lien autant de fois qu'il veut
-- `action_token` est le même UUID pour le lien visiteur et le lien de refus de l'hôte
-
----
-
-## Scénario 7 — L'hôte refuse une demande
-
-**Ce que montre ce scénario :**
-L'hôte peut refuser une demande via son lien de refus, même après l'auto-accept.
-
-**Contexte :** Nathalie a envoyé une demande à Marie mais Marie ne peut pas l'accueillir.
-
-**Étapes :**
+**Simuler le flux d'acceptation :**
 1. Dans Supabase Dashboard → Table `contact_requests`
 2. Trouver la ligne de **Nathalie** (visitor_email = `nathalie.v@mail.com`)
 3. Copier la valeur de `action_token`
+4. Ouvrir : `http://localhost:3000/accueillir/{action_token}`
+5. La page affiche :
+   - Nom du visiteur, nombre de personnes, message
+   - Nom de l'event et date
+   - Deux boutons : **« Accepter »** (vert) et **« Refuser »** (rouge)
+6. Cliquer sur **« Accepter »**
+7. Confirmation : *"Nathalie recevra vos coordonnées par e-mail."*
+8. Nathalie reçoit un email avec l'adresse complète de Marie
+
+**Points clés :**
+- Aucune authentification requise : le lien tokenisé identifie l'hôte
+- L'adresse n'est JAMAIS affichée sur le site — envoyée par email uniquement après acceptation
+- L'hôte peut refuser depuis cette même page ou via le lien rapide `/refuser/{token}` dans l'email
+- La page `/accueillir/[token]` gère aussi le cas « déjà accepté » ou « déjà refusé » proprement
+
+---
+
+## Scénario 7 — L'hôte refuse une demande (lien rapide)
+
+**Ce que montre ce scénario :**
+L'hôte peut refuser une demande via un lien dédié, sans passer par la page d'acceptation complète.
+
+**Contexte :** L'hôte reçoit un email avec deux liens : « Voir la demande » (`/accueillir/`) et « Refuser » (`/refuser/`). Le lien `/refuser/` est le chemin rapide.
+
+**Étapes :**
+1. Dans Supabase Dashboard → Table `contact_requests`
+2. Trouver une ligne en statut `pending` (ex : Luc → Marie, `luc.b@mail.com`)
+3. Copier la valeur de `action_token`
 4. Ouvrir : `http://localhost:3000/refuser/{action_token}`
-5. La page demande confirmation : *"Refuser la demande de Nathalie ?"*
-6. Cliquer sur « Confirmer le refus »
-7. Statut passe à `declined` — `accepted_count` décrémenté
+5. La page demande confirmation : *"Refuser la demande de Luc ?"*
+6. Cliquer sur « Oui, refuser cette demande »
+7. Statut passe à `declined` — le visiteur est notifié par email
 
 **Points clés :**
 - L'hôte n'a pas besoin de se connecter : le lien tokenisé suffit
 - La demande de Laure (Fatou/Bruxelles) est déjà en `declined` dans les données de démo
-- Refus possible à tout moment, même après la fenêtre 24h
+- Refus et acceptation sont deux chemins distincts : `/refuser/` (rapide) et `/accueillir/` (contexte complet)
 
 ---
 
@@ -410,11 +295,11 @@ L'hôte peut refuser une demande via son lien de refus, même après l'auto-acce
 1. Ouvrir la carte sur `http://localhost:3000`
 2. **Pitch :** *"Voici la carte en temps réel. Chaque épingle est une maison ouverte pour votre prochain live."*
 3. Dézoomer au maximum → la carte mondiale avec des épingles sur 3 continents (Europe, Amérique, Afrique)
-4. **Pitch :** *"Quand vous créez un live, tous les ambassadeurs sont automatiquement activés. En un clic, 6 pays sont prêts à vous accueillir."*
+4. **Pitch :** *"J-7 avant le live, vous planifiez un envoi email depuis le calendrier. Chaque ambassadeur reçoit un lien pour confirmer sa participation. Ceux qui cliquent apparaissent sur la carte."*
 5. Cliquer sur l'épingle de **Kofi à Abidjan** → *"120 personnes peuvent se réunir en Côte d'Ivoire pour suivre votre message."*
 6. Cliquer sur l'épingle de **Aminata à Dakar** → *"60 places au Sénégal."*
 7. Cliquer sur **Marie à Paris** → *"Et ici, 15 places disponibles à Paris, avec ses propres consignes d'accueil."*
-8. **Pitch :** *"Le visiteur envoie une demande, reçoit un lien sécurisé, et l'adresse s'affiche automatiquement après 24h. L'hôte peut refuser à tout moment. Zéro compte requis pour le visiteur."*
+8. **Pitch :** *"Le visiteur envoie une demande. L'hôte reçoit un email et accepte ou refuse explicitement. Si accepté, le visiteur reçoit les coordonnées par email. Aucun compte requis — tout passe par un lien tokenisé sécurisé."*
 
 ---
 
@@ -474,24 +359,25 @@ La page que David ouvre sur un 2e écran pendant le live.
 ## Scénario 11 — Témoignage visiteur (parcours complet)
 
 **Ce que montre ce scénario :**
-Un visiteur qui a reçu une guérison peut témoigner directement depuis son lien d'invite.
-
-**Contexte :** Pierre a déjà consulté son lien et l'adresse est visible. Modifier `created_at` de sa demande à -25h (voir Scénario 6).
+Un visiteur qui a reçu une guérison peut témoigner via le formulaire public, sans compte.
 
 **Étapes :**
-1. Ouvrir le lien `/accueil-invite/{action_token}` de Pierre
-2. L'adresse de Marie s'affiche
-3. En bas de la page, section **« Partagez votre témoignage »** :
-   - Zone de texte : *"J'avais des douleurs chroniques depuis 10 ans. Pendant le live, quelque chose s'est passé — je suis guéri !"*
+1. Ouvrir `http://localhost:3000/temoignages/nouveau`
+   - Ou cliquer sur « Partage ton témoignage » depuis `/temoignages`
+2. Sélectionner le live dans le dropdown : *"Nuit de Prière — Souffle nouveau"*
+3. Remplir le témoignage :
+   - Zone de texte (min 20 chars) : *"J'avais des douleurs chroniques depuis 10 ans. Pendant le live, quelque chose s'est passé — je suis guéri !"*
    - Prénom (optionnel) : *Pierre*
-   - Cliquer sur « Envoyer mon témoignage »
-4. Confirmation : *"Merci ! Votre témoignage sera publié après validation."*
-5. Dans `/admin/temoignages` → le témoignage de Pierre apparaît dans les en attente
-6. David clique « Publier » → le témoignage est visible sur `/temoignages`
+   - Ville (optionnel) : *Paris*
+4. Cliquer sur « Envoyer mon témoignage »
+5. Confirmation : *"Merci ! Votre témoignage sera publié après validation."*
+6. Dans `/admin/temoignages` → le témoignage de Pierre apparaît dans les en attente (`is_visible = false`)
+7. David clique « Publier » → visible sur `/temoignages`
 
 **Points clés :**
-- Zéro compte requis pour le visiteur : le token de son lien suffit
-- Les témoignages visiteurs et ambassadeurs sont modérés au même endroit
+- Accès public, aucun compte requis, aucun token nécessaire
+- Le formulaire est pré-rempli si `?live=<uuid>` est passé dans l'URL (depuis le filtre `/temoignages`)
+- Les témoignages anonymes (`host_profile_id = NULL`) et ceux des ambassadeurs se modèrent au même endroit
 
 ---
 
@@ -539,6 +425,80 @@ La vitrine publique des témoignages — ce que n'importe quel visiteur peut voi
 
 ---
 
+## Scénario 14 — Pipeline de validation ambassadeur (pré-approbation → questionnaire → validation)
+
+**Ce que montre ce scénario :**
+Le cycle complet de validation d'un nouveau candidat : l'admin pré-approuve → le candidat reçoit un email et complète son questionnaire → l'admin valide définitivement.
+
+**Prérequis :** Sophie (Bordeaux) a le statut `pending_review` dans les données de démo.
+
+**Côté admin — pré-approbation :**
+1. Ouvrir `http://localhost:3000/admin/ambassadeurs`
+2. Trouver **Sophie Leroux (Bordeaux)** — badge statut `En examen`
+3. Cliquer sur « Pré-approuver » → statut passe à `pre_approved`
+4. Sophie reçoit un email avec un lien vers `/dashboard/questionnaire`
+
+**Côté ambassadeur — questionnaire enrichissement :**
+1. Sophie se connecte via le magic link → `/dashboard`
+2. Un encart pastoral s'affiche en haut : *"Félicitations, tu as été pré-approuvée ! Il reste une dernière étape."*
+3. Cliquer sur « Compléter mon profil →» → `/dashboard/questionnaire`
+4. Remplir :
+   - *"J'ai suivi le Défi Guérison"* (checkbox)
+   - Fréquentation église : Régulier
+   - Dénomination : Protestant évangélique
+   - *"J'ai déjà assisté à une conférence de David Théry"* (checkbox)
+   - Parcours spirituel : quelques lignes
+5. Cliquer sur « Envoyer » → statut passe à `enrichment_pending`
+6. L'équipe reçoit une notification email : *"Sophie a complété son questionnaire — en attente de validation finale."*
+
+**Côté admin — validation finale :**
+1. Dans `/admin/ambassadeurs`, Sophie affiche le badge `Dossier complet`
+2. Consulter le questionnaire enrichissement dans la vue détail
+3. Cliquer « Valider » → statut passe à `validated`
+4. Le trigger DB crée automatiquement une `host_activation` avec `is_active=false`
+5. Sophie reçoit l'email de bienvenue ambassadeur
+
+**Points clés :**
+- La transition `pre_approved → validated` directe est bloquée : le questionnaire est obligatoire
+- L'admin peut néanmoins utiliser « Valider sans questionnaire » (action distincte, loggée)
+- Sophie n'apparaît sur la carte qu'après activation explicite pour un live via campagne email
+
+---
+
+## Scénario 15 — Activation par campagne email (admin → ambassadeur → carte)
+
+**Ce que montre ce scénario :**
+Comment David active ses ambassadeurs pour un live via une campagne email planifiée.
+
+**Côté admin — planification de la campagne :**
+1. Ouvrir `http://localhost:3000/admin/calendrier`
+2. Dans le formulaire « Programmer une campagne » :
+   - **Live** : sélectionner *"Live Guérison — La puissance de l'Amour"* (J+10)
+   - **Type** : Ambassadeurs
+   - **Date d'envoi** : J-7 avant le live, 10h00
+   - **Message personnalisé** (optionnel) : *"Chers ambassadeurs, le prochain live aura lieu dans 7 jours. Êtes-vous disponibles pour accueillir ?"*
+3. Cliquer sur « Planifier la campagne »
+4. La campagne apparaît dans la liste avec statut `pending`
+
+**Ce qui se passe à l'envoi (cron toutes les 5 min) :**
+- Le cron envoie un email à chaque ambassadeur `validated`
+- L'email contient un bouton **« Je m'inscris comme ambassadeur »**
+- Le bouton pointe vers `/accueillir/activer/{activation_token}` (token unique par ambassadeur)
+
+**Côté ambassadeur — activation depuis l'email :**
+1. Marie reçoit l'email de campagne
+2. Elle clique sur le bouton → page `/accueillir/activer/{token}`
+3. La page affiche : titre du live, date, bouton « Je m'inscris comme ambassadeur »
+4. Marie clique → `host_activations.is_active = true` → elle apparaît sur la carte
+
+**Points clés :**
+- Aucune authentification requise : le token d'activation est à usage unique et suffisant
+- Si Marie clique deux fois → idempotent (pas d'erreur, pas de doublon)
+- Ambassadeurs non actifs via campagne = ne figurent pas sur la carte pour ce live
+- Le statut de la campagne passe `pending → sending → sent` avec compteur d'envois
+
+---
+
 ## Pour réinitialiser les données entre les démos
 
 ```bash
@@ -575,4 +535,4 @@ Pour le compte développeur (`theo.nelson.ia@gmail.com`), la magic link arrive n
 
 ---
 
-*Mis à jour le 24 avril 2026 — DavidTheryApp v1.4 (seed ×8 ambassadeurs + 4 events + 14 témoignages, barre recherche carte, admin/live compteur, scénario 12 modération post-live, section discussion préalable)*
+*Mis à jour le 1 mai 2026 — DavidTheryApp v1.6 (nettoyage notes brutes scénarios 2 et 4 ; pitch 24h auto supprimé ; scénario 11 réécrit /accueil-invite → /temoignages/nouveau ; scénario 14 : pipeline validation enrichissement ; scénario 15 : activation par campagne email)*

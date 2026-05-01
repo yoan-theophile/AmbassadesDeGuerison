@@ -4,9 +4,9 @@ Généré le 2026-04-19. Items différés ou à planifier après le premier live
 
 ---
 
-## TODO-1 : Rate limiting sur `/api/contact-requests/*/acknowledge` — **sans objet en phase de conception**
+## TODO-1 : Rate limiting sur `/api/contact-requests/*/acknowledge` — **ARCHIVÉ**
 
-**Statut mis à jour mai 2026 :** la route `/accueil-invite/[token]` (et donc l'endpoint acknowledge) sera supprimée en Phase 2 du pivot live-driven (suppression du système 24h auto-révélation, remplacé par mail unique acceptation côté hôte). Ce TODO devient **sans objet** sauf si on revient en arrière sur le pivot. À archiver quand Phase 2 livrée.
+**Statut mai 2026 :** Phase 2 livrée. La route `/accueil-invite/[token]` et le système 24h auto-révélation sont supprimés. Le flux est désormais : hôte accepte explicitement via `/accueillir/[token]` → visiteur reçoit adresse par email. Ce TODO est **archivé**.
 
 
 
@@ -124,7 +124,7 @@ Voir TODO-2 ci-dessus.
 
 **Contexte :** Ressort de l'eng review du pivot live-driven (2026-05-01). À évaluer après Phase 4. Si volume bounce > 1% au premier mois post-lancement, activer ce TODO.
 
-**Dépend de :** Phase 2 livrée (suppression `/accueil-invite/[token]`). Resend webhook bounce events configurés.
+**Dépend de :** Resend webhook bounce events configurés. (Phase 2 déjà livrée — dépendance levée.)
 
 ---
 
@@ -153,4 +153,8 @@ Voir TODO-2 ci-dessus.
 **Cons :** Complexité du Service Worker, gestion des permissions, taux d'opt-in faible sur web.
 
 **Contexte :** Resend email suffit pour v1. Ce TODO s'active si les hôtes se plaignent de délais de notification.
+
+---
+
+_(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 

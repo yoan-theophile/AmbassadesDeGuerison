@@ -488,11 +488,13 @@ npm run test:e2e
 
 | Transition | Action | Résultat attendu |
 |---|---|---|
-| `pending_review → pre_approved` | Pré-approuver Sophie | Statut `pre_approved`, email envoyé |
-| `pre_approved → validated` | Valider (après onboarding) | Statut `validated` |
+| `pending_review → pre_approved` | Pré-approuver Sophie | Statut `pre_approved`, email questionnaire envoyé |
+| `pre_approved → enrichment_pending` | Sophie soumet questionnaire sur `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin |
+| `enrichment_pending → validated` | Valider Sophie (admin) | Statut `validated` |
 | `validated → suspended` | Suspendre Marie | Statut `suspended`, pin disparaît de la carte |
 | `suspended → validated` | Réactiver Marie | Statut `validated`, pin réapparaît |
 | `pending_review → rejected` | Rejeter Sophie | Statut `rejected` |
+| ~~`pre_approved → validated`~~ | ~~Bypass questionnaire~~ | **BLOQUÉ** — transition directe interdite |
 
 ---
 

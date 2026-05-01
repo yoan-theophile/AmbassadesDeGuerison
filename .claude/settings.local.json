@@ -39,7 +39,14 @@
       "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#10 — Étendre/- [x] **#10 — Étendre/' TASKS.md)",
       "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#11 — `lib\\\\/homepage-data/- [x] **#11 — `lib\\\\/homepage-data/' TASKS.md)",
       "Bash(ls app/api/admin/feedbacks)",
-      "Bash(ls app/api/admin/blacklist)"
+      "Bash(ls app/api/admin/blacklist)",
+      "PowerShell(codex review *)",
+      "PowerShell(codex exec *)",
+      "Bash(xargs grep *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\tagne\\\\Documents\\\\projects\\\\DavidTheryApp\\\\app\" -Recurse -Include \"*.ts\",\"*.tsx\")",
+      "Bash(Select-String -Pattern \"enrichment|questionnaire\")",
+      "Bash(Select-Object -Property Filename, LineNumber, Line)",
+      "Bash(Format-List)"
     ]
   }
 }

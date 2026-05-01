@@ -85,6 +85,7 @@ Flux admin-driven (self-service supprimé) :
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/planning` | Gestion des événements (création, modification) |
+| `/admin/calendrier` | Campagnes email — liste des campagnes planifiées + formulaire pour programmer une campagne ambassadeurs ou visiteurs (`CalendrierCampaignSection`) |
 | `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 

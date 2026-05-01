@@ -19,16 +19,21 @@
 
 ---
 
-## Structure des données (7 tables)
+## Structure des données (12 tables)
 
 ```
-events              → Les lives (titre, date, lien YouTube, lien StreamYard)
-host_profiles       → Les hôtes ambassadeurs (profil permanent)
-host_activations    → Qui est actif pour quel live (créé par trigger automatique)
-contact_requests    → Demandes de visiteurs vers un hôte
-live_signals        → Signaux "moment fort" pendant le live
-testimonials        → Témoignages post-live des hôtes
-ratings             → (prévu v2 — pas encore implémenté)
+events               → Les lives (titre, date, lien YouTube, lien StreamYard)
+host_profiles        → Les hôtes ambassadeurs (profil permanent)
+host_activations     → Qui est actif pour quel live (créé par trigger automatique)
+contact_requests     → Demandes de visiteurs vers un hôte
+live_signals         → Signaux "moment fort" pendant le live
+testimonials         → Témoignages post-live (hôtes + soumissions publiques anonymes)
+live_feedbacks       → Feedbacks structurés post-live (internes, non publics)
+admin_users          → Table des comptes admin (role = 'admin' dans user_metadata Supabase)
+scheduled_campaigns  → Campagnes email programmées (ambassadeurs ou visiteurs)
+campaign_recipients  → Destinataires snapshottés au moment de la création de la campagne
+moderation_log       → Journal des actions de modération admin
+onboarding_config    → Singleton — URL vidéo onboarding + chemin PDF charte (id = 1)
 ```
 
 Les données des hôtes et visiteurs sont protégées par **RLS (Row Level Security)** :
@@ -202,9 +207,15 @@ ORDER BY ls.created_at DESC;
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
+| Bienvenue ambassadeur | Hôte termine l'onboarding (inscription) |
+| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire |
+| Notification admin (nouvelle candidature) | Nouveau profil `pending_review` créé |
+| Notification admin (questionnaire soumis) | Hôte soumet questionnaire → `enrichment_pending` |
 | Signal approuvé | Admin approuve un signal live |
-| Confirmation inscription | Hôte termine l'onboarding |
-| Consignes invité | Visiteur accepté par un hôte |
+| Nouvelle demande de contact | Visiteur soumet une demande → email à l'hôte |
+| Hôte accepte — adresse au visiteur | Hôte accepte la demande → adresse envoyée au visiteur |
+| Activation campagne ambassadeur | Cron envoie la campagne → lien `/accueillir/activer/[token]` |
+| Activation campagne visiteur | Cron envoie la campagne visiteurs → lien avec désinscription |
 
 ### Voir les emails envoyés
 
@@ -236,6 +247,39 @@ Si 0 hôte actif 48h avant un live → email d'alerte à l'admin.
 → Action : vérifie host_activations pour les events dans les 48h
 ```
 
+### dispatch-campaigns.yml
+
+Déclenche l'envoi des campagnes email dont la date d'envoi est atteinte.
+
+```
+.github/workflows/dispatch-campaigns.yml
+→ Cron : toutes les 15 minutes
+→ Action : POST /api/cron/dispatch-campaigns (header x-cron-secret)
+→ Lit scheduled_campaigns WHERE status='pending' AND scheduled_at <= now
+→ Envoie les emails aux campaign_recipients, marque status='sent'
+```
+
+### auto-decline.yml
+
+Décline automatiquement les demandes de contact sans réponse de l'hôte après 24h.
+
+```
+.github/workflows/auto-decline.yml
+→ Cron : quotidien
+→ Action : POST /api/cron/auto-decline
+→ Passe les contact_requests en status='declined' si created_at < now - 24h et status='pending'
+```
+
+### feedback-emails.yml
+
+Envoie les emails de retour d'expérience aux visiteurs après chaque live.
+
+```
+.github/workflows/feedback-emails.yml
+→ Cron : déclenché manuellement ou après la fin d'un live
+→ Action : POST /api/cron/feedback-emails
+```
+
 ---
 
 ## Incidents courants
@@ -243,7 +287,7 @@ Si 0 hôte actif 48h avant un live → email d'alerte à l'admin.
 ### "Les hôtes n'apparaissent pas sur la carte"
 
 1. Vérifier que l'événement existe et que `event_date` est correct
-2. Vérifier que les hôtes ont `status = 'active'` dans `host_profiles`
+2. Vérifier que les hôtes ont `status = 'validated'` dans `host_profiles`
 3. Vérifier que `host_activations.is_active = TRUE` pour cet événement
 4. Vérifier que `lat` et `lng` ne sont pas NULL (si NULL, `geocoding_failed = TRUE`)
 
@@ -270,15 +314,16 @@ curl -X POST https://api.supabase.com/v1/projects/TON_PROJECT_ID/restore \
 
 ### "Le trigger host_activations ne s'est pas déclenché"
 
-Le trigger `create_activation_on_onboarding_complete` crée automatiquement les activations
-quand un événement est créé. Si les activations manquent :
+Le trigger `trg_auto_activate_host_on_validated` crée automatiquement une entrée
+`host_activations` (avec `is_active = FALSE` par défaut) pour chaque event à venir
+quand un hôte passe au statut `validated`. Si des activations manquent :
 
 ```sql
 -- Créer manuellement les activations manquantes
 INSERT INTO host_activations (host_profile_id, event_id, capacity)
 SELECT hp.id, 'ID_DE_LEVENEMENT', hp.capacity_default
 FROM host_profiles hp
-WHERE hp.status = 'active'
+WHERE hp.status = 'validated'
 AND hp.id NOT IN (
   SELECT host_profile_id FROM host_activations WHERE event_id = 'ID_DE_LEVENEMENT'
 );

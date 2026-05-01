@@ -213,6 +213,100 @@
 
 ---
 
+## Ordre 8 — Correctifs campagnes email + pipeline enrichissement (CEO Review 2026-05-01)
+
+> Source : CEO review + Codex second opinion du 2026-05-01. TODOs 11-16 convertis en tâches.
+> 14 tâches. Implémentation à faire dans l'ordre (#58 → #71).
+
+- [ ] **#58 — `scripts/reset-db.sql` : 6 corrections schéma**
+  1. `scheduled_campaigns` : renommer `audience → type` et `send_at → scheduled_at` (mismatch SQL↔code).
+  2. `campaign_recipients` : ajouter `first_name TEXT`, `unsubscribe_token UUID DEFAULT gen_random_uuid()`, `activation_token UUID DEFAULT gen_random_uuid()` ; étendre le CHECK de `status` avec `'unsubscribed'`.
+  3. `host_profiles` : ajouter `phone TEXT`, `livres_lus TEXT`, `conferences_assistees BOOLEAN DEFAULT false` (conférence David = booléen oui/non, pas une liste).
+  4. RLS policy `host_activations` UPDATE : remplacer `createServiceClient()` sans auth par une policy `auth.uid() = host_profiles.user_id` via la jointure FK. Éliminer le TOCTOU.
+  5. Corriger le CHECK `recipient_type` : `"ambassador"` et `"visitor"` en guillemets simples SQL (actuellement guillemets doubles invalides en PostgreSQL).
+  6. Relancer `npm run db:reset && node scripts/seed.js` sans erreur.
+
+- [ ] **#59 — `POST /api/admin/campaigns` : snapshot destinataires avec transaction atomique**
+  Après l'INSERT dans `scheduled_campaigns`, ajouter le snapshot des destinataires dans `campaign_recipients` dans la même transaction (atomique via `supabase.rpc` ou `BEGIN`/`COMMIT` service role).
+  - `type='ambassadeurs'` : `SELECT id, email, first_name FROM host_profiles WHERE status='validated'`. INSERT `campaign_recipients` avec `recipient_type='ambassador'`.
+  - `type='visiteurs'` : `SELECT DISTINCT cr.email, cr.first_name FROM contact_requests cr JOIN host_activations ha ON cr.host_activation_id = ha.id WHERE ha.event_id = $event_id AND cr.status = 'accepted'`. INSERT avec `recipient_type='visitor'`.
+  - Si l'INSERT `campaign_recipients` échoue → rollback du `scheduled_campaigns`. Retourner 500, pas de campagne à moitié créée.
+
+- [ ] **#60 — Cron `dispatch-campaigns` : 4 bugs à corriger**
+  Dans `app/api/cron/dispatch-campaigns/route.ts` :
+  1. **Pagination** : remplacer `OFFSET` par curseur `WHERE id > last_id ORDER BY id LIMIT 100` — l'OFFSET actuel saute des lignes quand le filtre `status='pending'` rétrécit.
+  2. **Promise.allSettled** : remplacer par tracking explicite des failures — chaque envoi raté doit incrémenter `attempts`, écrire `error`, et ne PAS marquer `status='sent'`. Après 3 attempts : `status='failed'`.
+  3. **`activateUrl`** : remplacer `/dashboard` par `${appUrl}/accueillir/activer/${r.activation_token}` (token dédié, pas l'UUID host_activation_id).
+  4. **Update status** : remplacer `.update({ sent: true, sent_at: ... })` par `.update({ status: 'sent', sent_at: ... })` (colonne `sent BOOLEAN` n'existe pas dans le schéma final).
+
+- [ ] **#61 — `POST /api/campaign-activations` : endpoint activation par token**
+  Nouvelle route `app/api/campaign-activations/route.ts`. Body : `{ activation_token: string }`.
+  - Lookup `campaign_recipients WHERE activation_token = $token AND recipient_type = 'ambassador'`. Retourne 404 si introuvable.
+  - Récupérer `host_profile_id` associé. Trouver `host_activations.id` pour `(host_profile_id, event_id)`.
+  - UPDATE `host_activations SET is_active = true`. Idempotent : si déjà `is_active = true`, retourner 200 sans erreur.
+  - UPDATE `campaign_recipients SET status = 'activated'` pour ce token.
+  - Utiliser `createServiceClient()` (pas d'auth cookie : l'ambassadeur clique depuis son email).
+
+- [ ] **#62 — Fix `app/api/unsubscribe/[token]/route.ts` + créer page**
+  L'API existe mais utilise les mauvaises colonnes.
+  - Fix route : lookup par `campaign_recipients.unsubscribe_token`, UPDATE `status = 'unsubscribed'`. Pas d'info leak en cas de token invalide (200 silencieux ou message générique).
+  - Créer `app/unsubscribe/[token]/page.tsx` : page statique publique (no auth). Message de confirmation pastoral sobre. Lien retour vers `/`.
+
+- [ ] **#63 — `app/accueillir/activer/[token]/page.tsx` : page activation email**
+  Page publique (no auth). Récupère le contexte depuis `campaign_recipients JOIN scheduled_campaigns JOIN events` via `activation_token`.
+  - États à gérer : token invalide → message d'erreur, déjà activé → confirmation "Vous êtes déjà inscrit comme ambassadeur pour ce live", valide → affiche titre + date du live + bouton "Je m'inscris comme ambassadeur".
+  - Click → POST `/api/campaign-activations` → confirmation visuelle. Pas de redirect, rester sur la page.
+
+- [ ] **#64 — `PATCH /api/host-activations/[id]` : RLS + retrait `is_full` + anon client**
+  Actuellement : `createServiceClient()` sans vérification auth → n'importe qui avec un UUID peut toggler n'importe quelle activation.
+  - Passer à `createClient()` (anon). La RLS policy ajoutée en #58 vérifie que `auth.uid() = host_profiles.user_id`.
+  - Retirer `is_full` des champs acceptés côté API : `is_full` doit être calculé côté DB (nombre de demandes `accepted` ≥ `capacity`), jamais writable par l'user.
+  - Si la RLS bloque → 403 propagé par Supabase, le handler retourne l'erreur Supabase directement.
+
+- [ ] **#65 — `PATCH /api/ambassadeur/enrichissement` : route questionnaire enrichissement**
+  Nouvelle route `app/api/ambassadeur/enrichissement/route.ts`. Auth obligatoire via `createClient().auth.getUser()`.
+  - Vérifier que `host_profiles.status = 'pre_approved'` pour cet user. Retourner 403 sinon.
+  - Body accepté : `{ healing_challenge_done, church_attendance, denomination, parcours_spirituel, phone, livres_lus, conferences_assistees }`.
+  - UPDATE `host_profiles SET [...], status = 'enrichment_pending'`.
+  - Déclencher `sendEnrichissementRecu` (mail admin : "Un candidat a rempli son questionnaire — en attente de validation finale").
+
+- [ ] **#66 — `/dashboard/questionnaire/page.tsx` : formulaire enrichissement**
+  Nouvelle route `app/dashboard/questionnaire/page.tsx`. Accessible uniquement si `profile.status === 'pre_approved'`.
+  - Champs : `healing_challenge_done` (checkbox "J'ai suivi le Défi Guérison"), `church_attendance` (select : régulier / occasionnel / non), `denomination` (select ou texte libre), `parcours_spirituel` (textarea 500 chars max), `phone` (tel input, optionnel), `livres_lus` (textarea 300 chars), `conferences_assistees` (checkbox "J'ai déjà assisté à une conférence de David Théry").
+  - Submit → PATCH `/api/ambassadeur/enrichissement` → message de confirmation "Ton profil a été envoyé à l'équipe pour validation finale. Tu seras informé par email."
+
+- [ ] **#67 — Dashboard ambassadeur : encart `pre_approved`**
+  Dans `app/dashboard/page.tsx`, si `profile.status === 'pre_approved'` : afficher un encart pastoral prominent en haut du dashboard.
+  - Titre : "Félicitations, tu as été pré-approuvé !" Sous-titre : "Il reste une dernière étape avant de rejoindre la carte des ambassadeurs."
+  - Bouton indigo "Compléter mon profil →" qui navigue vers `/dashboard/questionnaire`.
+  - Si `status === 'enrichment_pending'` : encart différent "Ton dossier est en cours d'examen. Tu seras contacté prochainement."
+
+- [ ] **#68 — Email pré-approbation : ajouter lien questionnaire**
+  Dans `lib/email/templates.ts`, template `PRE_VALIDATION_ACCORDEE` : ajouter un CTA clair vers `/dashboard/questionnaire`.
+  - Texte : "Pour finaliser ta candidature, complète ton profil enrichi en cliquant sur le bouton ci-dessous. Cela prend moins de 5 minutes."
+  - Bouton `href="${appUrl}/dashboard/questionnaire"`.
+  - Vérifier que `sendPreValidationAccordee` dans `lib/email/send.ts` est bien appelé quand l'admin passe un candidat à `pre_approved`.
+
+- [ ] **#69 — Admin status route : retirer la transition directe `pre_approved → validated`**
+  Dans `app/api/admin/ambassadeurs/[id]/status/route.ts`, la transition `pre_approved → validated` ne doit plus être possible via l'action standard.
+  - Action standard `'validated'` depuis `pre_approved` : bloquer avec 400 "Le candidat doit d'abord remplir le questionnaire. Utilisez 'Valider sans questionnaire' si nécessaire."
+  - Ajouter une action explicite distincte `'validated_bypass'` (ou équivalent) pour les cas où David veut valider sans questionnaire. Cette action doit logger dans `moderation_log` avec `reason='bypass_enrichment'`.
+  - La transition standard reste : `enrichment_pending → validated`.
+
+- [ ] **#70 — Admin `/admin/ambassadeurs` : afficher données questionnaire**
+  Dans la vue détail ambassadeur (`/admin/ambassadeurs` datatable ou page modale) :
+  - Afficher les champs enrichissement : `phone`, `conferences_assistees` (Oui/Non), `livres_lus`, `healing_challenge_done` (badge vert si vrai), `church_attendance`, `denomination`, `parcours_spirituel`.
+  - Section "Questionnaire enrichissement" avec badge statut (vide = non rempli, rempli = date de soumission). Si `status = 'enrichment_pending'` : bouton "Valider" prominent.
+
+- [ ] **#71 — `/inscription` : ajouter champ `phone` optionnel**
+  Dans `app/inscription/page.tsx` (ou `components/InscriptionForm.tsx`), étape 2 (Contact) :
+  - Ajouter un champ `phone` (type `tel`, label "Téléphone (optionnel)"), après le champ email.
+  - Pas de validation format stricte (international), juste `maxlength=20`.
+  - Envoyer dans le body du POST `/api/inscription`. UPDATE `host_profiles SET phone = $phone` si fourni.
+  - Ce champ sera aussi disponible dans le questionnaire `/dashboard/questionnaire` — l'ambassador peut le compléter plus tard s'il ne l'a pas fourni à l'inscription.
+
+---
+
 ## Légende
 
 - `[ ]` — pending (à faire)

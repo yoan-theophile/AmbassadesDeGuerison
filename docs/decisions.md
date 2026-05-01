@@ -96,9 +96,11 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 
 ### 2026-04 | Trigger automatique pour host_activations
 
-**Décision :** Un trigger PostgreSQL (`create_activation_on_onboarding_complete`) crée automatiquement une entrée `host_activations` pour chaque hôte actif quand un événement est créé.
+**Décision :** Un trigger PostgreSQL (`trg_auto_activate_host_on_validated`) crée automatiquement une entrée `host_activations` (avec `is_active = FALSE`) pour chaque event à venir quand un hôte passe au statut `validated`.
 
-**Pourquoi :** Évite d'oublier d'associer des hôtes à un live. L'admin crée l'événement, les activations se créent toutes seules. Pas de code applicatif à maintenir pour ça.
+**Pourquoi :** Évite d'oublier d'associer des hôtes à un live. Dès qu'un hôte est validé, il existe dans tous les lives futurs — il ne sera activé que si et quand il clique le lien de la campagne email. La ligne `is_active=FALSE` est la valeur par défaut : le passage à `TRUE` est volontaire et déclenché par l'hôte via email de campagne.
+
+**Note :** Le trigger ne se déclenche PAS à la création d'un événement, mais à la validation de l'hôte. Les hôtes validés avant la création d'un event obtiennent leur `host_activations` via le trigger ; les events créés avant la validation de l'hôte déclenchent le trigger au moment de la validation.
 
 ---
 
@@ -143,6 +145,31 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 **Décision :** 95% des adaptations responsive utilisent uniquement `sm:`. Les breakpoints `md:`, `lg:`, `xl:` sont évités sauf cas exceptionnel.
 
 **Pourquoi :** L'application est soit mobile (< 640px) soit desktop. Pas de tablette intermédiaire. Multiplier les breakpoints crée de la complexité sans valeur.
+
+---
+
+### 2026-05 | Pipeline de validation enrichissement (pre_approved → questionnaire → validated)
+
+**Décision :** L'admin ne peut pas valider un hôte directement. Le flux obligatoire est :
+`pending_review → pre_approved → (ambassadeur remplit questionnaire) → enrichment_pending → validated`
+
+**Pourquoi :** David veut connaître le parcours spirituel de chaque hôte avant de lui confier des visiteurs. Le questionnaire d'enrichissement (`/dashboard/questionnaire`) recueille : défi guérison, pratique ecclésiale, dénomination, parcours spirituel, formations. Ce n'est pas de la friction — c'est la sélection pastorale.
+
+**Alternatives écartées :**
+- Validation directe `pending_review → validated` : trop rapide, ne laisse pas le temps à l'ambassadeur de se présenter complètement.
+- Questionnaire lors de l'inscription : trop long au moment de l'inscription, décourage l'entrée dans le funnel. Mieux de séparer inscription légère + questionnaire après pré-approbation.
+
+---
+
+### 2026-05 | Activation par campagne email (pas d'auto-activation)
+
+**Décision :** Les hôtes ne peuvent pas s'activer eux-mêmes depuis le dashboard pour un live donné. L'activation se fait uniquement via un lien personnalisé reçu par email (campagne créée par l'admin dans `/admin/calendrier`).
+
+**Pourquoi :** L'ancien modèle (self-activation) signifiait que David ne savait jamais combien d'hôtes seraient actifs avant le live. Le modèle campagne email permet à David de maîtriser le calendrier : il envoie la campagne quand il est prêt, les hôtes s'activent en réponse à sa sollicitation. Flux plus clair, moins de bruit dans le dashboard.
+
+**Alternatives écartées :**
+- Bouton "Je suis disponible" en dashboard : gardé visible mais désactivé (non connecté à `host_activations.is_active`) — prévu pour une v2 si David veut redonner l'autonomie aux hôtes.
+- Notification push PWA : pas implémenté en v1 (TODO-6 différé).
 
 ---
 

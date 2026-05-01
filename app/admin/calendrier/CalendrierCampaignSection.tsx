@@ -168,7 +168,7 @@ export default function CalendrierCampaignSection({ futureEvents, campaigns }: P
                 className={inputCls}
                 placeholder="Bonjour à toutes et tous, le prochain live aura lieu…"
               />
-              <p className="text-xs text-slate-300 mt-1">Aparaîtra dans l'e-mail ambassadeur avant le CTA.</p>
+              <p className="text-xs text-slate-300 mt-1">Apparaîtra dans l'e-mail ambassadeur avant le CTA.</p>
             </div>
           )}
 
