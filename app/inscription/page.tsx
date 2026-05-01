@@ -22,6 +22,7 @@ export default function InscriptionPage() {
   const [form, setForm] = useState({
     email: '',
     first_name: '',
+    phone: '',
     city: '',
     country: 'France',
     lat: undefined as number | undefined,
@@ -127,6 +128,10 @@ export default function InscriptionPage() {
               </Field>
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
+              </Field>
+              <Field label="Téléphone (optionnel)">
+                <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
+                <p className="text-xs text-slate-400 mt-1">Uniquement visible par l'équipe — jamais transmis aux visiteurs.</p>
               </Field>
               <CityInput
                 label="Ville"
