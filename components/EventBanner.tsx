@@ -44,11 +44,22 @@ export default function EventBanner({ nextEvent, lastEvent, liveInProgress }: Pr
   }, [nextEvent]);
 
   if (liveInProgress) {
+    const youtubeUrl = process.env.NEXT_PUBLIC_YOUTUBE_CHANNEL_URL ?? 'https://www.youtube.com/@DavidThery';
     return (
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 rounded-full shadow-md text-sm font-medium bg-indigo-600 text-white">
-        <Radio className="w-3.5 h-3.5 text-indigo-200 animate-pulse shrink-0" />
-        <span className="sm:hidden">Live en cours</span>
-        <span className="hidden sm:inline">Live en cours — rejoignez-nous</span>
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full shadow-md text-sm font-medium bg-indigo-600 text-white">
+          <Radio className="w-3.5 h-3.5 text-indigo-200 animate-pulse shrink-0" />
+          <span className="sm:hidden">Live en cours</span>
+          <span className="hidden sm:inline">Live en cours — rejoignez-nous</span>
+        </div>
+        <a
+          href={youtubeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-2 rounded-full shadow-md text-xs font-medium bg-white text-slate-700 border border-slate-100 hover:bg-slate-50 transition-colors hidden sm:inline-block"
+        >
+          Regarder sur YouTube
+        </a>
       </div>
     );
   }

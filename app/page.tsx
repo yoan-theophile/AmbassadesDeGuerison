@@ -1,35 +1,11 @@
 import MapWrapper from '@/components/MapWrapper';
 import AppHeader from '@/components/AppHeader';
-import { createServiceClient } from '@/lib/supabase/server';
+import { getHomepageData } from '@/lib/homepage-data';
 
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const supabase = createServiceClient();
-  const now = new Date();
-  const nowISO = now.toISOString();
-
-  const windowHours = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
-  const windowStart = new Date(now.getTime() - windowHours * 3600 * 1000).toISOString();
-
-  const [{ data: futureEvent }, { data: pastEvent }] = await Promise.all([
-    supabase
-      .from('events')
-      .select('id, title, event_date')
-      .gt('event_date', nowISO)
-      .order('event_date', { ascending: true })
-      .limit(1)
-      .single(),
-    supabase
-      .from('events')
-      .select('id, title, event_date')
-      .lte('event_date', nowISO)
-      .order('event_date', { ascending: false })
-      .limit(1)
-      .single(),
-  ]);
-
-  const liveInProgress = !!pastEvent && pastEvent.event_date >= windowStart;
+  const { nextEvent, lastEvent, liveInProgress } = await getHomepageData();
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -37,8 +13,8 @@ export default async function HomePage() {
 
       <div className="flex-1 relative">
         <MapWrapper
-          nextEvent={futureEvent ?? null}
-          lastEvent={pastEvent ?? null}
+          nextEvent={nextEvent}
+          lastEvent={lastEvent}
           liveInProgress={liveInProgress}
         />
       </div>
