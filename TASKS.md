@@ -15,16 +15,16 @@
 - [x] **#1 — Refonte `scripts/reset-db.sql` avec nouveau schéma complet**
   Créer toutes les nouvelles tables (`admin_users`, `live_feedbacks`, `blacklist`, `scheduled_campaigns`, `campaign_recipients`, `moderation_log`, `event_timing_config`) + ALTER `host_profiles` (`church_subtype`, `profile_photo_url`, `room_photo_urls`, `viewing_setup`, `healing_challenge_done`, `church_attendance`, `denomination`, `parcours_spirituel`, `admin_notes`, status élargi) + ALTER `contact_requests` (`visitor_notifications_optin`) + DROP COLUMN `testimonials.timing` + UNIQUE constraints + indexes.
 
-- [ ] **#2 — Fonctions SQL `is_admin()` + `is_super_admin()`**
+- [x] **#2 — Fonctions SQL `is_admin()` + `is_super_admin()`**
   CREATE OR REPLACE FUNCTION `is_admin(uid UUID)` RETURNS BOOLEAN avec EXISTS sur `admin_users`. Idem pour `is_super_admin` avec filtre `role='super_admin'`. SECURITY DEFINER, STABLE, SET search_path = public.
 
-- [ ] **#3 — Modifier triggers `fn_auto_activate_*` pour `is_active=FALSE` par défaut**
+- [x] **#3 — Modifier triggers `fn_auto_activate_*` pour `is_active=FALSE` par défaut**
   CREATE OR REPLACE FUNCTION `fn_auto_activate_hosts_for_event` et `fn_auto_activate_host_for_existing_events` avec `is_active = FALSE` au lieu de TRUE à l'INSERT. Tester via `tests/db/triggers.test.ts`.
 
-- [ ] **#4 — Réécrire les ~10 RLS policies existantes pour utiliser `is_admin()`**
+- [x] **#4 — Réécrire les ~10 RLS policies existantes pour utiliser `is_admin()`**
   Toutes les policies utilisant `auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'` deviennent `is_admin(auth.uid())`. Concerne `events`, `host_profiles`, `host_activations`, `contact_requests`, `testimonials`, `live_signals`, `onboarding_config`. Plus nouvelles policies pour les nouvelles tables.
 
-- [ ] **#5 — Refonte `scripts/seed.js` avec nouveau schéma + 2 admins**
+- [x] **#5 — Refonte `scripts/seed.js` avec nouveau schéma + 2 admins**
   Adapter `seed.js` au nouveau schéma : retrait de `timing` dans `testimonials`, nouveau cycle status pour `host_profiles` (`validated` remplace `active`), insertion des 2 admins (`david.thery@demo.fr`, `theo.nelson.ia@gmail.com`) dans `admin_users` avec role super_admin/moderator. Maintenir les 8 ambassadeurs, 14 témoignages, 4 events, 10 demandes de contact.
 
 - [ ] **#6 — Vérifier `npm run db:reset` + `node scripts/seed.js` succeed**
