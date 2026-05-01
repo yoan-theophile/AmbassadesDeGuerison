@@ -548,5 +548,11 @@ npm run test:e2e
 
 ---
 
+| 2026-05-01 | Flow E2E visiteur (M5+M6) | ✅ | Testé avec Pierre/token `f2febdf1`. **Avant acceptation** : `/visitor/[token]` affiche 3 étapes — ① "Demande envoyée" ② "Marie répond — sous 24h" (en attente) ③ "Adresse à venir — transmise par e-mail" (grisée). **Page ambassadeur** `/accueillir/[token]` : pas d'auth requise, affiche nom visiteur + nb personnes + message. Clic "J'accueille" → confirmation "Demande acceptée ! Pierre recevra vos coordonnées par e-mail." **Après acceptation** : `/visitor/[token]` rafraîchi → étape ② "Demande acceptée !", étape ③ "Vous recevrez les coordonnées de Marie par e-mail." Adresse jamais affichée en clair (envoyée par email via `sendAcceptationVisite`). UX note : étape ③ titre reste "Adresse à venir" même après acceptation — pourrait dire "Adresse envoyée" (faible prio). |
+| 2026-05-01 | Flow E2E admin pré-validation + carte (M8+M30) | ✅ avec précision | Inscription Alice/Strasbourg : 3 étapes OK, geocoding Nominatim → lat/lng correct, confirmation inline "Demande envoyée" (plus de redirect /onboarding). DB : `status=pending_review`, lat=48.58, lng=7.75. **Carte avant validation** : pas de pin Strasbourg ✅. **Admin pipeline** (testé live via magic link) : "En examen" → "Pré-approuver" → `pre_approved` → "Valider" → `validated`. Trigger DB `trg_auto_activate_host_on_validated` auto-crée une `host_activation` avec `is_active=false`. **Carte après validation** : toujours pas de pin — attendu, car la carte (`/api/host-activations`) affiche uniquement les `host_activations.is_active=true` pour l'événement le plus récent. L'admin doit activer séparément l'ambassadeur pour un événement (step manquant dans l'UI de test). **Note architecture** : la carte ne gate PAS sur `status=validated` mais sur `host_activations.is_active=true` pour l'event courant. |
+| 2026-05-01 | Bug route morte PATCH /api/admin/ambassadeurs/[id] | ⚠️ dead code | Ce route.ts accepte `status: 'active'` mais `'active'` viole la contrainte CHECK DB. La route `/status` (POST) remplace tout ce flow depuis le refactor. Route ancienne non appelée par l'UI actuelle. Pas bloquant mais risque si quelqu'un l'appelle directement. |
+
+---
+
 *Généré le 2026-05-01 — DavidTheryApp v1 — branch `develop`*
 *États gérés par `scripts/demo-state.js`*
