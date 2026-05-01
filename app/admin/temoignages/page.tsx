@@ -10,7 +10,7 @@ async function getTemoignages() {
   const supabase = createServiceClient();
   const { data } = await supabase
     .from('testimonials')
-    .select('id, content, timing, is_visible, created_at, host_profile:host_profiles(first_name, city), event:events(title)')
+    .select('id, content, is_visible, created_at, host_profile:host_profiles(first_name, city), event:events(title)')
     .order('created_at', { ascending: false });
   return data ?? [];
 }

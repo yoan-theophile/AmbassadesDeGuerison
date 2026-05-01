@@ -103,7 +103,6 @@ CREATE TABLE testimonials (
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   photo_url TEXT,
-  timing TEXT CHECK (timing IN ('during', 'after')),
   is_visible BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

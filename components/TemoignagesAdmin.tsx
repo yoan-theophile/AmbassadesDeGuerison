@@ -8,17 +8,12 @@ import { useRouter } from 'next/navigation';
 interface Temoignage {
   id: string;
   content: string;
-  timing: string | null;
   is_visible: boolean;
   created_at: string;
   host_profile: { first_name: string; city: string }[] | null;
   event: { title: string }[] | null;
 }
 
-const TIMING_LABELS: Record<string, string> = {
-  during: 'Pendant le live',
-  after: 'Après le live',
-};
 
 type Filter = 'all' | 'visible' | 'hidden';
 type PageSize = 10 | 20 | 50;
@@ -357,7 +352,6 @@ export default function TemoignagesAdmin({
                         {t.host_profile[0].first_name}, {t.host_profile[0].city}
                       </span>
                     )}
-                    {t.timing && <span>{TIMING_LABELS[t.timing] ?? t.timing}</span>}
                     {t.event?.[0] && (
                       <span className="text-indigo-500 truncate">{t.event[0].title}</span>
                     )}

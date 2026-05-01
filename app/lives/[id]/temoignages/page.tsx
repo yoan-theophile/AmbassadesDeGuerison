@@ -18,7 +18,7 @@ export default async function TemoignagesPage({ params }: Props) {
     supabase
       .from('testimonials')
       .select(`
-        id, content, timing, created_at,
+        id, content, created_at,
         host_profiles!inner (first_name, city, country)
       `)
       .eq('event_id', id)
@@ -70,11 +70,6 @@ export default async function TemoignagesPage({ params }: Props) {
                     <span className="font-medium text-gray-700">{hp.first_name}</span>
                     {' — '}
                     {hp.city}, {hp.country}
-                    {t.timing === 'during' && (
-                      <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                        Pendant le live
-                      </span>
-                    )}
                   </footer>
                 </div>
               );

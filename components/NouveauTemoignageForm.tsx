@@ -136,7 +136,6 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
   const [content, setContent] = useState('');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
-  const [timing, setTiming] = useState<'during' | 'after'>('after');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -203,7 +202,6 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
         content: content.trim(),
         submitter_name: name.trim() || undefined,
         submitter_city: city.trim() || undefined,
-        timing,
       }),
     });
 
@@ -250,28 +248,6 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
               value={eventId}
               onChange={setEventId}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Quand as-tu vécu ça ?
-            </label>
-            <div className="flex gap-3">
-              {(['during', 'after'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTiming(t)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    timing === t
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
-                  }`}
-                >
-                  {t === 'during' ? 'Pendant le live' : 'Après le live'}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div>

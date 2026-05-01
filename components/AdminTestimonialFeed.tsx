@@ -6,7 +6,6 @@ import { MessageSquare, Check, X, AlertTriangle } from 'lucide-react';
 interface Testimonial {
   id: string;
   content: string;
-  timing: string;
   created_at: string;
   visitor_name: string | null;
   host_profiles: {
@@ -125,11 +124,6 @@ export default function AdminTestimonialFeed({ eventId }: { eventId: string | nu
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-slate-800 text-sm">{author}</span>
-                    {t.timing === 'during' && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                        Pendant le live
-                      </span>
-                    )}
                   </div>
                   <blockquote className="text-slate-700 text-sm italic">"{t.content}"</blockquote>
                   <p className="text-xs text-slate-400 mt-1">

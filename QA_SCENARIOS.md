@@ -244,7 +244,6 @@ node scripts/magic-link.js david.thery@demo.fr
 
 - [ ] La page charge sans authentification
 - [ ] Dropdown live : liste les events passés avec leur titre et date
-- [ ] Dropdown timing : "Pendant le live" / "Après le live"
 - [ ] Contenu : minimum 20 chars, maximum 2000 chars
 - [ ] Prénom et ville optionnels
 - [ ] Soumettre → confirmation → témoignage en attente dans `/admin/temoignages`
@@ -516,7 +515,9 @@ npm run test:e2e
 
 | Date | Module | Résultat | Observations |
 |------|--------|----------|--------------|
-|      |        |          |              |
+| 2026-05-01 | M1 — Accueil / 4 états | ✅ 14/14 | live/upcoming/soon/past OK. Search Nominatim→flyTo OK. Zoom bottomleft OK. No overlap search/banner. |
+| 2026-05-01 | M13 — Auth admin (spot) | ✅ | /admin/stats → /auth. /admin/moderation → /auth (middleware avant redirect page). |
+| 2026-05-01 | M29 — Tests auto | ✅ 141/141 | vitest 17 fichiers, 0 échec. |
 
 ---
 

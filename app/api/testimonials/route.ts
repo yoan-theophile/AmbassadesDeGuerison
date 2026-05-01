@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('testimonials')
     .select(`
-      id, content, timing, created_at, visitor_name,
+      id, content, created_at, visitor_name,
       host_profiles (id, first_name, city, country)
     `)
     .order('created_at', { ascending: false });
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const body = await request.json();
-  const { host_profile_id, contact_request_id, visitor_name, event_id, timing, content } = body;
+  const { host_profile_id, contact_request_id, visitor_name, event_id, content } = body;
 
   if (!event_id || !content?.trim()) {
     return NextResponse.json({ error: 'event_id et content sont requis.' }, { status: 400 });
@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
       contact_request_id: contact_request_id ?? null,
       visitor_name: visitor_name?.trim() || null,
       event_id,
-      timing: timing ?? 'after',
       content: content.trim(),
       is_visible: false,
     })

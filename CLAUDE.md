@@ -119,7 +119,7 @@ Carte Leaflet plein écran avec :
 - Filtre par live : `TemoignageLiveFilter` (client component) — `<select>` qui navigue vers `?live=<uuid>`. Filtrage server-side dans la query Supabase.
 - Grille 2 colonnes (`sm:grid-cols-2 items-start`) — hauteurs libres par colonne.
 - **`TemoignageCard`** (client component) : icône `Quote` indigo en haut, texte sans guillemets, `line-clamp-4` par défaut. Si `scrollHeight > clientHeight`, bouton **"Lire la suite"** apparaît ; **"Réduire"** pour replier.
-- Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) OU `{visitor_name}, {submitter_city}` pour les témoignages anonymes + timing + titre du live en indigo.
+- Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) OU `{visitor_name}, {submitter_city}` pour les témoignages anonymes + titre du live en indigo.
 - Jointure Supabase many-to-one → retourne un objet, pas un tableau. Normaliser avec `Array.isArray ? [0] : direct`.
 - CTA "Partage ton témoignage" → `/temoignages/nouveau` (public, sans auth).
 - Bouton WhatsApp + copier le lien (`TemoignageShareButtons` client component).
@@ -127,7 +127,7 @@ Carte Leaflet plein écran avec :
 ## Page formulaire témoignage (`/temoignages/nouveau`)
 
 - Accès public, aucune authentification requise.
-- Formulaire : sélection du live (dropdown), timing (pendant/après), contenu (min 20 / max 2000 chars), prénom + ville (optionnels).
+- Formulaire : sélection du live (dropdown), contenu (min 20 / max 2000 chars), prénom + ville (optionnels).
 - Submit → `POST /api/temoignages` → `is_visible = false`, va en moderation queue (`/admin/temoignages`).
 - Pré-sélection du live via `?live=<uuid>` (passé depuis le filtre de la page principale).
 - Schéma DB : `visitor_name` (nom soumissionnaire), `submitter_city` (ville soumissionnaire), `host_profile_id = NULL`, `contact_request_id = NULL`.
