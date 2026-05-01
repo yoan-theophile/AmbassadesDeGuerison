@@ -194,6 +194,32 @@ async function run() {
     }
   }
 
+  // Comptes auth pour chaque ambassadeur démo + lien user_id sur host_profiles.
+  // Sans ça, le dashboard (`.eq('user_id', user.id)`) ne trouve pas le profil
+  // après magic link et redirige vers `/inscription`.
+  console.log('\n→ Comptes auth ambassadeurs...');
+  let authUsersCache = [];
+  try {
+    const res = await authReq('GET', '/admin/users?per_page=1000');
+    authUsersCache = res?.users ?? [];
+  } catch (e) {
+    console.log(`  Impossible de lister les utilisateurs Auth: ${e.message.slice(0, 80)}`);
+  }
+  for (const h of hostsData) {
+    try {
+      const existing = authUsersCache.find(u => u.email === h.email);
+      const userId = existing?.id ?? (await authReq('POST', '/admin/users', {
+        email: h.email,
+        email_confirm: true,
+        user_metadata: { role: 'host' },
+      })).id;
+      await patch(`/host_profiles?email=eq.${encodeURIComponent(h.email)}`, { user_id: userId });
+      console.log(`  OK ${h.first_name.padEnd(12)} ${existing ? '(auth existant)' : '(auth créé)'}`);
+    } catch (e) {
+      console.log(`  ERR ${h.first_name}: ${e.message.slice(0, 120)}`);
+    }
+  }
+
   const validatedHosts = hostsData.filter(h => h.status === 'validated');
 
   // ── 3. Événements ─────────────────────────────────────────────────────────
