@@ -34,19 +34,19 @@
 
 ## Ordre 2 — Helpers et libs partagés (Plomberie)
 
-- [ ] **#7 — Helper `lib/auth/require-admin.ts`**
+- [x] **#7 — Helper `lib/auth/require-admin.ts`**
   Créer un helper async `requireAdmin(req)` qui : extrait l'user via `createServerClient` + `getUser`, retourne 401 si non auth, fait un SELECT `is_admin($uid)`, retourne 403 si pas admin, sinon retourne `{ user, supabase: createServiceClient() }`. Pattern early-return type `Promise<{ user, supabase } | NextResponse>`. Utilisé par toutes les routes `/api/admin/*`.
 
-- [ ] **#8 — `lib/timing-config.ts` (cache 60s `event_timing_config`)**
+- [x] **#8 — `lib/timing-config.ts` (cache 60s `event_timing_config`)**
   Créer `getTimingConfig()` avec cache server 60s qui retourne les valeurs de `event_timing_config` (`campaign_ambassadors_days_before`, `campaign_visitors_days_before`, `host_reminder_days_before`, `visitor_auto_decline_days_before`, `feedback_days_after`, `queue_aging_days`). Utilisé par les jobs cron + UI `admin/settings/timing`.
 
-- [ ] **#9 — `lib/i18n/admin-labels.ts` constants**
+- [x] **#9 — `lib/i18n/admin-labels.ts` constants**
   Constants centralisées pour le mapping vocabulaire admin/utilisateur : `{ ADMIN_RED_FLAG: 'Drapeau rouge', USER_REPORT_PROBLEM: 'Signaler un problème', etc. }` pour les 6 termes mappés dans le doc design. FR-only, pas vrai i18n.
 
-- [ ] **#10 — Étendre `lib/email/templates.ts` avec 8 nouveaux templates David-voice (drafts)**
+- [x] **#10 — Étendre `lib/email/templates.ts` avec 8 nouveaux templates David-voice (drafts)**
   Ajouter 8 templates suivant le pattern `templateOrHtml` existant : `MAGIC_LINK_AMBASSADEUR_BIENVENUE`, `PRE_VALIDATION_ACCORDEE`, `VALIDATION_FINALE`, `CAMPAIGN_AMBASSADORS`, `CAMPAIGN_VISITORS`, `ACCEPTATION_VISITEUR` (mail unique avec adresse), `REFUS_VISITEUR`, `FEEDBACK_POST_LIVE`. Drafts en voix David pastorale guidant. David validera post-démo.
 
-- [ ] **#11 — `lib/homepage-data.ts` (Server Component data fetching pour 3 directions preview)**
+- [x] **#11 — `lib/homepage-data.ts` (Server Component data fetching pour 3 directions preview)**
   `getHomepageData()` qui fetch en parallèle : `nextEvent`, `lastEvent`, `liveInProgress`, `totalAmbassadors` (count active), `totalCountries` (count distinct), `topTestimonials` (5 par length DESC). Cache server 60s. Utilisé par les 3 routes `/preview/homepage-*` + page d'accueil entre lives.
 
 ---
