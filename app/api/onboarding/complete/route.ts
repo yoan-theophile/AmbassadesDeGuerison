@@ -33,17 +33,17 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Profil introuvable.' }, { status: 404 });
   }
 
-  if (profile.status === 'active') {
+  if (profile.status === 'validated') {
     return NextResponse.json({ success: true });
   }
 
-  if (profile.status !== 'pending_onboarding') {
+  if (profile.status !== 'pending_review') {
     return NextResponse.json({ error: 'Statut incompatible avec cette action.' }, { status: 400 });
   }
 
   const { error: updateError } = await supabase
     .from('host_profiles')
-    .update({ status: 'active' })
+    .update({ status: 'validated' })
     .eq('id', profile.id);
 
   if (updateError) {

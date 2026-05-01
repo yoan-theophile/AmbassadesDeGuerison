@@ -149,7 +149,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
         .from('host_profiles')
         .select('city, status')
         .eq('user_id', user.id)
-        .eq('status', 'active')
+        .eq('status', 'validated')
         .single()
         .then(({ data }) => {
           if (data?.city) setAmbassadorCity(data.city);

@@ -17,6 +17,7 @@ export default function InscriptionPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -54,10 +55,32 @@ export default function InscriptionPage() {
       return;
     }
 
-    router.push('/onboarding');
+    setSubmitted(true);
   }
 
   const steps = ['Coordonnées', 'Lieu', 'Contact'];
+
+  if (submitted) {
+    return (
+      <>
+        <AppHeader />
+        <main className="flex-1 bg-slate-50 px-4 py-8">
+          <div className="max-w-lg mx-auto text-center py-16">
+            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">Demande envoyée !</h2>
+            <p className="text-slate-500 text-sm max-w-xs mx-auto">
+              Ta candidature est en cours d'examen. Tu recevras un e-mail dès qu'elle sera validée.
+            </p>
+            <Link href="/" className="mt-6 inline-flex items-center gap-1.5 text-indigo-600 text-sm hover:underline">
+              <ArrowLeft className="w-3.5 h-3.5" /> Retour à la carte
+            </Link>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

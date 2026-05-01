@@ -49,23 +49,26 @@ node scripts/seed.js                                      # insère les données
 |--------|------|--------|
 | `david.thery@demo.fr` | admin | — |
 | `theo.nelson.ia@gmail.com` | admin | — |
-| `marie.dubois@demo.fr` | ambassadeur | `active` |
-| `jp.martin@demo.fr` | ambassadeur | `active` (complet) |
-| `sophie.leroux@demo.fr` | ambassadeur | `pending_onboarding` (utile pour tester `/onboarding`) |
+| `marie.dubois@demo.fr` | ambassadeur | `validated` |
+| `jp.martin@demo.fr` | ambassadeur | `validated` (complet) |
+| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` (utile pour tester le dashboard candidature) |
 
 ## Pipeline d'activation ambassadeur
 
-Flux self-service déclenché après l'inscription :
+Flux admin-driven (self-service supprimé) :
 
 ```
-/inscription → pending_onboarding → /onboarding → PATCH /api/onboarding/complete → active
+/inscription → pending_review → (admin) → pre_approved → enrichment_pending → validated
+                                                                              ↕
+                                                                          suspended
 ```
 
-- `PATCH /api/onboarding/complete` : auth cookie obligatoire, idempotent si déjà `active` (200 no-op), rejette tout statut autre que `pending_onboarding` (400). Déclenche deux e-mails non-bloquants : `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
-- Le dashboard (`app/dashboard/page.tsx`) gère trois cas dans l'ordre : pas de session → `router.replace('/auth')` ; session sans `host_profile` → `router.replace('/inscription')` ; profil `pending_onboarding` → `router.replace('/onboarding')`. Après ces guards, un `if (!profile) return null` évite les erreurs TS sur `profile` potentiellement null.
-- Le dashboard redirige automatiquement vers `/onboarding` si `status = pending_onboarding`.
+- L'inscription crée le profil avec `status = 'pending_review'`. L'admin valide via `/admin/ambassadeurs`.
+- `PATCH /api/admin/ambassadeurs/[id]` : transitions `validated ↔ suspended`.
+- `PATCH /api/onboarding/complete` : transition `pending_review → validated` via la page `/onboarding`. Utilisable si on veut réactiver un flux self-service partiel — déclenche `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
+- Le dashboard (`app/dashboard/page.tsx`) gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
 - **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
-- Un admin peut ensuite `Suspendre` (`active → suspended`) ou `Réactiver` (`suspended → active`) via `PATCH /api/admin/ambassadeurs/[id]`.
+- Statuts valides (contrainte CHECK DB) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
 
 ## Formulaire d'inscription (`/inscription`)
 

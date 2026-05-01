@@ -94,7 +94,6 @@ export default function DashboardPage() {
       .single();
 
     if (!prof) { router.replace('/inscription'); return; }
-    if (prof.status === 'pending_onboarding') { router.replace('/onboarding'); return; }
 
     const { data: acts } = await supabase
       .from('host_activations')

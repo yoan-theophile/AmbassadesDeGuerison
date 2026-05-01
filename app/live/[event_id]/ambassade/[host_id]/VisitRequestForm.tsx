@@ -41,12 +41,12 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName, con
       body: JSON.stringify({
         event_id: eventId,
         host_profile_id: hostProfileId,
-        visitor_first_name: form.visitor_first_name,
-        visitor_email: form.visitor_email,
-        visitor_phone: form.visitor_phone || null,
+        first_name: form.visitor_first_name,
+        email: form.visitor_email,
+        phone: form.visitor_phone || null,
         nb_personnes: form.nb_personnes,
-        visitor_message: form.visitor_message || null,
-        visitor_notifications_optin: form.visitor_notifications_optin,
+        message: form.visitor_message || null,
+        consent: form.visitor_notifications_optin,
         website: '', // honeypot
       }),
     });

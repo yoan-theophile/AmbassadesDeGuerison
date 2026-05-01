@@ -44,7 +44,7 @@ export default function OnboardingPage() {
         .eq('user_id', user.id)
         .single()
         .then(({ data }) => {
-          if (data?.status === 'active') {
+          if (data?.status === 'validated') {
             router.replace('/dashboard');
           } else {
             setAuthLoading(false);

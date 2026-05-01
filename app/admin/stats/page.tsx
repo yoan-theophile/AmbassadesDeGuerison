@@ -29,7 +29,7 @@ async function getKpis() {
 
   const [activations, countries, contacts, testimonials] = await Promise.all([
     supabase.from('host_activations').select('id', { count: 'exact' }).eq('event_id', lastEvent.id).eq('is_active', true),
-    supabase.from('host_profiles').select('country').eq('status', 'active'),
+    supabase.from('host_profiles').select('country').eq('status', 'validated'),
     supabase.from('contact_requests').select('id', { count: 'exact', head: true }).in('host_activation_id', safeActIds),
     supabase.from('testimonials').select('id', { count: 'exact' }).eq('is_visible', true),
   ]);

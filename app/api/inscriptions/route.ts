@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         consignes: consignes || null,
         lat: lat ?? null,
         lng: lng ?? null,
-        status: 'pending_onboarding',
+        status: 'pending_review',
       }).select('id').single();
       if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
       profileId = profileData?.id;
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       consignes: consignes || null,
       lat: lat ?? null,
       lng: lng ?? null,
-      status: 'pending_onboarding',
+      status: 'pending_review',
     }).select('id').single();
     if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
     profileId = profileData?.id;

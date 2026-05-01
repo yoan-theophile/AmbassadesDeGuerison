@@ -69,7 +69,7 @@ export default function AmbassadeursTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [ambassadeurs, setAmbassadeurs] = useState(initial);
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
   const [search, setSearch] = useState(searchQ);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -100,9 +100,7 @@ export default function AmbassadeursTable({
     });
     if (res.ok) {
       const data = await res.json();
-      setAmbassadeurs((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: data.status } : a))
-      );
+      setStatusOverrides((prev) => ({ ...prev, [id]: data.status }));
     }
     setActionLoading(null);
   }
@@ -144,7 +142,7 @@ export default function AmbassadeursTable({
         </span>
       </div>
 
-      {ambassadeurs.length === 0 ? (
+      {initial.length === 0 ? (
         <p className="text-sm text-slate-400 py-8 text-center">Aucun ambassadeur dans cette catégorie.</p>
       ) : (
         <div className={`bg-white rounded-xl border border-slate-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}>
@@ -163,8 +161,9 @@ export default function AmbassadeursTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {ambassadeurs.map((a) => {
-                  const s = STATUS_LABELS[a.status] ?? { label: a.status, className: 'bg-slate-50 text-slate-600' };
+                {initial.map((a) => {
+                  const displayStatus = statusOverrides[a.id] ?? a.status;
+                  const s = STATUS_LABELS[displayStatus] ?? { label: displayStatus, className: 'bg-slate-50 text-slate-600' };
                   const isLoading = actionLoading === a.id;
                   return (
                     <tr key={a.id} className="hover:bg-slate-50/50">
@@ -183,7 +182,7 @@ export default function AmbassadeursTable({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5 flex-wrap">
-                          {(STATUS_ACTIONS[a.status] ?? []).map((act) => (
+                          {(STATUS_ACTIONS[displayStatus] ?? []).map((act) => (
                             <button
                               key={act.action}
                               onClick={() => handleAction(a.id, act.action)}

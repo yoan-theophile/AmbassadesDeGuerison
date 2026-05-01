@@ -166,7 +166,7 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 6 — Accueil invité `/accueil-invite/[token]`
+## Module 6 — Accueil invité `/accueillir/[token]`
 
 - [ ] La page charge avec le prénom du visiteur
 - [ ] Affiche le nom + ville de l'ambassadeur
@@ -455,7 +455,7 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Tokens invalides
 
-- [ ] `GET /accueil-invite/invalid-token` → 404 ou message d'erreur clair
+- [ ] `GET /accueillir/invalid-token` → 404 ou message d'erreur clair
 - [ ] `GET /refuser/invalid-token` → 404 ou message d'erreur clair
 - [ ] `GET /visitor/invalid-token` → 404 ou message d'erreur clair
 
@@ -518,6 +518,33 @@ npm run test:e2e
 | 2026-05-01 | M1 — Accueil / 4 états | ✅ 14/14 | live/upcoming/soon/past OK. Search Nominatim→flyTo OK. Zoom bottomleft OK. No overlap search/banner. |
 | 2026-05-01 | M13 — Auth admin (spot) | ✅ | /admin/stats → /auth. /admin/moderation → /auth (middleware avant redirect page). |
 | 2026-05-01 | M29 — Tests auto | ✅ 141/141 | vitest 17 fichiers, 0 échec. |
+| 2026-05-01 | M4 — Dashboard ambassadeur | ✅ partiel | Guard session OK. Signal live envoyé OK. Témoignage soumis OK (après fix timing). "Mes demandes" vides (seed contact_requests lié à un event différent — non-bloquant). |
+| 2026-05-01 | M2 — Page ambassade publique | ✅ | Form chargée. Soumission Thomas→confirmation + lien invite f47b4e8a. 3 bugs trouvés et corrigés (champs API, filtre event, demo-state registration_dates). |
+| 2026-05-01 | M14 — Admin stats | ✅ corrigé | KPIs chargés. Bug : "0 Pays représentés" → query filtrait status='active' au lieu de 'validated'. Corrigé dans stats/page.tsx + badge/route.tsx + NouveauTemoignageForm.tsx. Après fix : 6 pays affichés. |
+| 2026-05-01 | M15 — Admin ambassadeurs | ✅ corrigé | Search, filtres statut, pagination OK. Bug : recherche affichait "1 ambassadeur" en compteur mais listait encore les 8 → useState(initial) ne se réinitialise pas lors de navigation Next.js. Fix : remplacé state de liste par statusOverrides uniquement. Suspend/Réactiver OK. |
+| 2026-05-01 | M16 — Admin live | ✅ | Feed signaux (Mains levées) : 2 signaux pending, Approuver retire la carte instantanément. Onglet Témoignages : "3 témoignages reçus — À modérer après le live". |
+| 2026-05-01 | M17 — Admin calendrier | ✅ | 1 à venir + 3 passés affichés. Onglets À venir/Passés OK. Modifier inline (pré-rempli). Nouveau live (form vide). Campagnes planifiées section présente. |
+| 2026-05-01 | M18 — Admin témoignages | ✅ | 16/12 publiés. Publication individuelle (icône œil) : 4→3 non publiés, 12→13 publiés. Tout publier (3) : 0 non publiés, 16/16 publiés. |
+| 2026-05-01 | M19 — Admin paramètres | ✅ | Formulaire URL vidéo + PDF. Enregistrer : feedback dans le bouton (texte "Enregistré !" 3s). Pas d'erreur API. |
+| 2026-05-01 | Admin Signalements | ✅ | 1 signalement en attente (thomas.b@mail.com → Fatou Bruxelles). Actions Prendre en charge / Résoudre / Classer présentes. |
+| 2026-05-01 | Admin Blocages | ✅ | 0 entrée, form de blocage (email, téléphone, motif) fonctionnel. |
+| 2026-05-01 | Admin Équipe | ✅ | Aucun membre, form ajout (email + rôle Admin). |
+| 2026-05-01 | M22 — Admin calendrier | ✅ | 1 à venir + 3 passés. Section campagnes planifiées avec form (live, type Ambassadeurs/Visiteurs, date, message). |
+| 2026-05-01 | M24 — Admin settings timing | ✅ | 6 champs numériques (J avant/après). API PATCH 200. Feedback "Sauvegardé" 3s dans bouton (code OK, timing difficile à capturer via JS). |
+| 2026-05-01 | M25 — Auth `/auth` | ✅ | Formulaire magic link. Soumission email inconnu → "Vérifiez votre messagerie" (anti-énumération, comportement normal). |
+| 2026-05-01 | M26 — Pages publiques | ✅ | /faq (12 Q&A) OK. /contact-equipe → formulaire + "Message envoyé" OK. /page-inexistante → 404 "Page introuvable" + CTA. |
+| 2026-05-01 | M27 — Pages preview | ✅ | /preview/homepage-poster, /annuaire, /storytelling → 200 + meta noindex, nofollow confirmé. |
+| 2026-05-01 | M3 — Flux visiteur `/live/[event_id]/ambassade/[host_id]` | ✅ corrigé | Page charge avec infos ambassade + formulaire. Bug critique : VisitRequestForm envoyait `visitor_first_name/email/...` mais l'API attend `first_name/email/consent`. Fix : renommage des clés JSON. Après fix : 201 + action_token. |
+| 2026-05-01 | M5 — Page visiteur `/visitor/[token]` | ✅ | État "en attente" : event, ambassade, "Marie a reçu votre demande", "Sous 24h". Token invalide → "Page introuvable". |
+| 2026-05-01 | M6 — Page hôte `/accueillir/[token]` | ✅ | Note : route est `/accueillir/[token]` (pas `/accueil-invite/`). Infos visiteur (Lucas, 2 personnes, message), boutons "J'accueille" / "Je ne peux pas" visibles. |
+| 2026-05-01 | M10 — Témoignages publics `/temoignages` | ✅ | 16 témoignages • 10 villes. Filtre par live (combobox custom) → 9 témoignages "Nuit de Prière". "Filtré sur", "Effacer ×", "Lire la suite", WhatsApp/Copier link OK. |
+| 2026-05-01 | M11 — Formulaire témoignage | ✅ | Bouton désactivé < 20 chars. Compteur 96/2000. Soumission → "Merci pour ton témoignage" screen OK. Pré-sélection live, prénom + ville optionnels OK. |
+| 2026-05-01 | M8 — Inscription `/inscription` | ✅ corrigé | 3 étapes OK. Autocomplétion Nominatim + auto-pays OK. Bouton "Continuer" bloqué sans sélection dropdown. Bug critique : API insérait `status='pending_onboarding'` → violation contrainte check. Fix : status → `'pending_review'`. Redirect post-soumission → écran "Demande envoyée" (remplace ancien `/onboarding`). Ambassadeur Lucie visible dans admin `pending_review`. |
+| 2026-05-01 | M9 — Onboarding | ⚠️ obsolète | Flux `pending_onboarding → /onboarding → active` remplacé par review admin. `/api/onboarding/complete` référence encore ces statuts (dead code). Sophie seed a déjà `pending_review`. Page `/onboarding` non reliée au nouveau flux. |
+| 2026-05-01 | M7 — Flux visiteur refus | ✅ | Bénédicte refusée via `/accueillir/[token]` (bouton "Je ne peux pas"). Page `/visitor/[token]` passe en état "Demande non retenue" avec bandeau "Pas de place cette fois". |
+| 2026-05-01 | M12 — Page visiteur états | ✅ | Avant refus : état "en attente". Après refus : "Demande non retenue". Token invalide → "Page introuvable" + CTA "Retour à la carte". |
+| 2026-05-01 | M28 — Sécurité API | ✅ | Honeypot `website` → 200 {} sans insertion DB. Token invalide `/accueillir/xyz` → 404 page custom. Validation contenu < 20 chars → 400 + message d'erreur. |
+| 2026-05-01 | Cohérence statuts | ✅ fix | 5 fichiers corrigés : `status='active'` → `'validated'` (stats/page, badge/route, NouveauTemoignageForm) ; `status='pending_onboarding'` → `'pending_review'` (api/inscriptions). Dashboard : redirect `pending_onboarding → /onboarding` supprimée (statut inexistant en DB). `onboarding/page.tsx` : vérif `'active'` → `'validated'`. `api/onboarding/complete` : `pending_onboarding/active` → `pending_review/validated`. CLAUDE.md mis à jour (table seed + section pipeline). QA_SCENARIOS : `/accueil-invite/` → `/accueillir/` corrigé. |
 
 ---
 

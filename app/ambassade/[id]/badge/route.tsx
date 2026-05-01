@@ -14,7 +14,7 @@ export async function GET(
     .from('host_profiles')
     .select('first_name, city, country, host_type, status')
     .eq('id', id)
-    .eq('status', 'active')
+    .eq('status', 'validated')
     .single();
 
   if (!host) {
