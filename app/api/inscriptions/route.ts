@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
   const {
     email,
     first_name,
+    phone,
     city,
     country,
     type,
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
         address_private,
         whatsapp_group_url: whatsapp_group_url || null,
         consignes: consignes || null,
+        phone: phone?.trim() || null,
         lat: lat ?? null,
         lng: lng ?? null,
         status: 'pending_review',

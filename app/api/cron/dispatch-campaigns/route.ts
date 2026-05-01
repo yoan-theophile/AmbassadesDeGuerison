@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Cherche les campagnes prêtes à envoyer (scheduled_at ≤ now, status=pending)
   const now = new Date().toISOString();
   const { data: campaigns, error: fetchError } = await supabase
     .from('scheduled_campaigns')
@@ -34,7 +33,6 @@ export async function POST(req: NextRequest) {
   for (const campaign of campaigns) {
     const event = Array.isArray(campaign.events) ? campaign.events[0] : campaign.events;
 
-    // Marque en cours
     await supabase
       .from('scheduled_campaigns')
       .update({ status: 'sending' })
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
 
       await supabase
         .from('scheduled_campaigns')
-        .update({ status: 'sent', sent_count: sent })
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
         .eq('id', campaign.id);
 
       results.push({ campaign_id: campaign.id, sent });
@@ -54,7 +52,7 @@ export async function POST(req: NextRequest) {
       const msg = err instanceof Error ? err.message : String(err);
       await supabase
         .from('scheduled_campaigns')
-        .update({ status: 'failed', error_message: msg })
+        .update({ status: 'failed', last_error: msg })
         .eq('id', campaign.id);
       results.push({ campaign_id: campaign.id, sent: 0, error: msg });
     }
@@ -65,7 +63,7 @@ export async function POST(req: NextRequest) {
 
 async function dispatchCampaign(
   supabase: ReturnType<typeof createServiceClient>,
-  campaign: { id: string; type: string; event_id: string; custom_message?: string },
+  campaign: { id: string; type: string; event_id: string; custom_message?: string | null },
   event: { title: string; event_date: string } | null | undefined
 ) {
   if (!event) throw new Error('Événement introuvable');
@@ -85,40 +83,62 @@ async function dispatchCampaign(
 
 async function dispatchAmbassadeursBatch(
   supabase: ReturnType<typeof createServiceClient>,
-  campaign: { id: string; event_id: string; custom_message?: string },
+  campaign: { id: string; event_id: string; custom_message?: string | null },
   eventTitle: string,
   eventDate: string,
   appUrl: string
 ) {
-  let offset = 0;
+  let lastId: string | null = null;
   let sent = 0;
 
   while (true) {
-    const { data: recipients } = await supabase
+    // Bug #1 fix: curseur sur id plutôt qu'OFFSET
+    let query = supabase
       .from('campaign_recipients')
-      .select('id, email, first_name')
+      .select('id, email, first_name, activation_token')
       .eq('campaign_id', campaign.id)
-      .eq('sent', false)
-      .range(offset, offset + BATCH_SIZE - 1);
+      .eq('status', 'pending')
+      .order('id')
+      .limit(BATCH_SIZE);
 
+    if (lastId) query = (query as any).gt('id', lastId);
+
+    const { data: recipients } = await query;
     if (!recipients?.length) break;
 
-    await Promise.allSettled(
-      recipients.map(async (r) => {
-        const activateUrl = `${appUrl}/dashboard`;
+    // Bug #2 fix: tracking explicite des failures
+    for (const r of recipients) {
+      const activateUrl = `${appUrl}/accueillir/activer/${r.activation_token}`; // Bug #3 fix
+      try {
         await sendCampagneAmbassadeurs(
-          r.email, r.first_name, eventTitle, eventDate, activateUrl, campaign.custom_message
+          r.email, r.first_name ?? '', eventTitle, eventDate, activateUrl, campaign.custom_message ?? undefined
         );
         await supabase
           .from('campaign_recipients')
-          .update({ sent: true, sent_at: new Date().toISOString() })
+          .update({ status: 'sent', sent_at: new Date().toISOString() }) // Bug #4 fix
           .eq('id', r.id);
         sent++;
-      })
-    );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const { data: current } = await supabase
+          .from('campaign_recipients')
+          .select('attempts')
+          .eq('id', r.id)
+          .single();
+        const attempts = (current?.attempts ?? 0) + 1;
+        await supabase
+          .from('campaign_recipients')
+          .update({
+            attempts,
+            error: msg,
+            status: attempts >= 3 ? 'failed' : 'pending',
+          })
+          .eq('id', r.id);
+      }
+    }
 
+    lastId = recipients[recipients.length - 1].id;
     if (recipients.length < BATCH_SIZE) break;
-    offset += BATCH_SIZE;
   }
 
   return sent;
@@ -131,33 +151,53 @@ async function dispatchVisiteursBatch(
   eventDate: string,
   appUrl: string
 ) {
-  let offset = 0;
+  let lastId: string | null = null;
   let sent = 0;
 
   while (true) {
-    const { data: recipients } = await supabase
+    let query = supabase
       .from('campaign_recipients')
       .select('id, email, first_name, unsubscribe_token')
       .eq('campaign_id', campaign.id)
-      .eq('sent', false)
-      .range(offset, offset + BATCH_SIZE - 1);
+      .eq('status', 'pending')
+      .order('id')
+      .limit(BATCH_SIZE);
 
+    if (lastId) query = (query as any).gt('id', lastId);
+
+    const { data: recipients } = await query;
     if (!recipients?.length) break;
 
-    await Promise.allSettled(
-      recipients.map(async (r) => {
-        const unsubUrl = `${appUrl}/unsubscribe/${r.unsubscribe_token}`;
-        await sendCampagneVisiteurs(r.email, r.first_name, eventTitle, eventDate, unsubUrl);
+    for (const r of recipients) {
+      const unsubUrl = `${appUrl}/unsubscribe/${r.unsubscribe_token}`;
+      try {
+        await sendCampagneVisiteurs(r.email, r.first_name ?? '', eventTitle, eventDate, unsubUrl);
         await supabase
           .from('campaign_recipients')
-          .update({ sent: true, sent_at: new Date().toISOString() })
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
           .eq('id', r.id);
         sent++;
-      })
-    );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const { data: current } = await supabase
+          .from('campaign_recipients')
+          .select('attempts')
+          .eq('id', r.id)
+          .single();
+        const attempts = (current?.attempts ?? 0) + 1;
+        await supabase
+          .from('campaign_recipients')
+          .update({
+            attempts,
+            error: msg,
+            status: attempts >= 3 ? 'failed' : 'pending',
+          })
+          .eq('id', r.id);
+      }
+    }
 
+    lastId = recipients[recipients.length - 1].id;
     if (recipients.length < BATCH_SIZE) break;
-    offset += BATCH_SIZE;
   }
 
   return sent;

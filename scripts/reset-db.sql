@@ -80,11 +80,14 @@ CREATE TABLE host_profiles (
   -- Photos (profil public, pièce admin-only via RLS)
   profile_photo_url      TEXT,
   room_photo_urls        TEXT[],
+  phone                  TEXT,
   -- Questionnaire enrichi — admin-only (RLS strict)
   healing_challenge_done BOOLEAN,
   church_attendance      TEXT,
   denomination           TEXT,
   parcours_spirituel     TEXT,
+  livres_lus             TEXT,
+  conferences_assistees  BOOLEAN     DEFAULT FALSE,
   admin_notes            TEXT,
   -- Nouveau cycle de statut (remplace pending_onboarding/active)
   status                 TEXT        NOT NULL DEFAULT 'pending_review'
@@ -193,8 +196,8 @@ CREATE TABLE blacklist (
 CREATE TABLE scheduled_campaigns (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id       UUID        NOT NULL REFERENCES events(id),
-  audience       TEXT        CHECK (audience IN ('ambassadors', 'visitors')),
-  send_at        TIMESTAMPTZ NOT NULL,
+  type           TEXT        CHECK (type IN ('ambassadeurs', 'visiteurs')),
+  scheduled_at   TIMESTAMPTZ NOT NULL,
   custom_message TEXT,
   sent_at        TIMESTAMPTZ,
   status         TEXT        NOT NULL DEFAULT 'pending'
@@ -206,16 +209,19 @@ CREATE TABLE scheduled_campaigns (
 
 -- 1 ligne par destinataire par campagne (idempotence dispatch)
 CREATE TABLE campaign_recipients (
-  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  campaign_id    UUID        NOT NULL REFERENCES scheduled_campaigns(id) ON DELETE CASCADE,
-  email          TEXT        NOT NULL,
-  recipient_type TEXT        CHECK (recipient_type IN ('ambassador', 'visitor')),
-  status         TEXT        NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'sent', 'bounced', 'failed')),
-  attempts       INT         DEFAULT 0,
-  sent_at        TIMESTAMPTZ,
-  error          TEXT,
-  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id       UUID        NOT NULL REFERENCES scheduled_campaigns(id) ON DELETE CASCADE,
+  email             TEXT        NOT NULL,
+  first_name        TEXT,
+  recipient_type    TEXT        CHECK (recipient_type IN ('ambassador', 'visitor')),
+  activation_token  UUID        DEFAULT gen_random_uuid(),
+  unsubscribe_token UUID        DEFAULT gen_random_uuid(),
+  status            TEXT        NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'sent', 'bounced', 'failed', 'unsubscribed', 'activated')),
+  attempts          INT         DEFAULT 0,
+  sent_at           TIMESTAMPTZ,
+  error             TEXT,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (campaign_id, email)
 );
 
@@ -517,6 +523,8 @@ CREATE INDEX idx_host_activations_active       ON host_activations(event_id, is_
 CREATE INDEX idx_live_signals_event            ON live_signals(event_id, status);
 CREATE INDEX idx_contact_requests_token        ON contact_requests(action_token);
 CREATE INDEX idx_live_feedbacks_reported       ON live_feedbacks(reported, created_at DESC) WHERE reported = TRUE;
-CREATE INDEX idx_scheduled_campaigns_dispatch  ON scheduled_campaigns(send_at, status) WHERE status = 'pending';
+CREATE INDEX idx_scheduled_campaigns_dispatch  ON scheduled_campaigns(scheduled_at, status) WHERE status = 'pending';
+CREATE INDEX idx_campaign_recipients_activation ON campaign_recipients(activation_token) WHERE activation_token IS NOT NULL;
+CREATE INDEX idx_campaign_recipients_unsub       ON campaign_recipients(unsubscribe_token) WHERE unsubscribe_token IS NOT NULL;
 CREATE INDEX idx_blacklist_email               ON blacklist(email);
 CREATE INDEX idx_blacklist_phone               ON blacklist(phone);

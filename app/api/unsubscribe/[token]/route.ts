@@ -16,12 +16,13 @@ export async function GET(_req: NextRequest, { params }: Props) {
     .maybeSingle();
 
   if (!recipient) {
-    return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 });
+    // Pas d'info leak : réponse identique pour token inconnu
+    return NextResponse.json({ success: true });
   }
 
   await supabase
     .from('campaign_recipients')
-    .update({ unsubscribed: true, unsubscribed_at: new Date().toISOString() })
+    .update({ status: 'unsubscribed' })
     .eq('id', recipient.id);
 
   // Marque le visiteur comme opt-out dans contact_requests futurs

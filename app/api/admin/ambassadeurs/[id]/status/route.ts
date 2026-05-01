@@ -7,12 +7,13 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const VALID_ACTIONS = ['pre_approved', 'validated', 'rejected', 'suspended', 'reactiver'] as const;
+const VALID_ACTIONS = ['pre_approved', 'validated', 'validated_bypass', 'rejected', 'suspended', 'reactiver'] as const;
 type Action = typeof VALID_ACTIONS[number];
 
 const ACTION_STATUS: Record<Action, string> = {
   pre_approved: 'pre_approved',
   validated: 'validated',
+  validated_bypass: 'validated',
   rejected: 'rejected',
   suspended: 'suspended',
   reactiver: 'validated',
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Ambassadeur introuvable' }, { status: 404 });
   }
 
+  // L'action standard 'validated' n'est permise que depuis enrichment_pending
+  if (action === 'validated' && profile.status === 'pre_approved') {
+    return NextResponse.json(
+      { error: 'Le candidat doit d\'abord remplir le questionnaire. Utilisez validated_bypass si nécessaire.' },
+      { status: 400 }
+    );
+  }
+
   const newStatus = ACTION_STATUS[action as Action];
 
   const { error } = await supabase
@@ -57,7 +66,9 @@ export async function POST(req: NextRequest, { params }: Props) {
     action_type: `ambassador_${action}`,
     target_id: id,
     admin_id: user.id,
-    notes: notes?.trim() || null,
+    notes: action === 'validated_bypass'
+      ? `bypass_enrichment${notes?.trim() ? ` — ${notes.trim()}` : ''}`
+      : (notes?.trim() || null),
   });
 
   if (FEATURES.EMAIL_NOTIFICATIONS && profile.user_id) {
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest, { params }: Props) {
         Promise.allSettled([
           sendPreValidationAccordee(email, profile.first_name, videoUrl, pdfUrl),
         ]);
-      } else if (action === 'validated') {
+      } else if (action === 'validated' || action === 'validated_bypass') {
         Promise.allSettled([sendValidationFinale(email, profile.first_name)]);
       }
     }

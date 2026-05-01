@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -7,21 +7,37 @@ interface Props {
 
 export async function PATCH(req: NextRequest, { params }: Props) {
   const { id } = await params;
-  const { is_active, is_full } = await req.json();
+  const body = await req.json();
 
-  const supabase = createServiceClient();
+  // is_full est calculé par trigger DB — non writable ici
+  const { is_active } = body;
 
-  const updates: Record<string, unknown> = {};
-  if (typeof is_active === 'boolean') updates.is_active = is_active;
-  if (typeof is_full === 'boolean') updates.is_full = is_full;
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'Aucun champ à mettre à jour.' }, { status: 400 });
+  if (typeof is_active !== 'boolean') {
+    return NextResponse.json({ error: 'is_active (boolean) requis' }, { status: 400 });
   }
 
-  const { error } = await supabase.from('host_activations').update(updates).eq('id', id);
+  // Client anon avec cookies : la RLS policy host_activations_host_update
+  // vérifie auth.uid() = host_profiles.user_id via la jointure FK
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll(); },
+        setAll() {},
+      },
+    }
+  );
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { error } = await supabase
+    .from('host_activations')
+    .update({ is_active })
+    .eq('id', id);
+
+  if (error) {
+    const status = error.code === '42501' || error.message.includes('policy') ? 403 : 500;
+    return NextResponse.json({ error: error.message }, { status });
+  }
 
   return NextResponse.json({ success: true });
 }

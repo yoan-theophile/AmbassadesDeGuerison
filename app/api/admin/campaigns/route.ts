@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
 
   const { supabase } = ctx;
 
-  // Vérifier que l'event existe et est futur
   const { data: event } = await supabase
     .from('events')
     .select('id, event_date')
@@ -31,7 +30,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Événement déjà passé' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // INSERT campagne
+  const { data: campaign, error: campaignError } = await supabase
     .from('scheduled_campaigns')
     .insert({
       event_id,
@@ -43,9 +43,65 @@ export async function POST(req: NextRequest) {
     .select('id')
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (campaignError) {
+    return NextResponse.json({ error: campaignError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ id: data.id }, { status: 201 });
+  // Snapshot destinataires (atomique : si échoue → supprimer la campagne)
+  let recipients: { email: string; first_name: string | null; recipient_type: string }[] = [];
+
+  if (type === 'ambassadeurs') {
+    const { data: hosts } = await supabase
+      .from('host_profiles')
+      .select('email, first_name')
+      .eq('status', 'validated');
+    recipients = (hosts ?? []).map((h) => ({
+      email: h.email,
+      first_name: h.first_name,
+      recipient_type: 'ambassador',
+    }));
+  } else {
+    // visiteurs : contact_requests acceptées pour cet event via host_activations
+    const { data: contacts } = await supabase
+      .from('contact_requests')
+      .select('visitor_email, visitor_first_name, host_activations!inner(event_id)')
+      .eq('host_activations.event_id', event_id)
+      .eq('status', 'accepted');
+
+    const seen = new Set<string>();
+    for (const c of contacts ?? []) {
+      if (!seen.has(c.visitor_email)) {
+        seen.add(c.visitor_email);
+        recipients.push({
+          email: c.visitor_email,
+          first_name: c.visitor_first_name,
+          recipient_type: 'visitor',
+        });
+      }
+    }
+  }
+
+  if (recipients.length > 0) {
+    const rows = recipients.map((r) => ({
+      campaign_id: campaign.id,
+      email: r.email,
+      first_name: r.first_name,
+      recipient_type: r.recipient_type,
+    }));
+
+    const { error: recipientsError } = await supabase
+      .from('campaign_recipients')
+      .insert(rows);
+
+    if (recipientsError) {
+      // Rollback : supprimer la campagne orpheline
+      await supabase.from('scheduled_campaigns').delete().eq('id', campaign.id);
+      return NextResponse.json(
+        { error: `Snapshot destinataires échoué : ${recipientsError.message}` },
+        { status: 500 }
+      );
+    }
+  }
+
+  return NextResponse.json({ id: campaign.id, recipients: recipients.length }, { status: 201 });
 }
