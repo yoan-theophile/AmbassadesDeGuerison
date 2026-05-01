@@ -636,5 +636,20 @@ npm run test:e2e
 
 ---
 
+| 2026-05-02 | Bug DB — colonnes manquantes (host_profiles) | ✅ corrigé | Admin ambassadeurs affichait "0 ambassadeurs" silencieusement. Cause : colonnes `conferences_assistees`, `livres_lus`, `phone` absentes du schéma remote. SELECT Supabase avec colonnes manquantes échoue silencieusement → `data ?? []` retourne []. Fix : `ALTER TABLE host_profiles ADD COLUMN IF NOT EXISTS` pour les 3 colonnes. Après fix : 8 ambassadeurs visibles. |
+| 2026-05-02 | Bug DB — user_id null (host_profiles seed) | ✅ corrigé | Dashboard Marie redirigait vers `/inscription` après magic link. Cause : `host_profiles.user_id = NULL` — le seed insère les profils sans lier l'`id` de `auth.users`. Fix : `UPDATE host_profiles SET user_id = auth.users.id WHERE email = ... AND user_id IS NULL`. Seul Marie a un compte auth.users — les autres ambassadeurs démo n'en ont pas. |
+| 2026-05-02 | M4 — Dashboard ambassadeur (complet) | ✅ | "Bonjour, Marie", Paris, France, badge "Actif". Sections : Formation ambassadeur (vidéo), Votre ambassade (partage + badge), Photos de profil + salle (dropzones), MES DEMANDES (vides — aucune demande sur cet event, non-bloquant). |
+| 2026-05-02 | M31 — Questionnaire `/dashboard/questionnaire` | ✅ | Guard: status `validated` → `accessDenied` affiché (redirige vers /dashboard). Testé en passant Marie à `pre_approved`. Formulaire complet : 2 cases Formation, select Fréquentation (Régulièrement sélectionné), dénomination, textarea parcours spirituel (0/500), livres, téléphone. Soumission → "Profil envoyé !". DB : status → `enrichment_pending`, `healing_challenge_done=true`, `church_attendance=regular`, `parcours_spirituel` enregistré. Marie remise à `validated` après test. |
+| 2026-05-02 | M16 — Admin live `/admin/live` | ✅ | Header "David Théry — Espace admin". Alerte "Aucun live dans les 4 prochaines heures". Affiche dernier event "Nuit de Prière — Souffle nouveau". Section Mains levées : 1 signal en attente (Aminata, Dakar) avec boutons Approuver/Refuser. Section Témoignages : "2 témoignages reçus — À modérer après le live". |
+| 2026-05-02 | M17 — Admin planning `/admin/planning` | ✅ | "1 à venir · 3 passés". Onglets À venir/Passés. Recherche. Event "Live Guérison — La puissance de l'Amour" (mardi 12 mai 2026 à 01h55) + lien YouTube. Bouton Modifier présent. "+ Nouveau live" opérationnel. |
+| 2026-05-02 | M23 — Admin settings `/admin/settings` | ✅ | URL vidéo YouTube (format embed) + hint "Remplacer VIDEO_ID". Lien PDF guide + hint. Bouton "Enregistrer". |
+| 2026-05-02 | M10 — Témoignages publics `/temoignages` | ✅ (re-vérif) | "Ce que Dieu a fait" + Sparkles. 12 témoignages • 10 villes. Filtre "Tous les lives". Grille 2 colonnes. "Lire la suite" sur cartes tronquées. Auteur + ville + titre live en indigo. |
+| 2026-05-02 | M11 — Formulaire témoignage `/temoignages/nouveau` | ✅ | Accès sans auth. Dropdown live pré-sélectionné (prochain event). Textarea 206/2000 rempli. Prénom + ville optionnels (placeholders Marie/Lyon). Soumission → "Merci pour ton témoignage — Il sera relu avant d'être publié." Témoignage visible en "Non publiés" dans /admin/temoignages (3 en attente, dont Bordeaux soumis). |
+| 2026-05-02 | M22 — Admin calendrier `/admin/calendrier` | ✅ | Section Lives (1 à venir + 3 passés, "+Nouveau live", tabs, search). Section "Campagnes planifiées" avec form (select live, type Ambassadeurs/Visiteurs, date d'envoi). |
+| 2026-05-02 | M18 — Admin témoignages `/admin/temoignages` | ✅ (re-vérif) | 15 total / 12 publiés / 3 non publiés. Onglets "Non publiés 3 / Publiés 12 / Tous 15". "Tout publier (3)" présent. Témoignage Bordeaux de ce test visible en tête. "Page publique" lien top right. |
+
+---
+
 *Généré le 2026-05-01 — DavidTheryApp v1 — branch `develop`*
+*Mis à jour le 2026-05-02 — Session QA suite (dashboard, questionnaire, pages admin complètes)*
 *États gérés par `scripts/demo-state.js`*
