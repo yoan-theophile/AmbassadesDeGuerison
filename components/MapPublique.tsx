@@ -21,7 +21,7 @@ interface HostPin {
 
 function makeIcon(L: any, hostType: string, isFull: boolean) {
   const isChurch = hostType === 'eglise' || hostType === 'church';
-  const bg = isFull ? '#ef4444' : isChurch ? '#7c3aed' : '#4f46e5';
+  const bg = isFull ? '#ef4444' : isChurch ? '#4338ca' : '#4f46e5';
   const symbol = isChurch
     ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M9 5h6M3 21h18M5 21V10l7-4 7 4v11M10 21v-5h4v5"/></svg>`
     : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
