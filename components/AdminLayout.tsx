@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +15,7 @@ import {
   AlertTriangle,
   Ban,
   Shield,
+  Bell,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 
@@ -21,7 +23,7 @@ const NAV = [
   { href: '/admin/stats',         label: 'Vue générale',  Icon: LayoutDashboard },
   { href: '/admin/ambassadeurs',  label: 'Ambassadeurs',  Icon: Users           },
   { href: '/admin/live',          label: 'Live en cours', Icon: Radio           },
-  { href: '/admin/planning',      label: 'Planning',      Icon: Calendar        },
+  { href: '/admin/calendrier',    label: 'Calendrier',    Icon: Calendar        },
   { href: '/admin/temoignages',   label: 'Témoignages',   Icon: MessageSquare   },
   { href: '/admin/feedback',      label: 'Signalements',  Icon: AlertTriangle   },
   { href: '/admin/blacklist',     label: 'Blocages',      Icon: Ban             },
@@ -32,6 +34,29 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [hasNewReport, setHasNewReport] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin-reports-bell')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'live_feedbacks',
+        filter: 'reported=eq.true',
+      }, () => {
+        setHasNewReport(true);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  useEffect(() => {
+    if (pathname.startsWith('/admin/feedback')) {
+      setHasNewReport(false);
+    }
+  }, [pathname]);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -43,9 +68,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen">
       <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col">
         <div className="px-4 py-5 border-b border-slate-800">
-          <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
-          <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
-          <p className="sm:hidden text-white text-sm font-semibold">✦</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
+              <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
+              <p className="sm:hidden text-white text-sm font-semibold">✦</p>
+            </div>
+            <Link
+              href="/admin/feedback"
+              className="relative text-slate-500 hover:text-white transition-colors"
+              title="Signalements"
+            >
+              <Bell className="w-4 h-4" />
+              {hasNewReport && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
+            </Link>
+          </div>
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1">
