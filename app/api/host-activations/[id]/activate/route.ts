@@ -3,11 +3,11 @@ import { createServerClient } from '@supabase/ssr';
 import { createServiceClient } from '@/lib/supabase/server';
 
 interface Props {
-  params: Promise<{ event_id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export async function POST(req: NextRequest, { params }: Props) {
-  const { event_id } = await params;
+  const { id: event_id } = await params;
   const body = await req.json();
   const capacity = parseInt(String(body.capacity));
 
