@@ -8,28 +8,47 @@ interface Props {
   hostProfileId: string;
   hostName: string;
   contactMode: string;
+  eventId: string | null;
 }
 
-export default function ContactForm({ hostProfileId, hostName, contactMode }: Props) {
-  const [form, setForm] = useState({ visitor_first_name: '', visitor_email: '', visitor_whatsapp: '', visitor_message: '' });
+export default function ContactForm({ hostProfileId, hostName, contactMode, eventId }: Props) {
+  const [form, setForm] = useState({
+    visitor_first_name: '',
+    visitor_email: '',
+    visitor_phone: '',
+    nb_personnes: 1,
+    visitor_message: '',
+    visitor_notifications_optin: true,
+  });
   const [loading, setLoading] = useState(false);
   const [actionToken, setActionToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
 
-  function set(field: string, value: string) {
+  function set<K extends keyof typeof form>(field: K, value: typeof form[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!eventId) return;
     setLoading(true);
     setError('');
 
-    const res = await fetch('/api/contact-requests', {
+    const res = await fetch('/api/visit-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, host_profile_id: hostProfileId }),
+      body: JSON.stringify({
+        host_profile_id: hostProfileId,
+        event_id: eventId,
+        visitor_first_name: form.visitor_first_name,
+        visitor_email: form.visitor_email,
+        visitor_phone: form.visitor_phone || null,
+        nb_personnes: form.nb_personnes,
+        visitor_message: form.visitor_message || null,
+        visitor_notifications_optin: form.visitor_notifications_optin,
+        website: '', // honeypot
+      }),
     });
 
     const data = await res.json();
@@ -47,16 +66,17 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: select text
+      // fallback silencieux
     }
   }
 
-  const contactHint: Record<string, string> = {
-    email: 'par e-mail',
-    whatsapp: 'via WhatsApp',
-    telephone: 'par téléphone',
-  };
-  const hint = contactHint[contactMode] ?? 'prochainement';
+  if (!eventId) {
+    return (
+      <p className="text-slate-500 text-sm text-center py-2">
+        Aucun live à venir pour cette ambassade pour le moment.
+      </p>
+    );
+  }
 
   if (actionToken) {
     const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/accueil-invite/${actionToken}`;
@@ -98,6 +118,13 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
     );
   }
 
+  const contactHint: Record<string, string> = {
+    email: 'par e-mail',
+    whatsapp: 'via WhatsApp',
+    telephone: 'par téléphone',
+  };
+  const hint = contactHint[contactMode] ?? 'prochainement';
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
@@ -109,18 +136,48 @@ export default function ContactForm({ hostProfileId, hostName, contactMode }: Pr
         <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
       </div>
       <PhoneInput
-        label="WhatsApp (optionnel)"
-        id="visitor_whatsapp"
-        value={form.visitor_whatsapp}
-        onChange={(v) => set('visitor_whatsapp', v)}
+        label="Téléphone (optionnel)"
+        id="visitor_phone"
+        value={form.visitor_phone}
+        onChange={(v) => set('visitor_phone', v)}
         placeholder="+33 6 12 34 56 78"
       />
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
+        <input
+          type="number"
+          min={1}
+          max={20}
+          value={form.nb_personnes}
+          onChange={(e) => set('nb_personnes', Math.max(1, parseInt(e.target.value) || 1))}
+          className={inputCls}
+        />
+      </div>
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
         <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
       </div>
 
+      <label className="flex items-start gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={form.visitor_notifications_optin}
+          onChange={(e) => set('visitor_notifications_optin', e.target.checked)}
+          className="mt-0.5 accent-indigo-600"
+        />
+        <span className="text-xs text-slate-500">
+          Je souhaite être informé(e) des prochains lives de David Théry.
+        </span>
+      </label>
+
+      {/* Honeypot — invisible */}
+      <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
+
       {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+      <p className="text-slate-400 text-xs">
+        Coordonnées transmises {hint} — disponibles dans 24 heures.
+      </p>
 
       <button
         type="submit"

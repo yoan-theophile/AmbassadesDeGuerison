@@ -5,6 +5,10 @@ import { FEATURES } from '@/config/features';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+
+  // Honeypot
+  if (body.website) return NextResponse.json({}, { status: 200 });
+
   const {
     email,
     first_name,

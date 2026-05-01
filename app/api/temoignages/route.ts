@@ -24,7 +24,7 @@ async function getAuthHostProfileId(): Promise<string | null> {
       .from('host_profiles')
       .select('id')
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .eq('status', 'validated')
       .single();
     return data?.id ?? null;
   } catch {
@@ -42,12 +42,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Corps JSON invalide.' }, { status: 400 });
   }
 
-  const { event_id, content, submitter_name, submitter_city, timing } = body as {
+  // Honeypot
+  if (body.website) return NextResponse.json({}, { status: 200 });
+
+  const { event_id, content, submitter_name, submitter_city } = body as {
     event_id?: string;
     content?: string;
     submitter_name?: string;
     submitter_city?: string;
-    timing?: string;
   };
 
   if (!event_id || typeof event_id !== 'string') {
@@ -63,9 +65,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Le témoignage ne peut pas dépasser 2000 caractères.' }, { status: 400 });
   }
 
-  const validTimings = ['during', 'after'];
-  const safeTiming = typeof timing === 'string' && validTimings.includes(timing) ? timing : 'after';
-
   const hostProfileId = await getAuthHostProfileId();
 
   const { data, error } = await supabase
@@ -75,7 +74,6 @@ export async function POST(request: NextRequest) {
       content: content.trim(),
       visitor_name: hostProfileId ? null : (typeof submitter_name === 'string' ? submitter_name.trim() || null : null),
       submitter_city: hostProfileId ? null : (typeof submitter_city === 'string' ? submitter_city.trim() || null : null),
-      timing: safeTiming,
       is_visible: false,
       host_profile_id: hostProfileId,
       contact_request_id: null,

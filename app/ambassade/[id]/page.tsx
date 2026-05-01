@@ -18,10 +18,25 @@ export default async function AmbassadePage({ params }: Props) {
     .from('host_profiles')
     .select('id, first_name, city, country, host_type, capacity, contact_mode, consignes, whatsapp_group_url')
     .eq('id', id)
-    .eq('status', 'active')
+    .eq('status', 'validated')
     .single();
 
   if (error || !host) notFound();
+
+  // Cherche le prochain live actif pour cet ambassadeur
+  const now = new Date().toISOString();
+  const { data: activation } = await supabase
+    .from('host_activations')
+    .select('event_id, is_active, is_full, events!inner(event_date)')
+    .eq('host_profile_id', host.id)
+    .eq('is_active', true)
+    .eq('is_full', false)
+    .gte('events.event_date', now)
+    .order('events(event_date)', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const activeEventId = activation?.event_id ?? null;
 
   // Compatibilité : host_type (schéma DB) ou type (schéma migré)
   const hostType = (host as any).type ?? (host as any).host_type ?? 'autre';
@@ -101,7 +116,7 @@ export default async function AmbassadePage({ params }: Props) {
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-sm font-medium text-slate-800 mb-4">Demander à rejoindre</p>
-          <ContactForm hostProfileId={host.id} hostName={host.first_name} contactMode={host.contact_mode} />
+          <ContactForm hostProfileId={host.id} hostName={host.first_name} contactMode={host.contact_mode} eventId={activeEventId} />
         </div>
       </div>
     </main>
