@@ -27,7 +27,19 @@
       "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp status)",
       "Bash(git -C C:/Users/tagne/Documents/projects/DavidTheryApp diff --stat)",
       "Bash(git *)",
-      "Skill(office-hours)"
+      "Skill(office-hours)",
+      "Read(//c/Users/tagne/.gstack/projects/davidtheryapp//**)",
+      "Read(//c/Users/tagne/.gstack/projects/DavidTheryApp//**)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#2 — Fonctions SQL/- [x] **#2 — Fonctions SQL/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#3 — Modifier triggers/- [x] **#3 — Modifier triggers/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#4 — Réécrire les/- [x] **#4 — Réécrire les/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#7 — Helper/- [x] **#7 — Helper/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#8 — `lib\\\\/timing-config/- [x] **#8 — `lib\\\\/timing-config/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#9 — `lib\\\\/i18n/- [x] **#9 — `lib\\\\/i18n/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#10 — Étendre/- [x] **#10 — Étendre/' TASKS.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] \\\\*\\\\*#11 — `lib\\\\/homepage-data/- [x] **#11 — `lib\\\\/homepage-data/' TASKS.md)",
+      "Bash(ls app/api/admin/feedbacks)",
+      "Bash(ls app/api/admin/blacklist)"
     ]
   }
 }
