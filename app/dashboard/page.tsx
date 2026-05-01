@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, Copy, Home, LogOut, Radio, Share2,
-  MessageSquare, Send, ExternalLink, Play, UserCheck, UserX,
+  MessageSquare, Send, ExternalLink, Play, UserCheck, UserX, Camera,
 } from 'lucide-react';
+import Dropzone from '@/components/ui/Dropzone';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
@@ -19,6 +20,8 @@ interface HostProfile {
   country: string;
   status: string;
   email: string;
+  profile_photo_url: string | null;
+  room_photo_urls: string[] | null;
 }
 
 interface Activation {
@@ -71,6 +74,10 @@ export default function DashboardPage() {
   // Accept/decline loading state
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
 
+  // Photos upload
+  const [photoUploading, setPhotoUploading] = useState<'profile' | 'room' | null>(null);
+  const [photoError, setPhotoError] = useState('');
+
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
 
@@ -82,7 +89,7 @@ export default function DashboardPage() {
 
     const { data: prof } = await supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, status, email')
+      .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls')
       .eq('user_id', user.id)
       .single();
 
@@ -253,6 +260,34 @@ export default function DashboardPage() {
     setTestimonialSubmitting(false);
   }
 
+  async function uploadPhoto(file: File, type: 'profile' | 'room') {
+    setPhotoUploading(type);
+    setPhotoError('');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', type);
+    const res = await fetch('/api/upload/ambassador-photo', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      setPhotoError(data.error ?? 'Erreur lors de l\'upload.');
+    } else {
+      setProfile((prev) => {
+        if (!prev) return prev;
+        if (type === 'profile') return { ...prev, profile_photo_url: data.url };
+        return { ...prev, room_photo_urls: [...(prev.room_photo_urls ?? []), data.url] };
+      });
+    }
+    setPhotoUploading(null);
+  }
+
+  function removeRoomPhoto(url: string) {
+    setProfile((prev) => {
+      if (!prev) return prev;
+      return { ...prev, room_photo_urls: (prev.room_photo_urls ?? []).filter((u) => u !== url) };
+    });
+    // Note : suppression du Storage non implémentée côté client (cleanup géré côté serveur si besoin)
+  }
+
   async function handleContactAction(token: string, action: 'accept' | 'decline') {
     setRequestActionLoading(token);
     const res = await fetch(`/api/visit-requests/${token}/${action}`, { method: 'POST' });
@@ -397,6 +432,71 @@ export default function DashboardPage() {
             </a>
           </div>
         )}
+
+        {/* Photos */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-5">
+          <div className="flex items-center gap-2">
+            <Camera className="w-4 h-4 text-indigo-500" />
+            <h2 className="font-semibold text-slate-800 text-sm">Photos de votre ambassade</h2>
+          </div>
+
+          {photoError && (
+            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{photoError}</p>
+          )}
+
+          {/* Photo de profil */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Photo de profil</p>
+            {photoUploading === 'profile' ? (
+              <div className="flex items-center justify-center h-32 rounded-xl border border-slate-200 bg-slate-50">
+                <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              <Dropzone
+                onFile={(f) => uploadPhoto(f, 'profile')}
+                preview={profile.profile_photo_url}
+                onRemove={profile.profile_photo_url ? () => setProfile((p) => p ? { ...p, profile_photo_url: null } : p) : undefined}
+                label="Photo de votre visage (visible publiquement)"
+              />
+            )}
+          </div>
+
+          {/* Photos de la salle */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+              Photos de la salle
+              <span className="font-normal text-slate-400 normal-case ml-1">({(profile.room_photo_urls ?? []).length}/5)</span>
+            </p>
+            {(profile.room_photo_urls ?? []).length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {(profile.room_photo_urls ?? []).map((url) => (
+                  <div key={url} className="relative group rounded-lg overflow-hidden border border-slate-100">
+                    <img src={url} alt="Salle" className="w-full h-24 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeRoomPhoto(url)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 shadow text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(profile.room_photo_urls ?? []).length < 5 && (
+              photoUploading === 'room' ? (
+                <div className="flex items-center justify-center h-24 rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <Dropzone
+                  onFile={(f) => uploadPhoto(f, 'room')}
+                  label="Ajouter une photo de la salle de réunion"
+                />
+              )
+            )}
+          </div>
+        </div>
 
         {/* Signal live — visible uniquement pendant la fenêtre du live */}
         {profile.status === 'validated' && currentEvent && (
