@@ -27,7 +27,7 @@
 - [x] **#5 — Refonte `scripts/seed.js` avec nouveau schéma + 2 admins**
   Adapter `seed.js` au nouveau schéma : retrait de `timing` dans `testimonials`, nouveau cycle status pour `host_profiles` (`validated` remplace `active`), insertion des 2 admins (`david.thery@demo.fr`, `theo.nelson.ia@gmail.com`) dans `admin_users` avec role super_admin/moderator. Maintenir les 8 ambassadeurs, 14 témoignages, 4 events, 10 demandes de contact.
 
-- [ ] **#6 — Vérifier `npm run db:reset` + `node scripts/seed.js` succeed**
+- [x] **#6 — Vérifier `npm run db:reset` + `node scripts/seed.js` succeed**
   Tester que le reset+seed complet fonctionne sans erreur SQL. Les 2 admins seed doivent pouvoir se connecter via `magic-link.js` et accéder à `/admin/*`.
 
 ---
