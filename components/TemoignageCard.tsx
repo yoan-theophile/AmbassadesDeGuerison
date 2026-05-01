@@ -3,19 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Quote } from 'lucide-react';
 
-const TIMING_LABELS: Record<string, string> = {
-  during: 'Pendant le live',
-  after:  'Après le live',
-};
-
 interface Props {
   content: string;
   hostName: string | null;
   eventTitle: string | null;
-  timing: string | null;
 }
 
-export default function TemoignageCard({ content, hostName, eventTitle, timing }: Props) {
+export default function TemoignageCard({ content, hostName, eventTitle }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
@@ -53,10 +47,7 @@ export default function TemoignageCard({ content, hostName, eventTitle, timing }
       )}
 
       <div className="mt-4 space-y-1">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span className="font-medium text-slate-500">{hostName ?? 'Ambassadeur'}</span>
-          {timing && <span>{TIMING_LABELS[timing] ?? timing}</span>}
-        </div>
+        <p className="text-xs font-medium text-slate-500">{hostName ?? 'Ambassadeur'}</p>
         {eventTitle && <p className="text-xs text-indigo-400 truncate">{eventTitle}</p>}
       </div>
     </div>

@@ -14,7 +14,7 @@ async function getTemoignages(eventId?: string) {
   const supabase = createServiceClient();
   let query = supabase
     .from('testimonials')
-    .select('id, content, timing, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city), event:events(id, title)')
+    .select('id, content, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city, country), event:events(id, title)')
     .eq('is_visible', true)
     .order('created_at', { ascending: false });
 
@@ -121,7 +121,7 @@ export default async function TemoignagesPage({
                   const ev = Array.isArray(t.event) ? t.event[0] : t.event;
                   const raw = t as Record<string, unknown>;
                   const displayName = hp
-                    ? `${hp.first_name}, ${hp.city}`
+                    ? `${hp.first_name}, ${hp.city}${hp.country ? ` (${hp.country})` : ''}`
                     : raw.visitor_name
                       ? `${raw.visitor_name}${raw.submitter_city ? `, ${raw.submitter_city}` : ''}`
                       : null;
@@ -131,7 +131,6 @@ export default async function TemoignagesPage({
                       content={t.content}
                       hostName={displayName}
                       eventTitle={ev?.title ?? null}
-                      timing={t.timing}
                     />
                   );
                 })}
