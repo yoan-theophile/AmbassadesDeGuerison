@@ -164,10 +164,14 @@ async function run() {
 
   if (target === 'live') {
     console.log('→ Passage en état LIVE EN COURS...');
-    // 1. Déplacer l'événement principal à now - 2h
+    // 1. Déplacer l'événement principal à now - 2h, ouvrir la fenêtre d'inscription
     const newDate = hoursFromNow(-2);
-    await patch(`/events?id=eq.${demoLiveEvent.id}`, { event_date: newDate });
-    console.log(`  OK event "${demoLiveEvent.title}" → now - 2h`);
+    await patch(`/events?id=eq.${demoLiveEvent.id}`, {
+      event_date: newDate,
+      registration_opens_at: daysAgo(8),
+      registration_closes_at: hoursFromNow(4),
+    });
+    console.log(`  OK event "${demoLiveEvent.title}" → now - 2h (inscriptions ouvertes)`);
 
     // 2. Activer tous les hôtes pour cet événement (is_active=TRUE)
     const activations = await req(
@@ -201,8 +205,12 @@ async function run() {
 
   if (target === 'soon') {
     console.log('→ Passage en état PROCHAIN DANS 3 JOURS...');
-    // 1. Remettre l'événement principal à J-7
-    await patch(`/events?id=eq.${demoLiveEvent.id}`, { event_date: daysAgo(7) });
+    // 1. Remettre l'événement principal à J-7, fermer la fenêtre d'inscription
+    await patch(`/events?id=eq.${demoLiveEvent.id}`, {
+      event_date: daysAgo(7),
+      registration_opens_at: daysAgo(14),
+      registration_closes_at: daysAgo(7),
+    });
     console.log(`  OK event "${demoLiveEvent.title}" → J-7`);
 
     // 2. Déplacer (ou créer s'il n'existe pas) l'événement futur à J+3
@@ -230,7 +238,11 @@ async function run() {
 
   if (target === 'upcoming') {
     console.log('→ Restauration état par défaut du seed (J-7 + J+10)...');
-    await patch(`/events?id=eq.${demoLiveEvent.id}`, { event_date: daysAgo(7) });
+    await patch(`/events?id=eq.${demoLiveEvent.id}`, {
+      event_date: daysAgo(7),
+      registration_opens_at: daysAgo(14),
+      registration_closes_at: daysAgo(7),
+    });
     console.log(`  OK event "${demoLiveEvent.title}" → J-7`);
 
     if (demoFutureEvent) {
@@ -256,7 +268,11 @@ async function run() {
   if (target === 'past') {
     console.log('→ Passage en état ENTRE DEUX LIVES (aucun futur)...');
     // 1. Remettre l'événement principal à J-7
-    await patch(`/events?id=eq.${demoLiveEvent.id}`, { event_date: daysAgo(7) });
+    await patch(`/events?id=eq.${demoLiveEvent.id}`, {
+      event_date: daysAgo(7),
+      registration_opens_at: daysAgo(14),
+      registration_closes_at: daysAgo(7),
+    });
     console.log(`  OK event "${demoLiveEvent.title}" → J-7`);
 
     // 2. Repousser l'événement futur à J-10 (passé, hors fenêtre live)

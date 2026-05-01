@@ -23,18 +23,22 @@ export default async function AmbassadePage({ params }: Props) {
 
   if (error || !host) notFound();
 
-  // Cherche le prochain live actif pour cet ambassadeur
+  // Cherche le live actif dont la fenêtre d'inscription est ouverte
   const now = new Date().toISOString();
-  const { data: activation } = await supabase
+  const { data: activations } = await supabase
     .from('host_activations')
-    .select('event_id, is_active, is_full, events!inner(event_date)')
+    .select('event_id, is_active, is_full, events!inner(event_date, registration_closes_at)')
     .eq('host_profile_id', host.id)
     .eq('is_active', true)
     .eq('is_full', false)
-    .gte('events.event_date', now)
-    .order('events(event_date)', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order('events(event_date)', { ascending: true });
+
+  // Priorité : inscriptions encore ouvertes (registration_closes_at >= now)
+  const activation = activations?.find((a) => {
+    const ev = (a as any).events;
+    const closes = ev?.registration_closes_at ?? ev?.event_date;
+    return closes && closes >= now;
+  }) ?? null;
 
   const activeEventId = activation?.event_id ?? null;
 
