@@ -327,29 +327,42 @@ export async function sendPreValidationAccordee(
   pdfUrl: string
 ) {
   const dashboardUrl = `${APP_URL()}/dashboard`;
+  const questionnaireUrl = `${APP_URL()}/dashboard/questionnaire`;
   return getResend().emails.send({
     from: FROM(),
     to,
-    subject: 'Votre candidature ambassadeur a bien été reçue',
+    subject: 'Bonne nouvelle — votre candidature ambassadeur est pré-approuvée !',
     ...templateOrHtml('RESEND_TEMPLATE_PRE_VALIDATION_ACCORDEE', {
       first_name: firstName,
       video_url: videoUrl,
       pdf_url: pdfUrl,
       dashboard_url: dashboardUrl,
+      questionnaire_url: questionnaireUrl,
     }, `
       <p>Bonjour ${firstName},</p>
-      <p>Nous avons bien reçu votre candidature pour devenir ambassadeur de guérison. Merci pour votre disponibilité à ouvrir votre maison.</p>
-      <p>Avant que nous puissions valider votre ambassade, nous vous demandons de :</p>
-      <ol>
-        <li>Regarder la vidéo de présentation de David Théry sur ce que signifie être ambassadeur</li>
-        <li>Lire la charte des ambassadeurs</li>
-        <li>Compléter votre profil</li>
-      </ol>
-      <p><a href="${videoUrl}" style="background:#4F46E5;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin-right:8px;">Voir la vidéo</a>
-      <a href="${pdfUrl}" style="background:#64748b;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Lire la charte</a></p>
-      <p style="margin-top:16px;"><a href="${dashboardUrl}">Compléter mon profil</a></p>
+      <p>Bonne nouvelle ! Votre candidature pour devenir ambassadeur de guérison a été pré-approuvée. Merci pour votre disponibilité à ouvrir votre maison.</p>
+      <p>Avant la validation finale, il reste une dernière étape : compléter votre profil enrichi. Cela prend moins de 5 minutes.</p>
+      <p><a href="${questionnaireUrl}" style="background:#4F46E5;color:white;padding:14px 28px;border-radius:6px;text-decoration:none;display:inline-block;font-size:16px;">Compléter mon profil →</a></p>
+      <p style="margin-top:16px;">Vous pouvez aussi :</p>
+      <p>
+        <a href="${videoUrl}" style="color:#4F46E5;">Voir la vidéo de formation</a> ·
+        <a href="${pdfUrl}" style="color:#4F46E5;">Lire la charte ambassadeur</a>
+      </p>
       <p style="color:#64748b;font-size:13px;margin-top:16px;">Si vous avez des questions, répondez directement à cet e-mail.</p>
     `),
+  } as any);
+}
+
+export async function sendEnrichissementRecu(adminEmail: string, ambassadeurFirstName: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: adminEmail,
+    subject: `Questionnaire soumis — ${ambassadeurFirstName} attend sa validation finale`,
+    html: `
+      <p>L'ambassadeur <strong>${ambassadeurFirstName}</strong> vient de soumettre son questionnaire d'enrichissement.</p>
+      <p>Son statut est maintenant <code>enrichment_pending</code>. Il attend votre validation finale.</p>
+      <p><a href="${APP_URL()}/admin/ambassadeurs">Valider dans l'admin →</a></p>
+    `,
   } as any);
 }
 

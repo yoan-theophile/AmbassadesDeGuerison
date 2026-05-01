@@ -185,17 +185,6 @@ export default function DashboardPage() {
     );
   }
 
-  async function toggleFull(id: string, currentValue: boolean) {
-    await fetch(`/api/host-activations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_full: !currentValue }),
-    });
-    setActivations((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, is_full: !currentValue } : a))
-    );
-  }
-
   async function sendLiveSignal() {
     if (!signalDescription.trim() || !profile || !currentEvent) return;
     setSignalLoading(true);
@@ -372,6 +361,47 @@ export default function DashboardPage() {
             {statusLabels[profile.status] ?? profile.status}
           </span>
         </div>
+
+        {/* Encart pré-approuvé — CTA questionnaire */}
+        {profile.status === 'pre_approved' && (
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                <UserCheck className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 text-sm">Félicitations, tu as été pré-approuvé !</p>
+                <p className="text-sm text-slate-600 mt-0.5">
+                  Il reste une dernière étape avant de rejoindre la carte des ambassadeurs :
+                  compléter ton profil enrichi pour que David puisse mieux te connaître.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/questionnaire"
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+            >
+              Compléter mon profil →
+            </Link>
+          </div>
+        )}
+
+        {/* Encart enrichissement en attente */}
+        {profile.status === 'enrichment_pending' && (
+          <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 text-sm">Ton dossier est en cours d'examen</p>
+                <p className="text-sm text-slate-600 mt-0.5">
+                  Merci d'avoir complété ton profil. L'équipe te contactera prochainement pour la validation finale.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Formation */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -584,11 +614,8 @@ export default function DashboardPage() {
                           <Toggle value={a.is_active} onChange={() => toggleActivation(a.id, a.is_active)} />
                           {a.is_active ? "J'accueille" : 'Inactif'}
                         </label>
-                        {a.is_active && (
-                          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                            <Toggle value={a.is_full} onChange={() => toggleFull(a.id, a.is_full)} />
-                            Complet
-                          </label>
+                        {a.is_full && (
+                          <span className="text-xs text-slate-400 px-2 py-0.5 bg-slate-100 rounded-full">Complet</span>
                         )}
                       </div>
                     </div>
