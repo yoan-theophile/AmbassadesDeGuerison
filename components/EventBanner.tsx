@@ -46,7 +46,7 @@ export default function EventBanner({ nextEvent, lastEvent, liveInProgress }: Pr
   if (liveInProgress) {
     const youtubeUrl = process.env.NEXT_PUBLIC_YOUTUBE_CHANNEL_URL ?? 'https://www.youtube.com/@DavidThery';
     return (
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+      <div className="absolute top-14 lg:top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
         <div className="flex items-center gap-2 px-4 py-2 rounded-full shadow-md text-sm font-medium bg-indigo-600 text-white">
           <Radio className="w-3.5 h-3.5 text-indigo-200 animate-pulse shrink-0" />
           <span className="sm:hidden">Live en cours</span>
@@ -101,7 +101,7 @@ export default function EventBanner({ nextEvent, lastEvent, liveInProgress }: Pr
 
   return (
     <div
-      className={`absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 rounded-full shadow-md text-sm font-medium ${
+      className={`absolute top-14 lg:top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 rounded-full shadow-md text-sm font-medium ${
         isUrgent
           ? 'bg-indigo-600 text-white'
           : 'bg-white text-slate-700 border border-slate-100'

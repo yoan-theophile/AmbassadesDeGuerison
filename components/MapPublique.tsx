@@ -84,7 +84,8 @@ export default function MapPublique() {
       if (cancelled || !containerRef.current) return;
       if ((containerRef.current as any)._leaflet_id) return;
 
-      const map = L.map(containerRef.current).setView([20, 10], 3);
+      const map = L.map(containerRef.current, { zoomControl: false }).setView([20, 10], 3);
+      L.control.zoom({ position: 'bottomleft' }).addTo(map);
       if (cancelled) { map.remove(); return; }
       mapRef.current = map;
 
