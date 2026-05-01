@@ -26,11 +26,22 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  active:              { label: 'Actif',         className: 'bg-emerald-50 text-emerald-700' },
-  pending_onboarding:  { label: 'En attente',    className: 'bg-amber-50 text-amber-700'    },
-  onboarding_complete: { label: 'Formation OK',  className: 'bg-blue-50 text-blue-700'      },
-  pending_charter:     { label: 'Charte',        className: 'bg-purple-50 text-purple-700'  },
-  suspended:           { label: 'Suspendu',      className: 'bg-red-50 text-red-700'        },
+  validated:          { label: 'Validé',          className: 'bg-emerald-50 text-emerald-700' },
+  pending_review:     { label: 'En examen',       className: 'bg-amber-50 text-amber-700'    },
+  pre_approved:       { label: 'Pré-approuvé',    className: 'bg-blue-50 text-blue-700'      },
+  enrichment_pending: { label: 'Questionnaire',   className: 'bg-purple-50 text-purple-700'  },
+  suspended:          { label: 'Suspendu',        className: 'bg-red-50 text-red-700'        },
+  rejected:           { label: 'Refusé',          className: 'bg-slate-100 text-slate-500'   },
+};
+
+// Actions disponibles selon le statut courant
+const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
+  pending_review:     [{ action: 'pre_approved', label: 'Pré-approuver', className: 'bg-blue-50 text-blue-700 hover:bg-blue-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  pre_approved:       [{ action: 'validated', label: 'Valider', className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  enrichment_pending: [{ action: 'validated', label: 'Valider', className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  validated:          [{ action: 'suspended', label: 'Suspendre', className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
+  suspended:          [{ action: 'reactiver', label: 'Réactiver', className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }],
+  rejected:           [{ action: 'reactiver', label: 'Réintégrer', className: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' }],
 };
 
 const HOST_TYPE_LABELS: Record<string, string> = {
@@ -39,10 +50,12 @@ const HOST_TYPE_LABELS: Record<string, string> = {
 };
 
 const FILTERS = [
-  { value: 'all',                label: 'Tous'         },
-  { value: 'active',             label: 'Actifs'       },
-  { value: 'pending_onboarding', label: 'En attente'   },
-  { value: 'suspended',          label: 'Suspendus'    },
+  { value: 'all',              label: 'Tous'          },
+  { value: 'pending_review',   label: 'En examen'     },
+  { value: 'pre_approved',     label: 'Pré-approuvés' },
+  { value: 'validated',        label: 'Validés'       },
+  { value: 'suspended',        label: 'Suspendus'     },
+  { value: 'rejected',         label: 'Refusés'       },
 ];
 
 export default function AmbassadeursTable({
@@ -78,16 +91,17 @@ export default function AmbassadeursTable({
     navigate({ q: search, page: '1' });
   }
 
-  async function handleAction(id: string, newStatus: 'suspended' | 'active') {
+  async function handleAction(id: string, action: string) {
     setActionLoading(id);
-    const res = await fetch(`/api/admin/ambassadeurs/${id}`, {
-      method: 'PATCH',
+    const res = await fetch(`/api/admin/ambassadeurs/${id}/status`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ action }),
     });
     if (res.ok) {
+      const data = await res.json();
       setAmbassadeurs((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+        prev.map((a) => (a.id === id ? { ...a, status: data.status } : a))
       );
     }
     setActionLoading(null);
@@ -168,24 +182,18 @@ export default function AmbassadeursTable({
                         {new Date(a.created_at).toLocaleDateString('fr-FR')}
                       </td>
                       <td className="px-4 py-3">
-                        {a.status === 'active' && (
-                          <button
-                            onClick={() => handleAction(a.id, 'suspended')}
-                            disabled={isLoading}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {isLoading ? '…' : 'Suspendre'}
-                          </button>
-                        )}
-                        {a.status === 'suspended' && (
-                          <button
-                            onClick={() => handleAction(a.id, 'active')}
-                            disabled={isLoading}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {isLoading ? '…' : 'Réactiver'}
-                          </button>
-                        )}
+                        <div className="flex gap-1.5 flex-wrap">
+                          {(STATUS_ACTIONS[a.status] ?? []).map((act) => (
+                            <button
+                              key={act.action}
+                              onClick={() => handleAction(a.id, act.action)}
+                              disabled={isLoading}
+                              className={`text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap ${act.className}`}
+                            >
+                              {isLoading ? '…' : act.label}
+                            </button>
+                          ))}
+                        </div>
                       </td>
                     </tr>
                   );
