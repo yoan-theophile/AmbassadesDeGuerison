@@ -19,9 +19,11 @@ export default function BienvenueAmbassadeur({ firstName, dashboardUrl, carteUrl
       <Text style={{ marginTop: '16px' }}>
         <Link href={carteUrl} style={link}>Voir ma position sur la carte</Link>
       </Text>
+      <Text style={signature}>— David Théry</Text>
     </EmailLayout>
   );
 }
 
 const p: React.CSSProperties = { fontSize: '15px', lineHeight: '1.6', color: '#1e293b', margin: '0 0 16px' };
+const signature: React.CSSProperties = { fontSize: '15px', color: '#334155', fontStyle: 'italic', marginTop: '8px' };
 const link: React.CSSProperties = { color: '#4F46E5' };

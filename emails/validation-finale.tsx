@@ -21,10 +21,12 @@ export default function ValidationFinale({ firstName, dashboardUrl, carteUrl }: 
         <Link href={carteUrl} style={link}>Voir ma position sur la carte</Link>
       </Text>
       <Text style={muted}>Merci d'ouvrir votre maison. C'est là que tout se passe.</Text>
+      <Text style={signature}>— David Théry</Text>
     </EmailLayout>
   );
 }
 
 const p: React.CSSProperties = { fontSize: '15px', lineHeight: '1.6', color: '#1e293b', margin: '0 0 16px' };
 const muted: React.CSSProperties = { fontSize: '13px', color: '#64748b', marginTop: '24px' };
+const signature: React.CSSProperties = { fontSize: '15px', color: '#334155', fontStyle: 'italic', marginTop: '8px' };
 const link: React.CSSProperties = { color: '#4F46E5' };

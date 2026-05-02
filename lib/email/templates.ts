@@ -60,7 +60,7 @@ export async function sendPreValidationAccordee(to: string, firstName: string, v
 export async function sendBienvenueAmbassadeur(to: string, firstName: string) {
   return getResend().emails.send({
     from: FROM(), to,
-    subject: 'Bienvenue dans les Ambassades de Guérison !',
+    subject: `Bienvenue, ${firstName} — votre ambassade est active !`,
     react: React.createElement(BienvenueAmbassadeur, {
       firstName,
       dashboardUrl: `${APP_URL()}/dashboard`,
@@ -84,7 +84,7 @@ export async function sendValidationFinale(to: string, firstName: string) {
 export async function sendRegistrationConfirmation(to: string, firstName: string) {
   return getResend().emails.send({
     from: FROM(), to,
-    subject: 'Bienvenue parmi les Ambassadeurs de Guérison !',
+    subject: `${firstName}, votre inscription est confirmée !`,
     react: React.createElement(RegistrationConfirmation, {
       firstName,
       dashboardUrl: `${APP_URL()}/dashboard`,

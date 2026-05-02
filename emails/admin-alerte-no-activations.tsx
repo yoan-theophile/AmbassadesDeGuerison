@@ -12,7 +12,7 @@ export default function AdminAlerteNoActivations({ eventTitle, eventDate, adminU
   return (
     <EmailLayout preview={`⚠️ Alerte : 0 hôtes actifs pour "${eventTitle}"`}>
       <Text style={p}>⚠️ Attention : l'événement <strong>{eventTitle}</strong> ({eventDate}) n'a aucun hôte actif dans host_activations.</Text>
-      <Text style={p}>Le trigger fn_auto_activate_hosts_for_event a peut-être échoué silencieusement.</Text>
+      <Text style={p}>Le mécanisme d'activation automatique des hôtes n'a peut-être pas fonctionné.</Text>
       <Text style={p}>
         <Link href={adminUrl} style={link}>Vérifier dans l'admin →</Link>
       </Text>

@@ -18,6 +18,7 @@ export default function CampagneVisiteurs({ firstName, eventTitle, eventDate, ca
       <Text style={p}>David Théry anime un nouveau live de guérison : <strong>{eventTitle}</strong>, le <strong>{eventDate}</strong>.</Text>
       <Text style={p}>Des ambassades sont prêtes à vous accueillir partout dans le monde — chez des particuliers ou dans des petites églises — pour vivre ce live ensemble.</Text>
       <Btn href={carteUrl}>Trouver une ambassade près de moi</Btn>
+      <Text style={muted}>Chaque ambassade est un foyer ou une église qui ouvre ses portes pour vivre le live ensemble.</Text>
       <Text style={muted}>
         Vous recevez cet e-mail parce que vous avez déjà participé à un live.<br />
         <Link href={unsubscribeUrl} style={unsub}>Ne plus recevoir ces e-mails</Link>

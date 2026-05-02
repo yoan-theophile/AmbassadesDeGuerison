@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2.0] - 2026-05-02
+
+### Changed
+- `emails/validation-finale.tsx` : signature "— David Théry" ajoutée après la phrase de clôture
+- `emails/bienvenue-ambassadeur.tsx` : signature "— David Théry" ajoutée en fin d'email
+- `emails/admin-alerte-no-activations.tsx` : suppression du nom de trigger SQL technique `fn_auto_activate_hosts_for_event`, remplacé par du texte lisible
+- `emails/campagne-visiteurs.tsx` : ligne de contextualisation ajoutée après le CTA pour les nouveaux visiteurs
+- `lib/email/templates.ts` : sujets personnalisés pour `sendBienvenueAmbassadeur` (template 4) et `sendRegistrationConfirmation` (template 6) — prénom inclus dans le sujet
+
 ## [0.1.1.0] - 2026-05-02
 
 ### Added
