@@ -4,7 +4,6 @@ import * as React from 'react';
 import { MOCKS } from '@/emails/__mocks__';
 
 import MagicLink from '@/emails/magic-link';
-import MagicLinkBienvenue from '@/emails/magic-link-bienvenue';
 import PreValidationAccordee from '@/emails/pre-validation-accordee';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
@@ -12,7 +11,6 @@ import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
 import ContactReceivedHost from '@/emails/contact-received-host';
-import ContactAccepted from '@/emails/contact-accepted';
 import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
 import AcceptationVisite from '@/emails/acceptation-visite';
@@ -30,7 +28,6 @@ export default async function EmailPreviewPage() {
 
   const [
     htmlMagicLink,
-    htmlMagicLinkBienvenue,
     htmlPreValidation,
     htmlBienvenue,
     htmlValidation,
@@ -38,7 +35,6 @@ export default async function EmailPreviewPage() {
     htmlCampagneAmb,
     htmlFeedback,
     htmlContactHost,
-    htmlContactAccepted,
     htmlContactReserved,
     htmlContactDeclined,
     htmlAcceptation,
@@ -50,7 +46,6 @@ export default async function EmailPreviewPage() {
     htmlAlerte,
   ] = await Promise.all([
     render(<MagicLink magicLinkUrl={m.magicLink} />),
-    render(<MagicLinkBienvenue firstName={m.marie.firstName} magicLinkUrl={m.magicLink} />),
     render(<PreValidationAccordee firstName={m.marie.firstName} questionnaireUrl={m.questionnaireUrl} videoUrl={m.videoUrl} pdfUrl={m.pdfUrl} />),
     render(<BienvenueAmbassadeur firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
     render(<ValidationFinale firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
@@ -58,7 +53,6 @@ export default async function EmailPreviewPage() {
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
     render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} declineUrl={m.declineUrl} />),
-    render(<ContactAccepted hostFirstName={m.host.firstName} actionUrl={m.actionUrl} />),
     render(<ContactReserved visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostCity={m.jp.city} hostEmail={m.host.email} hostWhatsappGroupUrl={m.host.whatsappGroupUrl} accueilUrl={m.accueilUrl} availableAt={m.availableAt} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
     render(<AcceptationVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostAddress={m.host.address} hostPhone={m.host.phone} eventTitle={m.liveTitle} eventDate={m.liveDate} contactEquipeUrl={m.contactEquipeUrl} />),
@@ -72,7 +66,6 @@ export default async function EmailPreviewPage() {
 
   const ambassadeur = [
     { label: 'Magic link (connexion standard)', html: htmlMagicLink },
-    { label: 'Magic link — bienvenue nouvel inscrit', html: htmlMagicLinkBienvenue },
     { label: 'Pré-validation accordée', html: htmlPreValidation },
     { label: 'Bienvenue ambassadeur (validation finale)', html: htmlBienvenue },
     { label: 'Validation finale — ambassade active', html: htmlValidation },
@@ -83,7 +76,6 @@ export default async function EmailPreviewPage() {
   ];
 
   const visiteur = [
-    { label: 'Demande de contact acceptée', html: htmlContactAccepted },
     { label: 'Place réservée — coordonnées partielles', html: htmlContactReserved },
     { label: 'Demande refusée', html: htmlContactDeclined },
     { label: 'Confirmation de visite — adresse dévoilée', html: htmlAcceptation },

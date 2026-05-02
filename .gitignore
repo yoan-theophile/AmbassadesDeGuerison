@@ -43,5 +43,6 @@ next-env.d.ts
 .gstack/
 .gstack-design/
 test-results/
+screenshots/
 
 .vercel
