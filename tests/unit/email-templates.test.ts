@@ -26,7 +26,7 @@ process.env.RESEND_ADMIN_EMAIL = 'admin@test.fr';
 import {
   sendMagicLink,
   sendBienvenueAmbassadeur,
-  sendContactRequestAccepted,
+  sendAcceptationVisite,
   sendCampagneAmbassadeurs,
   sendAdminAlertNoActivations,
   sendContactRequestReserved,
@@ -34,7 +34,7 @@ import {
 
 import MagicLink from '@/emails/magic-link';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
-import ContactAccepted from '@/emails/contact-accepted';
+import ContactAccepted from '@/emails/acceptation-visite';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
 import ContactReserved from '@/emails/contact-reserved';
@@ -81,13 +81,19 @@ describe('sendBienvenueAmbassadeur', () => {
   });
 });
 
-describe('sendContactRequestAccepted', () => {
-  it('construit actionUrl avec le token', async () => {
-    await sendContactRequestAccepted('visitor@test.fr', 'Marie', 'tok123');
-    const { react } = lastCallPayload();
+describe('sendAcceptationVisite', () => {
+  it('envoie au visiteur avec le bon composant et les props hôte', async () => {
+    await sendAcceptationVisite(
+      'visitor@test.fr', 'Sophie', 'Marie', '12 rue de la Paix, Paris', null,
+      'Nuit de Prière', '2026-06-14', 'https://test.app/contact',
+    );
+    const { to, react } = lastCallPayload();
     const props = (react as React.ReactElement).props;
-    expect(props.actionUrl).toBe('https://test.app/accueil-invite/tok123');
+    expect(to).toBe('visitor@test.fr');
+    expect(props.visitorFirstName).toBe('Sophie');
     expect(props.hostFirstName).toBe('Marie');
+    expect(props.hostAddress).toBe('12 rue de la Paix, Paris');
+    expect(props.hostPhone).toBeNull();
     expect((react as React.ReactElement).type).toBe(ContactAccepted);
   });
 });

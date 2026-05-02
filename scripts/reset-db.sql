@@ -46,6 +46,7 @@ CREATE TABLE events (
   event_date             TIMESTAMPTZ NOT NULL,
   registration_opens_at  TIMESTAMPTZ,
   registration_closes_at TIMESTAMPTZ,
+  feedback_sent          BOOLEAN     DEFAULT FALSE,
   created_at             TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -252,6 +253,7 @@ CREATE TABLE event_timing_config (
   visitor_auto_decline_days_before INTEGER     DEFAULT 1,
   feedback_days_after              INTEGER     DEFAULT 1,
   queue_aging_days                 INTEGER     DEFAULT 5,
+  soon_threshold_days              INTEGER     DEFAULT 2,
   updated_at                       TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT single_row CHECK (id = 1)
 );

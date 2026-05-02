@@ -25,9 +25,9 @@
 │  │  app/api/**                                         │    │
 │  ├─────────────────────────────────────────────────────┤    │
 │  │  Cron Jobs (Vercel Cron)                            │    │
-│  │  /api/cron/dispatch-campaigns (quotidien)           │    │
-│  │  /api/cron/auto-decline (quotidien)                 │    │
-│  │  /api/cron/send-feedback-emails                     │    │
+│  │  /api/cron/dispatch-campaigns (08:00 UTC)           │    │
+│  │  /api/cron/send-feedback-emails (10:00 UTC)         │    │
+│  │  /api/cron/check-activations (non activé)           │    │
 │  └─────────────────────────────────────────────────────┘    │
 └────────────────────┬────────────────────────────────────────┘
                      │ PostgreSQL (port 6543 — pooler PgBouncer)
@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  19 templates TSX (React Email v6) — emails transactionnels │
+│  17 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -268,3 +268,146 @@ qui ne dépasse pas quelques dizaines de connexions simultanées.
 | `CRON_SECRET` | Server uniquement | Authentification des jobs Vercel Cron |
 | `EMAIL_PREVIEW` | Server uniquement | Active `/dev/emails` (doit valoir exactement `"true"`) |
 | `NODE_ENV` | Server + Build | `development` active le DevOverlay et `/api/dev/*` |
+
+---
+
+## Inventaire des features — statut opérationnel
+
+Ce tableau est la source de vérité sur ce qui fonctionne réellement en production.
+Mis à jour manuellement à chaque PR significative.
+
+> **Légende :**
+> ✅ Opérationnel — code + schéma + intégration complets
+> ⚠️ Partiel — code existe, lacune bloquante connue
+> ❌ Absent — fonctionnalité décidée, pas encore codée
+> 💀 Mort — code existe, jamais appelé (aucun déclencheur)
+
+### Features produit
+
+| Feature | Statut | Routes principales | Gap / Note |
+|---------|--------|-------------------|------------|
+| Carte publique (pins) | ✅ | `GET /api/host-activations` | |
+| EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
+| Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
+| Inscription ambassadeur | ✅ | `POST /api/inscriptions` | |
+| Pipeline candidat (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | |
+| Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
+| Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | Toggle "J'accueille / Inactif" dans `/dashboard` |
+| Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte) |
+| Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
+| Témoignages — modération admin | ✅ | `/admin/temoignages` | |
+| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel, **cron non schedulé** (pas de `vercel.json`) |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join, cron non schedulé |
+| Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
+| Clôture live | ❌ | — | Pas de bouton admin. DevOverlay uniquement (dev). **Décision D1 : créer bouton dans `/admin/live`** |
+| Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
+| Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
+| Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
+| Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` Supabase Storage |
+| Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
+| Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
+| Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
+| Geocoding (autocomplétion ville) | ✅ | `GET /api/geocode` | Proxy Nominatim, limite 1 req/s |
+| Preview emails (dev) | ✅ | `/dev/emails` | Requiert `EMAIL_PREVIEW=true` |
+
+---
+
+### Gaps schéma confirmés
+
+| Table | Colonne manquante | Impact | Fix |
+|-------|------------------|--------|-----|
+| `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | Cron `send-feedback-emails` plante au premier run | Ajouter dans `reset-db.sql` + migration |
+| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | Seuil "soon" hardcodé dans `MapPublique.tsx` (ligne 101) | Ajouter colonne + lire depuis DB **Décision D3** |
+
+---
+
+### Crons — état en production
+
+| Cron | Route | Schedule | Statut prod |
+|------|-------|----------|-------------|
+| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ✅ Schedulé dans `vercel.json` |
+| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⚠️ Schedulé — **bug SQL join** à corriger avant usage réel |
+| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` (suggéré) | ⏸ **Non activé** — route écrite, à ajouter dans `vercel.json` |
+| Auto-decline visiteurs | `/api/cron/auto-decline` | — | 💀 **Supprimé** (David ne l'a pas demandé) |
+
+---
+
+### Timing config — champs sans cron correspondant (💀 Mort)
+
+| Champ `event_timing_config` | Cron correspondant | État |
+|-----------------------------|-------------------|------|
+| `campaign_ambassadors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
+| `campaign_visitors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
+| `feedback_days_after` | `/api/cron/send-feedback-emails` | ⚠️ Bug + non schedulé |
+| `host_reminder_days_before` | — | 💀 Aucun cron correspondant |
+| `visitor_auto_decline_days_before` | `/api/cron/auto-decline` | 💀 Cron supprimé |
+| `queue_aging_days` | — | 💀 Aucun cron correspondant |
+
+---
+
+### Variables live window — deux familles (incohérence documentée)
+
+Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable selon le contexte :
+
+| Variable | Défaut | Utilisée dans | Rôle |
+|----------|--------|--------------|------|
+| `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` | 4h | `lib/homepage-data.ts`, `api/host-activations`, `dashboard/page.tsx`, `lib/dev/state.ts` | Fenêtre affichage pins sur carte publique |
+| `LIVE_WINDOW_PAST_HOURS` | **6h** | `app/admin/live/page.tsx` uniquement | Fenêtre rétroactive pour le feed admin |
+| `LIVE_WINDOW_FUTURE_HOURS` | 4h | `app/admin/live/page.tsx` uniquement | Fenêtre anticipée pour le feed admin |
+
+**Conséquence intentionnelle :** le feed admin (`/admin/live`) voit un live "en cours" pendant 6h après son heure de début, tandis que la carte publique arrête d'afficher les pins après 4h. David peut continuer à surveiller les signaux même après la fermeture de la carte.
+
+**Point d'attention :** si David configure `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` à 6h (Q7 de `SCENARIOS_DEMO.md`), les deux familles seront alignées. Si la durée dépasse 6h, il faudra aussi ajuster `LIVE_WINDOW_PAST_HOURS` manuellement dans Vercel.
+
+---
+
+### Bug connu — send-feedback-emails (ligne 38)
+
+```typescript
+// BUG : .eq('host_activations.event_id', event.id) sans join Supabase
+// → filtre ignoré, retourne TOUS les contact_requests acceptés toutes events confondues
+const { data: contacts } = await supabase
+  .from('contact_requests')
+  .select('id, visitor_email, visitor_first_name, action_token')
+  .eq('status', 'accepted')
+  .eq('host_activations.event_id', event.id); // ← ne fait rien sans .select('...host_activations(*)')
+```
+
+Fix requis avant activation du cron : utiliser un join explicite ou filtrer via `host_activation_id IN (SELECT id FROM host_activations WHERE event_id = ...)`.
+
+---
+
+### Routes API — carte complète
+
+| Préfixe | Domaine | Auth | Statut |
+|---------|---------|------|--------|
+| `GET /api/host-activations` | Pins carte publique | Non | ✅ |
+| `PATCH /api/host-activations/[id]` | Toggle self-activation hôte | Session hôte (RLS) | ✅ |
+| `POST /api/visit-requests` | Visiteur → demande contact hôte | Non | ✅ |
+| `POST /api/contact-requests` | (alias legacy) | Non | ✅ |
+| `POST /api/campaign-activations` | Activation hôte via lien email | Token signé | ✅ |
+| `POST /api/temoignages` | Soumission témoignage public | Non | ✅ |
+| `GET /api/testimonials` | Lecture témoignages (admin) | Admin | ✅ |
+| `POST /api/live-signals` | Signal live depuis dashboard hôte | Session hôte | ✅ |
+| `GET /api/live-signals` | Feed signaux (admin/live) | Admin | ✅ |
+| `POST /api/inscriptions` | Création profil ambassadeur | Non | ✅ |
+| `GET/PATCH /api/onboarding/*` | Questionnaire + config | Session hôte / Admin | ✅ |
+| `PATCH /api/ambassadeur/*` | Enrichissement profil | Session hôte | ✅ |
+| `PATCH /api/admin/ambassadeurs/[id]/status` | Pipeline candidat | Admin | ✅ |
+| `POST/DELETE /api/admin/team` | Gestion équipe admin | Super admin | ✅ |
+| `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
+| `GET/PATCH /api/admin/settings/onboarding` | Config vidéo/PDF onboarding | Admin | ✅ |
+| `GET /api/admin/settings/timing` | Config timing (lecture) | Admin | ✅ |
+| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ✅ Schedulé |
+| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⚠️ Schedulé — bug SQL join |
+| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Non activé |
+| `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
+| `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
+| `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
+| `GET /api/unsubscribe/[token]` | Désabonnement email | Token | ✅ |
+| `POST /api/upload/ambassador-photo` | Upload photo | Session hôte | ✅ |
+| `POST /api/visitor-help-request` | Email aide visiteur | Non | ✅ |
+| `GET /dev/emails` | Preview emails (dev) | `EMAIL_PREVIEW=true` | ✅ |
+| `POST /api/dev/state` | Simulation états DB | `NODE_ENV=development` | ✅ |
+| `POST /api/auth/magic-link` | Génération magic link | Admin | ✅ |

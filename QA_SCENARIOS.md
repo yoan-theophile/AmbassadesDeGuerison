@@ -855,11 +855,11 @@ npm run dev
 
 - [x] La page `/dev/emails` s'affiche sans erreur (200)
 - [x] La page `/dev/emails` en production (`NODE_ENV=production`, sans `EMAIL_PREVIEW`) retourne 404 — guard `if (!process.env.EMAIL_PREVIEW) notFound()` confirmé dans le code
-- [x] Le compteur de templates en sous-titre affiche **19 templates**
+- [x] Le compteur de templates en sous-titre affiche **17 templates**
 - [x] Les 4 sections sont présentes : "Parcours ambassadeur", "Parcours visiteur", "Live", "Admin"
 - [x] Chaque section contient le bon nombre d'iframes :
-  - Ambassadeur : 9 iframes
-  - Visiteur : 6 iframes
+  - Ambassadeur : 8 iframes
+  - Visiteur : 5 iframes
   - Live : 1 iframe
   - Admin : 3 iframes
 
@@ -879,7 +879,7 @@ npm run dev
 | # | Template | Label dans la page | Validé |
 |---|---|---|---|
 | 1 | `magic-link` | Magic link (connexion standard) | [ ] |
-| 2 | `magic-link-bienvenue` | Magic link — bienvenue nouvel inscrit | [ ] |
+| ~~2~~ | ~~`magic-link-bienvenue`~~ | ~~Magic link — bienvenue nouvel inscrit~~ | 🗑 Supprimé — redondant avec `registration-confirmation` |
 | 3 | `pre-validation-accordee` | Pré-validation accordée | [ ] |
 | 4 | `bienvenue-ambassadeur` | Bienvenue ambassadeur (validation finale) | [ ] |
 | 5 | `validation-finale` | Validation finale — ambassade active | [ ] |
@@ -887,7 +887,7 @@ npm run dev
 | 7 | `campagne-ambassadeurs` | Campagne — invitation au prochain live | [ ] |
 | 8 | `feedback-post-live` | Feedback post-live | [ ] |
 | 9 | `contact-received-host` | Ambassadeur — demande de visite reçue | [ ] |
-| 10 | `contact-accepted` | Demande de contact acceptée | [ ] |
+| ~~10~~ | ~~`contact-accepted`~~ | ~~Demande de contact acceptée~~ | 🗑 Supprimé — étape intermédiaire retirée du flux contact |
 | 11 | `contact-reserved` | Place réservée — coordonnées partielles | [ ] |
 | 12 | `contact-declined` | Demande refusée | [ ] |
 | 13 | `acceptation-visite` | Confirmation de visite — adresse dévoilée | [ ] |
@@ -908,7 +908,7 @@ npm run dev
 |---|---|---|
 | **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? | Garder "ambassadeur" dans les emails internes. Dans `campagne-visiteurs`, ajouter une ligne de contextualisation ("chez des particuliers ou des petites églises") pour les non-initiés. C'est déjà en partie là. |
 | **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? | Prénom seul est le bon registre pastoral. Ajouter le nom = ton administratif. Pas de changement. |
-| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. La version bienvenue (`magic-link-bienvenue`) a déjà la phrase d'accueil. Le magic link standard doit rester fonctionnel. |
+| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. `magic-link-bienvenue` a été supprimé (redondant). Le magic link standard reste fonctionnel. |
 | **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? | Bon ton. "Bonne nouvelle !" est du vocabulaire pastoral naturel. Option d'enrichissement : "Vous faites partie de ceux qui étendent le réseau de guérison dans le monde." — pas bloquant. |
 | **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? | **OUI, recommandé.** `validation-finale` se termine par "Merci d'ouvrir votre maison. C'est là que tout se passe." — ajouter "— David Théry" transforme l'email système en lettre personnelle. Idem pour `bienvenue-ambassadeur`. |
 | **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? | Utilisé à chaque live. Ajouter un placeholder dans le champ admin : "Décris le live en 1-2 phrases. Ex : Ce soir, David priera pour les malades." |

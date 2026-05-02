@@ -88,10 +88,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
   }
 
   if (state === 'soon') {
-    await supabase
-      .from('host_activations')
-      .update({ is_active: false })
-      .eq('event_id', demoLiveEvent.id);
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
     await supabase
       .from('events')
       .update({
@@ -110,10 +107,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
   }
 
   if (state === 'upcoming') {
-    await supabase
-      .from('host_activations')
-      .update({ is_active: false })
-      .eq('event_id', demoLiveEvent.id);
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
     await supabase
       .from('events')
       .update({
@@ -132,10 +126,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
   }
 
   if (state === 'past') {
-    await supabase
-      .from('host_activations')
-      .update({ is_active: false })
-      .eq('event_id', demoLiveEvent.id);
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
     await supabase
       .from('events')
       .update({
@@ -154,6 +145,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
   }
 
   if (state === 'closed') {
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
     await supabase
       .from('events')
       .update({
@@ -162,10 +154,6 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
         registration_closes_at: daysAgo(1),
       })
       .eq('id', demoLiveEvent.id);
-    await supabase
-      .from('host_activations')
-      .update({ is_active: false })
-      .eq('event_id', demoLiveEvent.id);
     if (demoFutureEvent) {
       await supabase
         .from('events')
@@ -177,10 +165,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
 
   // Futur live annoncé, 0 ambassadeurs confirmés (campagne email pas encore envoyée)
   if (state === 'blank') {
-    await supabase
-      .from('host_activations')
-      .update({ is_active: false })
-      .eq('event_id', demoLiveEvent.id);
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
     await supabase
       .from('events')
       .update({

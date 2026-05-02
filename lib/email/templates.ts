@@ -2,7 +2,6 @@ import { Resend } from 'resend';
 import * as React from 'react';
 
 import MagicLink from '@/emails/magic-link';
-import MagicLinkBienvenue from '@/emails/magic-link-bienvenue';
 import PreValidationAccordee from '@/emails/pre-validation-accordee';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
@@ -10,7 +9,6 @@ import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
 import ContactReceivedHost from '@/emails/contact-received-host';
-import ContactAccepted from '@/emails/contact-accepted';
 import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
 import AcceptationVisite from '@/emails/acceptation-visite';
@@ -33,14 +31,6 @@ export async function sendMagicLink(to: string, magicLinkUrl: string) {
     from: FROM(), to,
     subject: 'Votre lien de connexion — Ambassades de Guérison',
     react: React.createElement(MagicLink, { magicLinkUrl }),
-  });
-}
-
-export async function sendMagicLinkAmbassadeurBienvenue(to: string, firstName: string, magicLinkUrl: string) {
-  return getResend().emails.send({
-    from: FROM(), to,
-    subject: 'Votre lien de connexion — Ambassades de Guérison',
-    react: React.createElement(MagicLinkBienvenue, { firstName, magicLinkUrl }),
   });
 }
 
@@ -133,16 +123,6 @@ export async function sendNewContactRequestHost(
   });
 }
 
-export async function sendContactRequestAccepted(to: string, hostFirstName: string, actionToken: string) {
-  return getResend().emails.send({
-    from: FROM(), to,
-    subject: `Votre demande a été acceptée par ${hostFirstName}`,
-    react: React.createElement(ContactAccepted, {
-      hostFirstName,
-      actionUrl: `${APP_URL()}/accueil-invite/${actionToken}`,
-    }),
-  });
-}
 
 export async function sendContactRequestReserved(
   to: string,

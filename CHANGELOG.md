@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4.0] - 2026-05-03
+
+### Added
+- **Bouton "Clôturer le live"** (`components/LiveCloseButton.tsx` + `POST /api/admin/live/close`) : David peut terminer un live en un clic depuis `/admin/live`. Tous les pins disparaissent immédiatement de la carte publique.
+- **`soonThresholdDays` configurable** : le seuil "les ambassades confirment leur participation" (affichage de l'overlay "soon" vs "upcoming") est maintenant lu depuis `event_timing_config.soon_threshold_days` en base (défaut : 2 jours) au lieu d'être codé en dur.
+- **`/admin/settings/timing`** : champ `soon_threshold_days` ajouté à la page de configuration du timing.
+- **Cron `check-activations`** (`app/api/cron/check-activations/route.ts`) : alerte l'admin par email si 0 hôtes actifs pour le prochain live. Route opérationnelle, non activée dans `vercel.json` — à scheduler quand prêt.
+- **Workflow GH Actions `check-activations.yml`** : miroir du cron, désactivé par défaut (`workflow_dispatch` uniquement).
+- **Tests email** (`tests/unit/email-templates.test.ts`) : 6 suites couvrant tous les `sendXxx` (MagicLink, BienvenueAmbassadeur, AcceptationVisite, CampagneAmbassadeurs, AdminAlertNoActivations, ContactRequestReserved).
+- **`scripts/migration-v0140.sql`** : ajoute `feedback_sent BOOLEAN DEFAULT FALSE` sur `events` et `soon_threshold_days INTEGER DEFAULT 2` sur `event_timing_config`.
+- **`vercel.json`** : crons `dispatch-campaigns` et `send-feedback-emails` officiellement schedulés.
+
+### Fixed
+- **`lib/dev/state.ts` — reset global `is_active`** : les transitions vers les états non-live (`soon`, `upcoming`, `past`, `closed`, `blank`) remettent maintenant `is_active = false` sur **toutes** les activations (`.in('is_active', [true, false])`), pas seulement sur le `demoLiveEvent`. Les pins ne pouvaient pas disparaître si d'autres events avaient des hôtes actifs.
+
+### Removed
+- **`emails/magic-link-bienvenue.tsx`** et `sendMagicLinkAmbassadeurBienvenue` : template orphelin — jamais appelé depuis une route. Redondant avec `registration-confirmation` qui couvre déjà le premier contact post-inscription.
+- **`emails/contact-accepted.tsx`** et `sendContactRequestAccepted` : template orphelin — étape intermédiaire du flux contact retirée quand le flux a été simplifié (réservation directe sans "acceptation" préalable).
+
+### Docs
+- `SCENARIOS_DEMO.md` : réécriture complète pour la démo 45 min avec David Théry — 5 blocs minutés, 7 questions à débattre (clôture live, assistante, désactivation self-service, feedback, mobile, domaine, durée live).
+- `docs/ARCHITECTURE.md` : vue d'ensemble technique complète (couches système, flux homepage, cycle ambassadeur, cycle live, inventaire features, gaps schéma, crons, routes API).
+- Tous les autres fichiers de documentation mis à jour (compteur 19 → 17 templates, crons, routes API).
+
 ## [0.1.3.0] - 2026-05-02
 
 ### Added

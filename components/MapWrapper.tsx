@@ -16,11 +16,12 @@ interface Props {
   liveInProgress: boolean;
   totalAmbassadors: number;
   totalCountries: number;
+  soonThresholdDays: number;
 }
 
 const MapPublique = dynamic(() => import('./MapPublique'), { ssr: false });
 
-export default function MapWrapper({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries }: Props) {
+export default function MapWrapper({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
   return (
     <div className="relative w-full h-full">
       <EventBanner nextEvent={nextEvent} lastEvent={lastEvent} liveInProgress={liveInProgress} />
@@ -30,6 +31,7 @@ export default function MapWrapper({ nextEvent, lastEvent, liveInProgress, total
         liveInProgress={liveInProgress}
         totalAmbassadors={totalAmbassadors}
         totalCountries={totalCountries}
+        soonThresholdDays={soonThresholdDays}
       />
     </div>
   );

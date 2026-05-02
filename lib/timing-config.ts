@@ -7,6 +7,7 @@ export type TimingConfig = {
   visitor_auto_decline_days_before: number;
   feedback_days_after: number;
   queue_aging_days: number;
+  soon_threshold_days: number;
 };
 
 export const DEFAULTS: TimingConfig = {
@@ -16,6 +17,7 @@ export const DEFAULTS: TimingConfig = {
   visitor_auto_decline_days_before: 1,
   feedback_days_after: 1,
   queue_aging_days: 5,
+  soon_threshold_days: 2,
 };
 
 // Fonction plain async — crons sont ponctuels, pas besoin de cache entre appels (Next.js 16)
@@ -26,7 +28,7 @@ export async function getTimingConfig(): Promise<TimingConfig> {
     .select(
       'campaign_ambassadors_days_before, campaign_visitors_days_before, ' +
       'host_reminder_days_before, visitor_auto_decline_days_before, ' +
-      'feedback_days_after, queue_aging_days'
+      'feedback_days_after, queue_aging_days, soon_threshold_days'
     )
     .eq('id', 1)
     .single();

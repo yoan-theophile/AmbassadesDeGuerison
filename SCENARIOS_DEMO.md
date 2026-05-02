@@ -1,538 +1,295 @@
-# Scénarios de test — Ambassades de Guérison
-## Guide de démo pour David Thery
+# Démo David Théry — 45 minutes
+## Ambassades de Guérison — v0.1.4.0
 
-> **Avant de commencer** : lancer `npm run dev` puis ouvrir `http://localhost:3000`
+> **Setup avant que David arrive :**
+> 1. `supabase db query --linked --file scripts/reset-db.sql && node scripts/seed.js`
+> 2. `npm run dev` → `localhost:3000`
+> 3. DevOverlay → clic **`📅 Upcoming`** (carte propre, prochain live visible)
+> 4. Magic link admin prêt : `node scripts/magic-link.js david.thery@demo.fr`
 
 ---
 
-## Avant la démo — Discussion avec David
+## Structure — minutage
 
-> **Objectif de cette section :** valider votre compréhension du besoin avant de montrer quoi que ce soit.
-> Poser ces questions à David, l'écouter corriger ou confirmer, puis ajuster la démo en conséquence.
+| Bloc | Contenu | Durée |
+|------|---------|-------|
+| 0 | Discussion amont — valider la compréhension | 5 min |
+| 1 | La carte publique — les 3 états clés | 10 min |
+| 2 | Parcours visiteur | 8 min |
+| 3 | Côté admin | 12 min |
+| 4 | Questions à débattre | 10 min |
 
-### Ce que j'ai compris de votre besoin
+---
 
-*À dire à David, en langage simple :*
+## Bloc 0 — Discussion amont (5 min)
 
-> « Vous faites des lives de guérison en direct depuis La Réunion. Des milliers de personnes vous regardent seules chez elles — c'est dommage, parce que quelque chose de fort se passe quand on prie ensemble dans une même pièce.
+*Avant de montrer quoi que ce soit, dire à David :*
+
+> « Voici ce que j'ai compris : vous faites des lives de guérison depuis La Réunion.
+> Des milliers de personnes regardent, mais seules. L'idée : des gens de confiance ouvrent
+> leur maison ou leur église le soir du live pour que d'autres viennent les rejoindre.
+> Votre message arrive via YouTube, mais ils prient ensemble physiquement.
 >
-> L'idée de cette application, c'est de créer une chaîne d'ambassades : des gens de confiance — des pasteurs, des responsables de cellule, des croyants engagés — qui ouvrent leur maison ou leur église le soir du live, pour que d'autres viennent les rejoindre. Votre message arrive chez eux via YouTube, mais ils sont ensemble physiquement.
->
-> Votre rôle dans l'app : créer les lives à l'avance, voir en direct les signaux que vous envoient vos ambassadeurs pendant le live (s'il se passe quelque chose de fort, ils "lèvent la main"), modérer les témoignages après, et voir les KPIs globaux. »
+> Votre rôle dans l'app : créer les lives, envoyer une campagne email pour activer
+> vos ambassadeurs, voir les signaux en direct pendant le live, modérer les témoignages
+> après. »
 
-### Questions de validation avant la démo
+**Valider avec lui :**
 
-1. **Le recrutement des ambassadeurs** — Comment ça se passe aujourd'hui ? Via WhatsApp ? Réseaux ? Vous les connaissez personnellement tous ? L'app doit-elle rester fermée (vous activez chaque ambassadeur) ou ouverte (n'importe qui peut s'inscrire) ?
-
-2. **L'acceptation explicite** — Quand un visiteur demande à rejoindre une ambassade, l'hôte reçoit un email et choisit d'accepter ou non. S'il accepte, le visiteur reçoit les coordonnées par email. L'hôte peut refuser sans s'expliquer. Est-ce que ce flux vous semble juste ?
-
-3. **Les signaux "main levée"** — Pendant le live, vous auriez `/admin/live` ouvert sur un deuxième écran. Vous voyez les ambassadeurs qui veulent vous passer un témoignage en direct. Vous avez besoin de ça, ou c'est trop complexe à gérer pendant que vous animez ?
-
-4. **Les témoignages écrits** — Après le live, les ambassadeurs et les visiteurs peuvent envoyer un témoignage. Vous les validez (ou refusez) avant publication. Qui fait cette modération — vous, ou quelqu'un de votre équipe ?
-
-5. **Ce que vous attendez de la démo** — Y a-t-il une fonctionnalité spécifique que vous voulez voir en priorité ?
+- Est-ce que cette description est juste ?
+- Y a-t-il une fonctionnalité qu'il veut voir en priorité ?
+- Est-ce que son assistante sera présente ou a-t-elle besoin d'une session séparée ?
 
 ---
 
-## Données de démo disponibles
+## Bloc 1 — La carte publique (10 min)
 
-### 8 ambassadeurs (7 actifs + 1 en attente d'onboarding)
-| Ambassadeur | Ville | Pays | Capacité | Statut |
-|-------------|-------|------|---------|--------|
-| Marie | Paris | France | 15 places | actif |
-| Jean-Pierre | Lyon | France | 80 places (COMPLET) | actif |
-| Fatou | Bruxelles | Belgique | 40 places | actif |
-| Samuel | Montréal | Canada | 12 places | actif |
-| Claire | Genève | Suisse | 8 places | actif |
-| Kofi | Abidjan | Côte d'Ivoire | 120 places | actif |
-| Aminata | Dakar | Sénégal | 60 places | actif |
-| Sophie | Bordeaux | France | 10 places | pending_review |
+### 1a — Ce que voit un visiteur entre deux lives (état Upcoming)
 
-### 4 événements
-| Label | Titre | Statut |
-|-------|-------|--------|
-| J-60 | Live Guérison — Foi sans frontières | passé |
-| J-30 | Live Guérison — Touché par la grâce | passé |
-| J-7 | Nuit de Prière — Souffle nouveau | passé ← **event principal pour la démo** |
-| J+10 | Live Guérison — La puissance de l'Amour | **à venir** |
+La DB est déjà en état `upcoming`. Ouvrir `localhost:3000`.
 
-### 10 demandes de contact (sur l'event J-7)
-| Visiteur | Ambassade | Statut |
-|---------|-----------|--------|
-| Pierre | Marie (Paris) | pending — onboarding fait |
-| Nathalie | Marie (Paris) | pending — lien non consulté |
-| Luc | Marie (Paris) | pending — onboarding fait |
-| Ahmed | Jean-Pierre (Lyon) | pending — onboarding fait |
-| Isabelle | Jean-Pierre (Lyon) | pending — lien non consulté |
-| Laure | Fatou (Bruxelles) | declined (refusée) |
-| Thomas | Fatou (Bruxelles) | pending — onboarding fait |
-| Emmanuel | Samuel (Montréal) | pending — onboarding fait |
-| Bénédicte | Kofi (Abidjan) | pending — onboarding fait |
-| Oumar | Aminata (Dakar) | pending — onboarding fait |
+Ce que David doit voir :
+- Carte vide (aucune épingle)
+- Overlay centré : **"PROCHAIN LIVE [date] / Les ambassades s'afficheront dès qu'elles confirmeront..."**
+- Stats communauté : *"7 ambassadeurs · 6 pays"*
+- Lien *"Voir les témoignages →"*
+- Bandeau EventBanner : *"Prochain live le [date] à [heure]"*
 
-### 14 témoignages
-- 10 ambassadeurs — répartis sur les 3 events passés
-- 4 anonymes (formulaire public) — Grâce (Nantes), Patrick (Marseille), Christelle (Douala), 1 sans nom
-- **12 visibles + 2 en attente de modération**
+*À dire :*
+> « Entre deux lives, un visiteur qui arrive voit ça. Il sait quand est le prochain live,
+> combien d'ambassades existent déjà, et peut lire les témoignages. La carte n'affiche
+> aucune épingle pour ne pas créer de demandes hors fenêtre live. »
 
-### 5 signaux live (event J-7)
-| Ambassadeur | Statut signal |
-|-------------|--------------|
-| Jean-Pierre (Lyon) | approved |
-| Kofi (Abidjan) | approved |
-| Aminata (Dakar) | **pending** ← à traiter en démo |
-| Marie (Paris) | used (lien partagé à l'antenne) |
-| Fatou (Bruxelles) | declined |
+### 1b — Pendant le live (état Live)
 
----
+DevOverlay → clic **`🔴 Live`**.
 
-## Scénario 1 — La carte publique
+Ce que David doit voir :
+- **7 épingles apparaissent** sur la carte (Paris, Lyon, Bruxelles, Montréal, Genève, Abidjan, Dakar)
+- Bandeau : *"Live en cours — rejoignez-nous"* (indigo, icône pulsante)
 
-**Ce que montre cette page :**
-La carte mondiale avec les épingles des ambassades actives + le bandeau événement.
+*À dire :*
+> « Dès que vous démarrez un live, les épingles apparaissent. Les visiteurs peuvent
+> trouver une ambassade près de chez eux et envoyer une demande de contact. »
 
-**Étapes :**
-1. Ouvrir `http://localhost:3000`
-2. **Bandeau EventBanner** visible en haut de la carte — 4 états :
-   - Live démarré depuis < 4h : *"Live en cours — rejoignez-nous"* (indigo, icône pulsante)
-   - Prochain live dans < 7j : *"Prochain live dans 10j 4h 32min"* (compte à rebours indigo)
-   - Prochain live dans ≥ 7j : *"Prochain live le samedi 3 mai à 18h00"* (heure en timezone locale du visiteur)
-   - Aucun live à venir : *"Dernier live il y a X jours — prochainement"*
-3. La carte s'affiche avec **7 épingles** géolocalisées (Paris, Lyon, Bruxelles, Montréal, Genève, Abidjan, Dakar)
-4. **Barre de recherche** (centre haut de la carte) : taper « Dakar » → suggestion apparaît → sélectionner → la carte vole vers Dakar zoom 10
-5. Zoomer sur la France : Paris (Marie) et Lyon (Jean-Pierre)
-6. Zoomer sur l'Europe : Bruxelles (Fatou) et Genève (Claire)
-7. Dézoomer → Montréal, Abidjan, Dakar apparaissent sur 3 continents
-8. Cliquer sur l'épingle de **Marie à Paris** → bulle d'information avec prénom, ville et capacité
-9. Cliquer sur « Contacter → » dans la bulle
+Montrer :
+- Barre de recherche → taper "Dakar" → la carte vole vers Dakar
+- Cliquer sur l'épingle de **Kofi (Abidjan)** → *"120 places — Lieu de prière"*
+- Cliquer sur **Jean-Pierre (Lyon)** → badge *"Complet"* (80/80)
+- Cliquer sur **Marie (Paris)** → *"15 places"* → bouton *"Contacter →"*
 
-**Points clés à montrer à David :**
-- Couverture internationale en temps réel — 6 pays sur 3 continents
-- L'épingle de **Jean-Pierre (Lyon)** affiche « Complet » (80/80)
-- La barre de recherche permet à n'importe quel visiteur de trouver une ambassade près de chez lui
-- Si le visiteur zoome dans une zone sans ambassade (≥ niveau pays), un hint discret apparaît : *"Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →"*
-- Actualisation automatique toutes les 30 secondes sans rechargement de page
-- Sophie (Bordeaux) n'apparaît pas : statut `pending_review`, pas encore validée par l'admin
+### 1c — Live en cours, aucune ambassade confirmée (état Live-Zero)
+
+DevOverlay → clic **`🔴 Live (0 confirm.)`**.
+
+Ce que David doit voir :
+- Carte vide (campagne non encore envoyée)
+- Overlay : *"Live en cours / Les ambassades confirment leur participation..."*
+- Si `live_link` renseigné : bouton *"Regarder le live →"*
+
+*À dire :*
+> « Si vous démarrez le live avant d'avoir envoyé la campagne email, les visiteurs
+> voient cet écran. C'est honnête — les ambassades n'ont pas encore confirmé.
+> Le lien vers le live YouTube est quand même accessible. »
 
 ---
 
-## Scénario 2 — Demande de contact (parcours visiteur)
+## Bloc 2 — Parcours visiteur (8 min)
 
-**Ce que montre ce scénario :**
-Un visiteur qui veut rejoindre une ambassade pour le prochain live. Flux actuel : le visiteur envoie sa demande → l'ambassadeur reçoit un email avec un lien → l'ambassadeur accepte ou refuse explicitement → si accepté, le visiteur reçoit les coordonnées par email.
+### 2a — Demander à rejoindre une ambassade
 
-**Étapes — côté visiteur :**
-1. Depuis la carte, cliquer sur **Marie (Paris)** → « Contacter → »
-   - URL : `http://localhost:3000/ambassade/{id}`
-2. La page affiche :
-   - Prénom et ville
-   - Type de lieu : Domicile
-   - Les consignes de Marie : *"Sonner à l'interphone Dubois. Ascenseur disponible. Parking Opéra à 200m."*
-3. Remplir le formulaire de contact :
-   - **Prénom** : Thomas
-   - **E-mail** : thomas.demo@test.fr
-   - **WhatsApp** (optionnel) : +33 6 12 34 56 78 — sélectionner le drapeau France
-   - **Message** : Je viendrai avec mon épouse, nous sommes deux.
-4. Cliquer sur « Envoyer la demande »
-5. Message de confirmation : *"Votre demande a été envoyée à Marie. Elle vous répondra par e-mail."*
+DevOverlay → revenir en **`🔴 Live`**.
 
-**Suite — côté ambassadeur (voir Scénario 6) :**
-- Marie reçoit un email avec le résumé de la demande et un bouton « Accepter »
-- Elle clique → page `/accueillir/{token}` → elle accepte
-- Thomas reçoit les coordonnées de Marie par email
+1. Cliquer sur **Marie (Paris)** → *"Contacter →"*
+2. Page `/ambassade/{id}` : prénom, ville, consignes d'accueil
+3. Remplir le formulaire : Prénom *Thomas*, Email *thomas@test.fr*, Message *"Je viendrai avec mon épouse."*
+4. Envoyer → *"Votre demande a été envoyée à Marie."*
 
-**Points clés :**
-- L'adresse de l'ambassadeur n'est jamais affichée sur le site — elle est envoyée par email uniquement après acceptation explicite de l'hôte
-- Le champ WhatsApp accepte n'importe quel indicatif pays (sélecteur de drapeau)
-- La demande est en statut `pending` jusqu'à la décision de l'hôte — pas d'auto-acceptation
+*À dire :*
+> « L'adresse de Marie n'est jamais visible sur le site. Elle arrive dans l'email
+> de Thomas uniquement si Marie accepte explicitement. »
+
+### 2b — Formulaire d'inscription (nouvelle ambassade)
+
+1. DevOverlay → **`📅 Upcoming`** (retour à carte vide)
+2. L'overlay affiche le bouton *"Devenir ambassadeur"* n'apparaît que dans l'état "aucun live prévu" — expliquer : les autres états ont un CTA différent (témoignages, pas inscription)
+3. Ou : ouvrir directement `localhost:3000/inscription`
+4. Étape 1 : taper "Toul" → suggestion Nominatim → sélectionner "Toulouse, France" → pays se remplit automatiquement
+5. Étape 2 : Domicile, 12 places, adresse
+6. Étape 3 : récapitulatif → Envoyer
+
+*À dire :*
+> « Le bouton "Continuer" reste bloqué tant qu'une ville n'est pas sélectionnée
+> dans la liste. Pas de coordonnées = pas d'épingle sur la carte. »
 
 ---
 
-## Scénario 3 — Ambassade avec groupe WhatsApp
+## Bloc 3 — Côté admin (12 min)
 
-**Ce que montre ce scénario :**
-Une ambassade d'église avec lien WhatsApp direct.
+Connexion : magic link `david.thery@demo.fr` (DevOverlay > Magic Link, ou terminal).
 
-**Étapes :**
-1. Depuis la carte, cliquer sur **Jean-Pierre (Lyon)**
-2. Cliquer sur « Contacter → »
-3. Observer :
-   - Type : Église / lieu de culte
-   - **Ambassade affichée comme « Complète »** (80/80 places)
-   - Bouton vert « Rejoindre le groupe WhatsApp »
-4. Le bouton WhatsApp ouvre le groupe communautaire directement
+### 3a — Stats (2 min)
 
-**Points clés :**
-- Les ambassades d'église peuvent accueillir plus de monde (80 places)
-- L'état « complet » est géré automatiquement
-- Lien WhatsApp de groupe optionnel pour la communauté
+`/admin/stats` — KPIs : 7 ambassades actives, 6 pays, 10 demandes, 12 témoignages.
 
----
+### 3b — Pipeline candidat (3 min)
 
-## Scénario 4 — Inscription comme ambassadeur
+`/admin/ambassadeurs` — **Sophie Leroux (Bordeaux)** est en `En examen`.
 
-**Ce que montre ce scénario :**
-Le parcours pour devenir un nouvel ambassadeur. Le candidat remplit le formulaire → statut `pending_review` → l'admin pré-approuve → le candidat reçoit un email pour compléter son profil (questionnaire enrichissement) → l'admin valide définitivement.
+1. Cliquer *"Pré-approuver"* → statut passe à `pre_approved`
+2. *À dire :* Sophie reçoit un email avec un lien questionnaire + vidéo à regarder. Elle revient une fois son questionnaire rempli. Puis validation finale → elle apparaît dans tous les lives futurs, mais ne s'active que via la campagne email.
 
-**Étapes :**
-1. Depuis la carte, cliquer sur « Devenir ambassadeur » (bouton indigo en haut à droite)
-   - Ou URL directe : `http://localhost:3000/inscription`
-2. **Étape 1 — Coordonnées :**
-   - Prénom : Thomas
-   - E-mail : thomas.nouveau@test.fr
-   - **Ville** : commencer à taper « Toul » → suggestions Nominatim apparaissent → sélectionner « Toulouse, France »
-     *(La géolocalisation lat/lng est capturée automatiquement)*
-   - **Pays** : se remplit automatiquement sur « France » après la sélection Toulouse
-   - Cliquer sur « Continuer »
-3. **Étape 2 — Le lieu :**
-   - Type : Domicile
-   - Capacité : 12 personnes
-   - Adresse complète : 15 rue de la République, 31000 Toulouse
-   - Consignes : Appartement 3ème étage, porte gauche
-   - Cliquer sur « Continuer »
-4. **Étape 3 — Contact :**
-   - Lien groupe WhatsApp (optionnel) : laisser vide
-   - Récapitulatif visible (prénom, ville, type, capacité)
-   - Cliquer sur « Envoyer ma demande »
-5. Page de confirmation avec **share CTA** :
-   - Bouton « Copier le lien » → copie l'URL de la carte
-   - Bouton « WhatsApp » → partage pré-rempli : *"Je viens de m'inscrire comme ambassadeur…"*
+### 3c — Campagne email (3 min)
 
-**Points clés :**
-- La ville avec autocomplete est géocodée → l'épingle apparaîtra précisément sur la carte une fois validé et activé
-- Le pays se remplit automatiquement depuis le geocoding (ex : sélectionner "Yaoundé" → pays = "Cameroun")
-- Le bouton "Continuer" est bloqué tant qu'une ville n'a pas été sélectionnée dans la liste (pas de saisie libre)
-- 200+ pays disponibles, francophones épinglés en tête
-- L'adresse est stockée mais jamais visible publiquement
-- La candidature arrive dans la modération admin avec statut `pending_review` — **pas d'auto-activation**
-- L'ambassadeur n'apparaît sur la carte qu'après validation complète + activation manuelle pour un live
+`/admin/calendrier` — Programmer une campagne pour le live J+10 :
 
+1. Sélectionner le live *"La puissance de l'Amour"*
+2. Type : Ambassadeurs
+3. Date d'envoi : J-7 à 10h00
+4. Planifier
+
+*À dire :*
+> « À J-7, chaque ambassadeur validé reçoit un email avec un lien personnalisé.
+> Ceux qui cliquent s'activent pour ce live et apparaissent sur la carte.
+> Ceux qui ne cliquent pas ne figurent pas — David voit exactement qui sera là. »
+
+### 3d — Feed live (4 min)
+
+DevOverlay → **`🔴 Live`**. Ouvrir `/admin/live`.
+
+Deux colonnes :
+- **Mains levées** : Aminata (Dakar) en `pending` → cliquer *"Approuver"* → signal passe en approuvé
+- **Témoignages** : compteur — cliquer → redirige vers `/admin/temoignages` pré-filtré
+
+Montrer aussi le bouton **"Clôturer le live"** (coin haut droit) → confirmer → tous les pins disparaissent de la carte publique immédiatement.
+
+*À dire :*
+> « Cette page reste ouverte sur un 2e écran pendant le live. Vous voyez en temps
+> réel les ambassadeurs qui veulent partager quelque chose à l'antenne. En fin de live,
+> un clic sur "Clôturer" remet tous les pins à zéro — les visiteurs ne peuvent plus
+> envoyer de demandes. »
 
 ---
 
+## Bloc 4 — Questions à débattre (10 min)
 
-## Scénario 5 — Tableau de bord admin (KPIs)
-
-**Ce que montre ce scénario :**
-La vue de pilotage pour David.
-
-**Étapes :**
-1. Ouvrir `http://localhost:3000/admin/stats`
-   - *(Redirige vers `/auth` si non connecté — normal en démo)*
-   - Se connecter avec `david.thery@demo.fr` via magic link
-2. Le tableau de bord affiche :
-   - **Ambassades actives** : 7
-   - **Pays représentés** : 6 (France, Belgique, Canada, Suisse, Côte d'Ivoire, Sénégal)
-   - **Demandes de contact** : 10
-   - **Témoignages** : 12 publiés
-
-**Points clés :**
-- Chiffres en temps réel
-- Vue épurée, KPIs essentiels
-- Navigation vers la modération
-
-> **Note démo** : Pour accéder à `/admin/stats`, utiliser un compte avec le rôle `admin`
-> dans Supabase (user_metadata.role = "admin"). À configurer dans le dashboard Supabase.
+Ces questions sont importantes. Certaines ont une réponse dans le code, d'autres ouvrent une décision produit.
 
 ---
 
-## Scénario 6 — L'ambassadeur reçoit et accepte une demande
+### Q1 — La clôture manuelle suffit-elle, ou faut-il une clôture automatique ?
 
-**Ce que montre ce scénario :**
-Ce que voit l'ambassadeur quand un visiteur lui demande de rejoindre son ambassade. L'hôte accepte ou refuse explicitement — aucune auto-validation.
+**Situation actuelle :** le bouton "Clôturer le live" existe dans `/admin/live` (option A implémentée). Un clic remet `is_active = false` sur tous les hôtes de l'event. La clôture automatique n'existe pas encore.
 
-**Contexte :** Nathalie a envoyé une demande à Marie (Paris). Marie reçoit un email avec un lien tokenisé.
+**Question :** Est-ce que David (ou son assistante) clôturera manuellement à chaque live, ou préfère-t-il une sécurité automatique en cas d'oubli ?
 
-**Simuler le flux d'acceptation :**
-1. Dans Supabase Dashboard → Table `contact_requests`
-2. Trouver la ligne de **Nathalie** (visitor_email = `nathalie.v@mail.com`)
-3. Copier la valeur de `action_token`
-4. Ouvrir : `http://localhost:3000/accueillir/{action_token}`
-5. La page affiche :
-   - Nom du visiteur, nombre de personnes, message
-   - Nom de l'event et date
-   - Deux boutons : **« Accepter »** (vert) et **« Refuser »** (rouge)
-6. Cliquer sur **« Accepter »**
-7. Confirmation : *"Nathalie recevra vos coordonnées par e-mail."*
-8. Nathalie reçoit un email avec l'adresse complète de Marie
+**Enjeu :** si personne ne clique "Clôturer" après le live, les épingles restent visibles le lendemain matin. Des visiteurs pourraient envoyer des demandes hors fenêtre live.
 
-**Points clés :**
-- Aucune authentification requise : le lien tokenisé identifie l'hôte
-- L'adresse n'est JAMAIS affichée sur le site — envoyée par email uniquement après acceptation
-- L'hôte peut refuser depuis cette même page ou via le lien rapide `/refuser/{token}` dans l'email
-- La page `/accueillir/[token]` gère aussi le cas « déjà accepté » ou « déjà refusé » proprement
+**Options à lui proposer :**
+- A) Manuel uniquement — le bouton dans `/admin/live` suffit ✅ déjà livré
+- B) Clôture automatique : X heures après `event_date` (ex : +6h), un cron remet tout à zéro
+- C) Les deux : automatique + bouton manuel si live raccourci
 
 ---
 
-## Scénario 7 — L'hôte refuse une demande (lien rapide)
+### Q2 — Est-ce que l'assistante de David utilise l'admin ?
 
-**Ce que montre ce scénario :**
-L'hôte peut refuser une demande via un lien dédié, sans passer par la page d'acceptation complète.
+**Situation actuelle :** un seul niveau d'admin (rôle `admin`). Pas de granularité.
 
-**Contexte :** L'hôte reçoit un email avec deux liens : « Voir la demande » (`/accueillir/`) et « Refuser » (`/refuser/`). Le lien `/refuser/` est le chemin rapide.
+**Question :** Est-ce que David gère l'admin seul, ou son assistante fait-elle la modération des témoignages, le suivi des candidats ?
 
-**Étapes :**
-1. Dans Supabase Dashboard → Table `contact_requests`
-2. Trouver une ligne en statut `pending` (ex : Luc → Marie, `luc.b@mail.com`)
-3. Copier la valeur de `action_token`
-4. Ouvrir : `http://localhost:3000/refuser/{action_token}`
-5. La page demande confirmation : *"Refuser la demande de Luc ?"*
-6. Cliquer sur « Oui, refuser cette demande »
-7. Statut passe à `declined` — le visiteur est notifié par email
+**Enjeu :** si l'assistante est utilisatrice, elle a besoin d'une session de formation séparée. Elle doit comprendre le pipeline, le feed live, la modération.
 
-**Points clés :**
-- L'hôte n'a pas besoin de se connecter : le lien tokenisé suffit
-- La demande de Laure (Fatou/Bruxelles) est déjà en `declined` dans les données de démo
-- Refus et acceptation sont deux chemins distincts : `/refuser/` (rapide) et `/accueillir/` (contexte complet)
+**Action si oui :** prévoir une session 30 min dédiée à l'assistante. Pas de changement technique nécessaire — elle utilise le même compte admin.
 
 ---
 
-## Scénario 8 — Présentation de la carte internationale
+### Q3 — Est-ce que les ambassadeurs ont besoin de se désactiver eux-mêmes ?
 
-**À utiliser pour ouvrir la démo devant David.**
+**Situation actuelle :** un ambassadeur s'active via le lien dans l'email de campagne. Il ne peut pas se désactiver lui-même depuis son dashboard.
 
-**Étapes (storytelling) :**
-1. Ouvrir la carte sur `http://localhost:3000`
-2. **Pitch :** *"Voici la carte en temps réel. Chaque épingle est une maison ouverte pour votre prochain live."*
-3. Dézoomer au maximum → la carte mondiale avec des épingles sur 3 continents (Europe, Amérique, Afrique)
-4. **Pitch :** *"J-7 avant le live, vous planifiez un envoi email depuis le calendrier. Chaque ambassadeur reçoit un lien pour confirmer sa participation. Ceux qui cliquent apparaissent sur la carte."*
-5. Cliquer sur l'épingle de **Kofi à Abidjan** → *"120 personnes peuvent se réunir en Côte d'Ivoire pour suivre votre message."*
-6. Cliquer sur l'épingle de **Aminata à Dakar** → *"60 places au Sénégal."*
-7. Cliquer sur **Marie à Paris** → *"Et ici, 15 places disponibles à Paris, avec ses propres consignes d'accueil."*
-8. **Pitch :** *"Le visiteur envoie une demande. L'hôte reçoit un email et accepte ou refuse explicitement. Si accepté, le visiteur reçoit les coordonnées par email. Aucun compte requis — tout passe par un lien tokenisé sécurisé."*
+**Question :** Que se passe-t-il si un ambassadeur a dit "oui" via la campagne, mais ne peut finalement pas accueillir le soir du live ?
 
----
+**Enjeu :** les visiteurs en attente (demandes `pending`) attendent une réponse. Si l'ambassadeur disparaît de la carte sans prévenir, le visiteur est laissé sans nouvelles.
 
-## Scénario 9 — Tableau de bord ambassadeur (share + live + témoignages)
-
-**Ce que montre ce scénario :**
-Ce que voit un ambassadeur connecté pendant (et après) un live.
-
-**Prérequis :** se connecter en tant que Marie (magic link) depuis `/auth`.
-
-**Section « Partager mon ambassade » :**
-1. Ouvrir le dashboard → section bleue en haut
-2. L'URL de la fiche ambassade est affichée : `…/ambassade/{id}`
-3. Cliquer sur « Copier le lien » → feedback *"Copié !"*
-4. Cliquer sur « Partager sur WhatsApp » → message pré-rempli avec la ville et l'URL
-
-**Section « Lever la main pour témoigner » (pendant le live) :**
-1. Saisir un texte dans la zone : *"Quelqu'un vient d'être guéri d'un genou douloureux depuis 3 ans !"*
-2. Cliquer sur « Lever la main pour témoigner »
-3. Confirmation : *"David verra votre témoignage"*
-4. L'admin David voit le signal apparaître dans `/admin/live` dans les 5 secondes
-
-**Section « Partager un témoignage » :**
-1. Saisir un témoignage complet
-2. Choisir le timing : *Pendant le live* ou *Après le live*
-3. Envoyer → compteur *"1 témoignage envoyé"* s'incrémente
-4. Renvoyer un 2e témoignage → *"2 témoignages envoyés"*
-5. Chaque témoignage passe en modération (is_visible = false jusqu'à validation David)
+**Options :**
+- A) Bouton "Je ne serai pas disponible" dans le dashboard → remet `is_active = false` pour cet event
+- B) Pas de désactivation self-service — David gère manuellement via l'admin si signalement
+- C) Désactivation auto si l'ambassadeur n'a pas répondu à ses demandes après 48h
 
 ---
 
-## Scénario 10 — Feed temps réel David (admin/live)
+### Q4 — Feedback structuré post-live (ambassadeurs et visiteurs)
 
-**Ce que montre ce scénario :**
-La page que David ouvre sur un 2e écran pendant le live.
+**Situation actuelle :** il existe une route `/feedback/[token]` avec 4 étoiles (accueil, chaleur, écoute, prière) + texte libre + "Signaler un problème". Mais cette route n'est pas encore déclenchée automatiquement — aucun email de feedback n'est envoyé après un live.
 
-**Étapes :**
-1. Ouvrir `http://localhost:3000/admin/live`
-2. Deux colonnes côte à côte :
-   - **Gauche — Mains levées** : liste des ambassadeurs qui veulent « monter en live »
-     - Chaque signal affiche le nom, la ville et le message de l'ambassadeur
-     - **Aminata (Dakar)** est en `pending` → cliquer « Approuver » → signal passe en approuvé
-     - Bouton « Refuser » → signal décliné
-     - Les signaux approuvés/refusés de Jean-Pierre et Kofi sont déjà là (archivés)
-   - **Droite — Témoignages** : compteur des témoignages en attente de modération pour ce live
-     - Affiche *"N témoignages en attente"*
-     - Cliquer → redirige vers `/admin/temoignages` pré-filtré sur cet event
-3. Les signaux se rafraîchissent automatiquement (toutes les 5s)
+**Question :** Est-ce que David veut collecter des retours structurés post-live ?
 
-**Points clés :**
-- David voit les signaux en temps réel pendant le live
-- Les témoignages écrits se modèrent après le live depuis `/admin/temoignages`
-- Le compteur à droite lui dit combien de témoignages l'attendent — sans polluer la vue live
+**Enjeu :** les témoignages existent pour les guérisons. Mais un feedback d'expérience (l'accueil était-il chaleureux ? l'ambassadeur était-il disponible ?) est différent. C'est de la donnée qualité pour améliorer le réseau.
+
+**Options :**
+- A) Rien de plus — les témoignages suffisent
+- B) Email de feedback automatique 24h après le live → `/feedback/{token}` — données visibles dans un futur `/admin/qualite`
+- C) Intégrer dans le dashboard ambassadeur (pas d'email — s'il se connecte, il voit un formulaire)
 
 ---
 
-## Scénario 11 — Témoignage visiteur (parcours complet)
+### Q5 — Mobile : est-ce que ça tourne bien sur téléphone ?
 
-**Ce que montre ce scénario :**
-Un visiteur qui a reçu une guérison peut témoigner via le formulaire public, sans compte.
+**Situation actuelle :** la carte et les formulaires sont responsive, mais non testés sur un vrai téléphone.
 
-**Étapes :**
-1. Ouvrir `http://localhost:3000/temoignages/nouveau`
-   - Ou cliquer sur « Partage ton témoignage » depuis `/temoignages`
-2. Sélectionner le live dans le dropdown : *"Nuit de Prière — Souffle nouveau"*
-3. Remplir le témoignage :
-   - Zone de texte (min 20 chars) : *"J'avais des douleurs chroniques depuis 10 ans. Pendant le live, quelque chose s'est passé — je suis guéri !"*
-   - Prénom (optionnel) : *Pierre*
-   - Ville (optionnel) : *Paris*
-4. Cliquer sur « Envoyer mon témoignage »
-5. Confirmation : *"Merci ! Votre témoignage sera publié après validation."*
-6. Dans `/admin/temoignages` → le témoignage de Pierre apparaît dans les en attente (`is_visible = false`)
-7. David clique « Publier » → visible sur `/temoignages`
+**Question :** Est-ce que David va présenter l'app depuis son téléphone ? Est-ce que ses ambassadeurs (en Afrique, majorité mobile) vont s'inscrire depuis leur téléphone ?
 
-**Points clés :**
-- Accès public, aucun compte requis, aucun token nécessaire
-- Le formulaire est pré-rempli si `?live=<uuid>` est passé dans l'URL (depuis le filtre `/temoignages`)
-- Les témoignages anonymes (`host_profile_id = NULL`) et ceux des ambassadeurs se modèrent au même endroit
+**Enjeu :** si oui, il faut un test mobile avant la démo publique. La carte Leaflet et le formulaire d'inscription sont les deux zones à risque.
+
+**Action si oui :** ouvrir `localhost:3000` depuis le téléphone (même réseau Wi-Fi) avant la fin de cette session.
 
 ---
 
-## Scénario 12 — Modération post-live (admin/temoignages)
+### Q6 — Domaine personnalisé
 
-**Ce que montre ce scénario :**
-La page de modération complète que David utilise après un live pour publier les témoignages.
+**Situation actuelle :** l'app tourne sur `https://davidthery-app.vercel.app`.
 
-**Étapes :**
-1. Ouvrir `http://localhost:3000/admin/temoignages`
-2. **Bandeau live** en haut : titre de l'event sélectionné + badge *"N en attente"*
-3. **Stats bar** : total de témoignages / publiés / villes représentées — scopés au live sélectionné
-4. **Combobox événement** (avec champ de recherche) : changer de live → les stats et onglets se réinitialisent
-5. **Onglets** : Tous / En attente / Publiés
-6. Cliquer sur un témoignage en attente → bouton « Publier » → apparaît immédiatement dans l'onglet "Publiés"
-7. Bouton « Tout publier » → valide tous les témoignages en attente en un clic
-8. Bouton **« Copier le lien »** → copie l'URL `/temoignages` pour partager sur les réseaux
+**Question :** Est-ce que David a un domaine pour cette app ? `ambassades.davidthery.fr` ? `ambassades-guerison.com` ?
 
-**Points clés :**
-- Filtrage par event : David peut retrouver les témoignages d'un live passé (3 events dans les données de démo)
-- Le combobox a un champ de recherche — utile quand David aura 20+ lives archivés
-- Bouton "Tout publier" pour les sessions chargées
-- Le lien copiable permet de poster directement la page publique des témoignages
+**Enjeu :** les liens dans les emails de campagne contiennent l'URL de l'app. Si on change le domaine après le premier envoi, les anciens liens deviennent invalides.
+
+**Action :** décider du domaine avant le premier live réel. Le configurer dans Vercel + mettre à jour `NEXT_PUBLIC_APP_URL`.
 
 ---
 
-## Scénario 13 — Page témoignages publique
+### Q7 — La fenêtre "live en cours" est-elle de la bonne durée ?
 
-**Ce que montre ce scénario :**
-La vitrine publique des témoignages — ce que n'importe quel visiteur peut voir.
+**Situation actuelle :** la variable `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` est à **4 heures**. Cela signifie que la carte affiche les pins pendant 4h après l'heure de début du live.
 
-**Étapes :**
-1. Ouvrir `http://localhost:3000/temoignages`
-2. En-tête : *"Ce que Dieu a fait"* + stats (12 témoignages • N villes)
-3. Filtre par live : combobox avec les 3 events passés → changer → la grille se filtre
-4. Grille 2 colonnes — cartes de hauteur variable, certaines avec *"Lire la suite"*
-5. Cliquer sur « Lire la suite » → le texte long se déplie
-6. Boutons **« Partager »** (copier le lien + WhatsApp)
-7. CTA en bas : *"Partagez votre témoignage"* → `/temoignages/nouveau`
+**Question :** Combien de temps dure en général un live de David ? 2h ? 3h ? Plus ?
 
-**Points clés :**
-- Page publique indexable — preuve sociale pour les visiteurs hésitants
-- Témoignages anonymes (Grâce/Nantes, Patrick/Marseille) et ambassadeurs côte à côte
-- Le filtre par live avec date dans le label aide David à retrouver ses archives
+**Enjeu :** si le live dure 5h et que la fenêtre est à 4h, les pins disparaissent avant la fin du live. Si la fenêtre est trop large, les pins restent visibles jusqu'au lendemain.
+
+**Action :** ajuster `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` dans les variables Vercel selon la réponse.
 
 ---
 
-## Scénario 14 — Pipeline de validation ambassadeur (pré-approbation → questionnaire → validation)
+## Après la démo — notes
 
-**Ce que montre ce scénario :**
-Le cycle complet de validation d'un nouveau candidat : l'admin pré-approuve → le candidat reçoit un email et complète son questionnaire → l'admin valide définitivement.
+**Ce que tu cherches comme signal :**
+- David valide les overlays contextuels (les 5 états font sens pour lui)
+- David a une réponse sur la clôture du live (Q1 — critique pour la prod)
+- David confirme ou infirme le besoin de feedback structuré (Q4)
 
-**Prérequis :** Sophie (Bordeaux) a le statut `pending_review` dans les données de démo.
-
-**Côté admin — pré-approbation :**
-1. Ouvrir `http://localhost:3000/admin/ambassadeurs`
-2. Trouver **Sophie Leroux (Bordeaux)** — badge statut `En examen`
-3. Cliquer sur « Pré-approuver » → statut passe à `pre_approved`
-4. Sophie reçoit un email avec un lien vers `/dashboard/questionnaire`
-
-**Côté ambassadeur — questionnaire enrichissement :**
-1. Sophie se connecte via le magic link → `/dashboard`
-2. Un encart pastoral s'affiche en haut : *"Félicitations, tu as été pré-approuvée ! Il reste une dernière étape."*
-3. Cliquer sur « Compléter mon profil →» → `/dashboard/questionnaire`
-4. Remplir :
-   - *"J'ai suivi le Défi Guérison"* (checkbox)
-   - Fréquentation église : Régulier
-   - Dénomination : Protestant évangélique
-   - *"J'ai déjà assisté à une conférence de David Théry"* (checkbox)
-   - Parcours spirituel : quelques lignes
-5. Cliquer sur « Envoyer » → statut passe à `enrichment_pending`
-6. L'équipe reçoit une notification email : *"Sophie a complété son questionnaire — en attente de validation finale."*
-
-**Côté admin — validation finale :**
-1. Dans `/admin/ambassadeurs`, Sophie affiche le badge `Dossier complet`
-2. Consulter le questionnaire enrichissement dans la vue détail
-3. Cliquer « Valider » → statut passe à `validated`
-4. Le trigger DB crée automatiquement une `host_activation` avec `is_active=false`
-5. Sophie reçoit l'email de bienvenue ambassadeur
-
-**Points clés :**
-- La transition `pre_approved → validated` directe est bloquée : le questionnaire est obligatoire
-- L'admin peut néanmoins utiliser « Valider sans questionnaire » (action distincte, loggée)
-- Sophie n'apparaît sur la carte qu'après activation explicite pour un live via campagne email
+**Ce qui déclenche la suite :**
+Une fois les retours intégrés dans un commit sur `develop` et aucune incertitude restante sur les overlays ou le flux inscription → ouvrir `test/e2e-fonctionnels` (smoke homepage + flux inscription + unit tests EmptyMapContent).
 
 ---
 
-## Scénario 15 — Activation par campagne email (admin → ambassadeur → carte)
-
-**Ce que montre ce scénario :**
-Comment David active ses ambassadeurs pour un live via une campagne email planifiée.
-
-**Côté admin — planification de la campagne :**
-1. Ouvrir `http://localhost:3000/admin/calendrier`
-2. Dans le formulaire « Programmer une campagne » :
-   - **Live** : sélectionner *"Live Guérison — La puissance de l'Amour"* (J+10)
-   - **Type** : Ambassadeurs
-   - **Date d'envoi** : J-7 avant le live, 10h00
-   - **Message personnalisé** (optionnel) : *"Chers ambassadeurs, le prochain live aura lieu dans 7 jours. Êtes-vous disponibles pour accueillir ?"*
-3. Cliquer sur « Planifier la campagne »
-4. La campagne apparaît dans la liste avec statut `pending`
-
-**Ce qui se passe à l'envoi (cron toutes les 5 min) :**
-- Le cron envoie un email à chaque ambassadeur `validated`
-- L'email contient un bouton **« Je m'inscris comme ambassadeur »**
-- Le bouton pointe vers `/accueillir/activer/{activation_token}` (token unique par ambassadeur)
-
-**Côté ambassadeur — activation depuis l'email :**
-1. Marie reçoit l'email de campagne
-2. Elle clique sur le bouton → page `/accueillir/activer/{token}`
-3. La page affiche : titre du live, date, bouton « Je m'inscris comme ambassadeur »
-4. Marie clique → `host_activations.is_active = true` → elle apparaît sur la carte
-
-**Points clés :**
-- Aucune authentification requise : le token d'activation est à usage unique et suffisant
-- Si Marie clique deux fois → idempotent (pas d'erreur, pas de doublon)
-- Ambassadeurs non actifs via campagne = ne figurent pas sur la carte pour ce live
-- Le statut de la campagne passe `pending → sending → sent` avec compteur d'envois
-
----
-
-## Pour réinitialiser les données entre les démos
+## Reset entre deux passes
 
 ```bash
 node scripts/seed.js
 ```
 
-Ce script vide la base et réinsère toutes les données de démo proprement.
-
-> **Note** : Le schéma DB doit correspondre à `scripts/reset-db.sql`. Si des colonnes
-> sont manquantes, relancer ce script dans Supabase SQL Editor puis relancer `node scripts/seed.js`.
+Puis DevOverlay → **`📅 Upcoming`** pour repartir propre.
 
 ---
 
-## Compte admin pour la démo
-
-Deux comptes admin sont créés par le seed (rôle admin déjà configuré) :
-
-| E-mail | Usage |
-|--------|-------|
-| `david.thery@demo.fr` | Compte démo David |
-| `theo.nelson.ia@gmail.com` | Compte développeur |
-
-> **⚠️ Resend sandbox** : avec `onboarding@resend.dev` comme sender, Resend ne livre qu'à l'e-mail du propriétaire du compte. Les autres adresses (dont `david.thery@demo.fr`) ne reçoivent rien.
-
-**Connexion sans e-mail — via terminal :**
-
-```bash
-node scripts/magic-link.js david.thery@demo.fr
-```
-
-Le script affiche directement l'URL de connexion à ouvrir dans le navigateur. Valable 1 heure.
-
-Pour le compte développeur (`theo.nelson.ia@gmail.com`), la magic link arrive normalement dans la boîte mail.
-
----
-
-*Mis à jour le 1 mai 2026 — DavidTheryApp v1.6 (nettoyage notes brutes scénarios 2 et 4 ; pitch 24h auto supprimé ; scénario 11 réécrit /accueil-invite → /temoignages/nouveau ; scénario 14 : pipeline validation enrichissement ; scénario 15 : activation par campagne email)*
+*Mis à jour 2026-05-03 — v0.1.4.0 (Q1 mise à jour : bouton "Clôturer le live" livré dans /admin/live ; section 3d complétée)*

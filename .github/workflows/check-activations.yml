@@ -1,0 +1,23 @@
+name: Check Activations (0 hôtes actifs)
+
+on:
+  # schedule:
+  #   - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-activations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke check-activations API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/check-activations")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: check-activations returned $STATUS"
+            exit 1
+          fi

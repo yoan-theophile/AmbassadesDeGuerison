@@ -207,7 +207,7 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+17 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 | Template | Déclenché quand |
 |----------|----------------|
@@ -273,16 +273,9 @@ Déclenche l'envoi des campagnes email dont la date d'envoi est atteinte.
 → Envoie les emails aux campaign_recipients, marque status='sent'
 ```
 
-### auto-decline.yml
+### ~~auto-decline.yml~~ — Supprimé
 
-Décline automatiquement les demandes de contact sans réponse de l'hôte après 24h.
-
-```
-.github/workflows/auto-decline.yml
-→ Cron : quotidien
-→ Action : POST /api/cron/auto-decline
-→ Passe les contact_requests en status='declined' si created_at < now - 24h et status='pending'
-```
+Route `/api/cron/auto-decline` supprimée (David ne l'a pas demandé). Workflow GH Actions conservé dans l'historique git.
 
 ### feedback-emails.yml
 
@@ -290,8 +283,20 @@ Envoie les emails de retour d'expérience aux visiteurs après chaque live.
 
 ```
 .github/workflows/feedback-emails.yml
-→ Cron : déclenché manuellement ou après la fin d'un live
-→ Action : POST /api/cron/feedback-emails
+→ Cron : quotidien (10:00 UTC) — schedulé dans vercel.json
+→ Action : POST /api/cron/send-feedback-emails
+→ ⚠️ Bug SQL join à corriger avant usage réel (voir ARCHITECTURE.md)
+```
+
+### check-activations.yml — Non activé
+
+Alerte l'admin si 0 hôtes actifs pour le prochain live.
+
+```
+.github/workflows/check-activations.yml
+→ Cron : non schedulé (workflow_dispatch uniquement)
+→ Action : POST /api/cron/check-activations
+→ À activer dans vercel.json quand prêt (schedule suggéré : 0 9 * * *)
 ```
 
 ---

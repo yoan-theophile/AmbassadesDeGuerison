@@ -23,6 +23,7 @@ export type HomepageData = {
   totalAmbassadors: number;
   totalCountries: number;
   topTestimonials: PublicTestimonial[];
+  soonThresholdDays: number;
 };
 
 // Fonction plain async — le cache est géré par export const revalidate au niveau page (Next.js 16)
@@ -39,6 +40,7 @@ export async function getHomepageData(): Promise<HomepageData> {
     ambassadeursRes,
     countriesRes,
     testimonialsRes,
+    timingRes,
   ] = await Promise.all([
     supabase
       .from('events')
@@ -71,6 +73,11 @@ export async function getHomepageData(): Promise<HomepageData> {
       .eq('is_visible', true)
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('event_timing_config')
+      .select('soon_threshold_days')
+      .eq('id', 1)
+      .maybeSingle(),
   ]);
 
   const nextEvent = (nextEventRes.data as LiveEvent | null) ?? null;
@@ -84,6 +91,7 @@ export async function getHomepageData(): Promise<HomepageData> {
   const topTestimonials = [...allTestimonials]
     .sort((a, b) => b.content.length - a.content.length)
     .slice(0, 5);
+  const soonThresholdDays = (timingRes.data as { soon_threshold_days: number } | null)?.soon_threshold_days ?? 2;
 
-  return { nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, topTestimonials };
+  return { nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, topTestimonials, soonThresholdDays };
 }
