@@ -131,6 +131,7 @@ function Section({ title, items }: { title: string; items: { label: string; html
             {/* srcdoc isole les styles email du CSS Next.js */}
             <iframe
               srcDoc={html}
+              sandbox="allow-same-origin"
               style={{ width: '100%', height: '420px', border: '1px solid #e2e8f0', borderRadius: '6px' }}
               title={label}
             />
