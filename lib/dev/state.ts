@@ -166,6 +166,12 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
       .from('host_activations')
       .update({ is_active: false })
       .eq('event_id', demoLiveEvent.id);
+    if (demoFutureEvent) {
+      await supabase
+        .from('events')
+        .update({ event_date: daysFromNow(10) })
+        .eq('id', demoFutureEvent.id);
+    }
     return;
   }
 
