@@ -24,7 +24,7 @@ import EnrichissementRecu from '@/emails/enrichissement-recu';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
 
 export default async function EmailPreviewPage() {
-  if (!process.env.EMAIL_PREVIEW) notFound();
+  if (process.env.EMAIL_PREVIEW !== 'true') notFound();
 
   const m = MOCKS;
 
