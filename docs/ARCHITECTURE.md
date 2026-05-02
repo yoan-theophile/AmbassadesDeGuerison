@@ -25,9 +25,9 @@
 │  │  app/api/**                                         │    │
 │  ├─────────────────────────────────────────────────────┤    │
 │  │  Cron Jobs (Vercel Cron)                            │    │
-│  │  /api/cron/dispatch-campaigns (quotidien)           │    │
-│  │  /api/cron/auto-decline (quotidien)                 │    │
-│  │  /api/cron/send-feedback-emails                     │    │
+│  │  /api/cron/dispatch-campaigns (08:00 UTC)           │    │
+│  │  /api/cron/send-feedback-emails (10:00 UTC)         │    │
+│  │  /api/cron/check-activations (non activé)           │    │
 │  └─────────────────────────────────────────────────────┘    │
 └────────────────────┬────────────────────────────────────────┘
                      │ PostgreSQL (port 6543 — pooler PgBouncer)
@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  19 templates TSX (React Email v6) — emails transactionnels │
+│  17 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -324,13 +324,12 @@ Mis à jour manuellement à chaque PR significative.
 
 ### Crons — état en production
 
-| Cron | Route | Fréquence voulue | Statut prod |
-|------|-------|-----------------|-------------|
-| Dispatch campagnes | `/api/cron/dispatch-campaigns` | Quotidien | ❌ **Jamais schedulé** (pas de `vercel.json`) |
-| Feedback post-live | `/api/cron/send-feedback-emails` | Quotidien | ❌ **Jamais schedulé** + bug schéma |
+| Cron | Route | Schedule | Statut prod |
+|------|-------|----------|-------------|
+| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ✅ Schedulé dans `vercel.json` |
+| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⚠️ Schedulé — **bug SQL join** à corriger avant usage réel |
+| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` (suggéré) | ⏸ **Non activé** — route écrite, à ajouter dans `vercel.json` |
 | Auto-decline visiteurs | `/api/cron/auto-decline` | — | 💀 **Supprimé** (David ne l'a pas demandé) |
-
-**Action (Décision D2) :** créer `vercel.json` avec 2 crons (`dispatch-campaigns` quotidien à 08:00 UTC, `send-feedback-emails` quotidien à 10:00 UTC).
 
 ---
 
@@ -400,8 +399,9 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
 | `GET/PATCH /api/admin/settings/onboarding` | Config vidéo/PDF onboarding | Admin | ✅ |
 | `GET /api/admin/settings/timing` | Config timing (lecture) | Admin | ✅ |
-| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ⚠️ Non schedulé |
-| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⚠️ Bug + non schedulé |
+| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ✅ Schedulé |
+| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⚠️ Schedulé — bug SQL join |
+| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Non activé |
 | `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
 | `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |

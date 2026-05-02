@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4.0] - 2026-05-03
+
+### Added
+- **Cron `check-activations`** (`app/api/cron/check-activations/route.ts`) : alerte l'admin par email si 0 hôtes actifs pour le prochain live. Route opérationnelle, non activée dans `vercel.json` — à scheduler quand prêt.
+- **Workflow GH Actions `check-activations.yml`** : miroir du cron, désactivé par défaut (`workflow_dispatch` uniquement).
+
+### Removed
+- **`emails/magic-link-bienvenue.tsx`** et `sendMagicLinkAmbassadeurBienvenue` : template orphelin — jamais appelé depuis une route. Redondant avec `registration-confirmation` qui couvre déjà le premier contact post-inscription.
+- **`emails/contact-accepted.tsx`** et `sendContactRequestAccepted` : template orphelin — étape intermédiaire du flux contact retirée quand le flux a été simplifié (réservation directe sans "acceptation" préalable).
+
+### Docs
+- Tous les fichiers de documentation mis à jour (compteur 19 → 17 templates, crons, routes API).
+
 ## [0.1.3.0] - 2026-05-02
 
 ### Added

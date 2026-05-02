@@ -1,4 +1,6 @@
 @AGENTS.md
+@docs/ARCHITECTURE.md
+@docs/knowledge-transfer.md
 
 ## Projet
 
@@ -54,8 +56,12 @@ Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API R
 
 ### Preview emails (React Email)
 
-19 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
+17 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
 `lib/email/templates.ts` contient les fonctions `sendXxx` qui utilisent `react:` au lieu de `html:`.
+
+Templates **supprimés** (orphelins — jamais appelés depuis une route) :
+- `magic-link-bienvenue.tsx` — variante bienvenue du magic link, redondante avec `registration-confirmation`
+- `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
 
 **Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
 Ajouter dans `.env.local` :
@@ -95,6 +101,23 @@ node scripts/seed.js                                      # insère les données
 | `marie.dubois@demo.fr` | ambassadeur | `validated` |
 | `jp.martin@demo.fr` | ambassadeur | `validated` (complet) |
 | `sophie.leroux@demo.fr` | ambassadeur | `pending_review` (utile pour tester le dashboard candidature) |
+
+## Crons email
+
+Déclarés dans `vercel.json` (Vercel Cron) et en miroir dans `.github/workflows/` (GitHub Actions, désactivés par défaut) :
+
+| Route | Schedule | Rôle |
+|-------|----------|------|
+| `/api/cron/dispatch-campaigns` | `0 8 * * *` | Envoie les campagnes planifiées (`scheduled_campaigns`) aux ambassadeurs et visiteurs |
+| `/api/cron/send-feedback-emails` | `0 10 * * *` | Envoie les emails de feedback post-live aux hôtes ayant participé |
+
+Route **écrite mais non activée** (à ajouter dans `vercel.json` quand prêt) :
+
+| Route | Schedule suggéré | Rôle |
+|-------|----------|------|
+| `/api/cron/check-activations` | `0 9 * * *` | Envoie `admin-alerte-no-activations` si 0 hôtes actifs pour le prochain live |
+
+Toutes les routes cron exigent le header `x-cron-secret: $CRON_SECRET`.
 
 ## Pipeline d'activation ambassadeur
 
