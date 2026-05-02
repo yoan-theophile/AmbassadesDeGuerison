@@ -663,11 +663,11 @@ npm run dev
 
 ### 33.1 — Rendu et structure
 
-- [ ] La page `/dev/emails` s'affiche sans erreur (200)
-- [ ] La page `/dev/emails` en production (`NODE_ENV=production`, sans `EMAIL_PREVIEW`) retourne 404
-- [ ] Le compteur de templates en sous-titre affiche **19 templates**
-- [ ] Les 4 sections sont présentes : "Parcours ambassadeur", "Parcours visiteur", "Live", "Admin"
-- [ ] Chaque section contient le bon nombre d'iframes :
+- [x] La page `/dev/emails` s'affiche sans erreur (200)
+- [x] La page `/dev/emails` en production (`NODE_ENV=production`, sans `EMAIL_PREVIEW`) retourne 404 — guard `if (!process.env.EMAIL_PREVIEW) notFound()` confirmé dans le code
+- [x] Le compteur de templates en sous-titre affiche **19 templates**
+- [x] Les 4 sections sont présentes : "Parcours ambassadeur", "Parcours visiteur", "Live", "Admin"
+- [x] Chaque section contient le bon nombre d'iframes :
   - Ambassadeur : 9 iframes
   - Visiteur : 6 iframes
   - Live : 1 iframe
@@ -675,12 +675,12 @@ npm run dev
 
 ### 33.2 — Rendu visuel des emails
 
-- [ ] Chaque iframe affiche un email correctement rendu (pas de page blanche, pas d'erreur JS)
-- [ ] Les styles Next.js / Tailwind ne "débordent" pas dans les iframes (isolation `srcDoc`)
-- [ ] Les boutons CTA (indigo) s'affichent avec la bonne couleur
-- [ ] Les emails affichent les données mock : Marie Dubois, Lyon, France
-- [ ] Le bandeau "Guérison" / header logo est cohérent dans chaque email
-- [ ] Aucun `undefined` visible dans les textes (props mock manquantes)
+- [x] Chaque iframe affiche un email correctement rendu (pas de page blanche, pas d'erreur JS)
+- [x] Les styles Next.js / Tailwind ne "débordent" pas dans les iframes (isolation `srcDoc`)
+- [x] Les boutons CTA (indigo) s'affichent avec la bonne couleur
+- [x] Les emails affichent les données mock : Marie Dubois, Lyon, France
+- [x] Aucun `undefined` visible dans les textes (props mock manquantes)
+- ~~Le bandeau "Guérison" / header logo est cohérent dans chaque email~~ — les emails n'ont pas de logo/bandeau image (EmailLayout minimaliste text-only). À discuter avec David si un logo est souhaité.
 
 ### 33.3 — Contenu (vérifier avec David)
 
@@ -711,32 +711,36 @@ npm run dev
 ### 33.4 — Questions de contenu pour David
 
 > Ces questions sont à poser à David lors de la session de revue des emails. Elles concernent le ton pastoral, le vocabulaire, et les attentes des destinataires.
+> 
+> **Analyse préalable /qa (2026-05-02)** — réponses anticipées depuis la perspective pastorale de David. À valider avec lui en session.
 
-| Domaine | Question |
-|---|---|
-| **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? |
-| **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? |
-| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? |
-| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? |
-| **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? |
-| **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? |
-| **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? |
-| **Contact visiteur** | L'email au visiteur quand sa place est réservée (`contact-reserved`) révèle l'email de l'hôte mais pas son adresse. C'est intentionnel — l'adresse arrive dans `acceptation-visite`. Ça te semble juste ? |
-| **Refus de visite** | Email `refus-visite` : "Votre demande auprès de [hôte] — mise à jour". Le ton est volontairement neutre pour ne pas stigmatiser. Tu veux quelque chose de plus pastoral ("nous sommes désolés...") ? |
-| **Campagne visiteurs** | Contient un lien de désinscription (`unsubscribeUrl`). Qui gère cette liste ? Il faudra une page `/unsubscribe?token=...` côté app. |
-| **Signal approuvé** | Email `signal-approved` : sélection pour témoigner en direct. C'est envoyé à qui exactement — aux personnes qui ont levé la main via `/admin/live` ? |
-| **Emails admin** | Les 3 emails admin (nouvelle activation, questionnaire, alerte 0 hôtes) vont à quelle adresse ? `RESEND_ADMIN_EMAIL` — c'est ton adresse perso ou une boîte partagée avec une équipe ? |
-| **Objet des emails** | Veux-tu relire les sujets (`subject`) de chaque email ? Ils sont visibles dans le code `lib/email/templates.ts` et c'est la première chose lue dans la boîte mail. |
+| Domaine | Question | Analyse /qa |
+|---|---|---|
+| **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? | Garder "ambassadeur" dans les emails internes. Dans `campagne-visiteurs`, ajouter une ligne de contextualisation ("chez des particuliers ou des petites églises") pour les non-initiés. C'est déjà en partie là. |
+| **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? | Prénom seul est le bon registre pastoral. Ajouter le nom = ton administratif. Pas de changement. |
+| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. La version bienvenue (`magic-link-bienvenue`) a déjà la phrase d'accueil. Le magic link standard doit rester fonctionnel. |
+| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? | Bon ton. "Bonne nouvelle !" est du vocabulaire pastoral naturel. Option d'enrichissement : "Vous faites partie de ceux qui étendent le réseau de guérison dans le monde." — pas bloquant. |
+| **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? | **OUI, recommandé.** `validation-finale` se termine par "Merci d'ouvrir votre maison. C'est là que tout se passe." — ajouter "— David Théry" transforme l'email système en lettre personnelle. Idem pour `bienvenue-ambassadeur`. |
+| **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? | Utilisé à chaque live. Ajouter un placeholder dans le champ admin : "Décris le live en 1-2 phrases. Ex : Ce soir, David priera pour les malades." |
+| **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? | Formulaire interne (`/feedback?token=...`). La page n'existe pas encore — à construire. Google Form = perte de données et coupure de marque. |
+| **Contact visiteur** | L'email au visiteur quand sa place est réservée (`contact-reserved`) révèle l'email de l'hôte mais pas son adresse. C'est intentionnel — l'adresse arrive dans `acceptation-visite`. Ça te semble juste ? | Oui, intentionnel et juste. Deux étapes : contact partiel → adresse complète après confirmation. Protège la vie privée de l'hôte. |
+| **Refus de visite** | Email `refus-visite` : "Votre demande auprès de [hôte] — mise à jour". Le ton est volontairement neutre pour ne pas stigmatiser. Tu veux quelque chose de plus pastoral ("nous sommes désolés...") ? | Pas de changement. "Ne vous découragez pas — les ambassades grandissent à chaque live." est déjà pastoral et encourageant. |
+| **Campagne visiteurs** | Contient un lien de désinscription (`unsubscribeUrl`). Qui gère cette liste ? Il faudra une page `/unsubscribe?token=...` côté app. | **Action requise.** Page `/unsubscribe/[token]` obligatoire (RGPD). N'existe pas encore. À ajouter avant envoi de vrais emails. |
+| **Signal approuvé** | Email `signal-approved` : sélection pour témoigner en direct. C'est envoyé à qui exactement — aux personnes qui ont levé la main via `/admin/live` ? | Oui — ambassadeurs ayant levé la main dans l'app, David approuve via `/admin/live`, l'email part. Suggestion : préciser "YouTube" dans le CTA ("Rejoindre le live YouTube"). |
+| **Emails admin** | Les 3 emails admin (nouvelle activation, questionnaire, alerte 0 hôtes) vont à quelle adresse ? `RESEND_ADMIN_EMAIL` — c'est ton adresse perso ou une boîte partagée avec une équipe ? | Pour le MVP : adresse perso. Quand le réseau grandira : prévoir une boîte équipe. L'alerte `admin-alerte-no-activations` mentionne `fn_auto_activate_hosts_for_event` — terme trop technique si David lit ses alertes. |
+| **Objet des emails** | Veux-tu relire les sujets (`subject`) de chaque email ? Ils sont visibles dans le code `lib/email/templates.ts` et c'est la première chose lue dans la boîte mail. | 2 sujets à affiner : templates 4 et 6 sont trop génériques ("Bienvenue dans les Ambassades de Guérison !"). Suggestion : personnaliser avec le prénom. Rapport complet dans `.gstack/qa-reports/qa-report-dev-emails-2026-05-02.md`. |
 
 ---
 
 | Date | Module | Statut | Notes |
 |---|---|---|---|
 | 2026-05-02 | M33 — Preview emails `/dev/emails` | ✅ mis en place | Page `/dev/emails` rendue à 200 en local. 19 templates React Email v6. Guard `EMAIL_PREVIEW` pour isoler de la prod. iframes `srcDoc` pour isolation CSS. Prêt pour revue contenu avec David. |
+| 2026-05-02 | M33 — QA /dev/emails | ✅ passé | 19/19 iframes chargées, 0 erreur console. ISSUE-001 fixé (`enrichment_pending` raw retiré). 13 questions Module 33 pré-analysées. Score santé 95/100. 2 actions RGPD requises avant prod : `/unsubscribe/[token]` + `/feedback?token`. |
 
 ---
 
 *Généré le 2026-05-01 — DavidTheryApp v1 — branch `develop`*
 *Mis à jour le 2026-05-02 — Session QA suite (dashboard, questionnaire, pages admin complètes)*
 *Mis à jour le 2026-05-02 — Module 33 ajouté : preview emails React Email v6*
+*Mis à jour le 2026-05-02 — Module 33 passé : QA /dev/emails, 13 questions pré-analysées, ISSUE-001 fixé*
 *États gérés par `scripts/demo-state.js`*
