@@ -4,6 +4,21 @@ import { useEffect, useState, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap } from 'leaflet';
 
+interface EventInfo {
+  id: string;
+  title: string;
+  event_date: string;
+  live_link: string | null;
+}
+
+interface Props {
+  nextEvent: EventInfo | null;
+  lastEvent: EventInfo | null;
+  liveInProgress: boolean;
+  totalAmbassadors: number;
+  totalCountries: number;
+}
+
 interface HostPin {
   id: string;
   first_name: string;
@@ -35,7 +50,119 @@ function makeIcon(L: any, hostType: string, isFull: boolean) {
   });
 }
 
-export default function MapPublique() {
+function formatEventDate(isoDate: string) {
+  return new Date(isoDate).toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
+}
+
+function formatEventTime(isoDate: string) {
+  return new Date(isoDate).toLocaleTimeString('fr-FR', {
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function StatsLine({ totalAmbassadors, totalCountries }: { totalAmbassadors: number; totalCountries: number }) {
+  if (totalAmbassadors === 0) return null;
+  return (
+    <p className="text-slate-400 text-xs mt-3">
+      {totalAmbassadors} ambassadeur{totalAmbassadors > 1 ? 's' : ''} · {totalCountries} pays
+    </p>
+  );
+}
+
+function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries }: Props) {
+  const daysUntilNext = nextEvent
+    ? Math.ceil((new Date(nextEvent.event_date).getTime() - Date.now()) / 86_400_000)
+    : null;
+
+  // Live en cours mais aucun hôte confirmé (cas rare)
+  if (liveInProgress) {
+    return (
+      <>
+        <p className="text-slate-700 text-sm font-medium">Live en cours</p>
+        <p className="text-slate-400 text-xs mt-1">Les ambassades confirment leur participation...</p>
+        <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
+        {lastEvent?.live_link && (
+          <a
+            href={lastEvent.live_link}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
+          >
+            Regarder le live →
+          </a>
+        )}
+      </>
+    );
+  }
+
+  // Prochain live dans ≤ 2 jours (état "soon" — confirmations en cours)
+  if (nextEvent && daysUntilNext !== null && daysUntilNext <= 2) {
+    const label = daysUntilNext <= 0 ? "aujourd'hui" : `dans ${daysUntilNext} jour${daysUntilNext > 1 ? 's' : ''}`;
+    return (
+      <>
+        <p className="text-slate-500 text-[10px] uppercase tracking-wider font-medium mb-1">Prochain live</p>
+        <p className="text-slate-800 text-sm font-semibold capitalize">{formatEventDate(nextEvent.event_date)}</p>
+        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · {label}</p>
+        <p className="text-slate-400 text-xs mt-2.5">Les ambassades confirment leur participation...</p>
+        <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
+        <a href="/temoignages" className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors">
+          Voir les témoignages →
+        </a>
+      </>
+    );
+  }
+
+  // Prochain live dans > 2 jours (état "upcoming")
+  if (nextEvent && daysUntilNext !== null) {
+    return (
+      <>
+        <p className="text-slate-500 text-[10px] uppercase tracking-wider font-medium mb-1">Prochain live</p>
+        <p className="text-slate-800 text-sm font-semibold capitalize">{formatEventDate(nextEvent.event_date)}</p>
+        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · dans {daysUntilNext} jours</p>
+        <p className="text-slate-400 text-xs mt-2.5">
+          Les ambassades s&apos;afficheront dès qu&apos;elles confirmeront leur participation.
+        </p>
+        <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
+        <a href="/temoignages" className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors">
+          Voir les témoignages →
+        </a>
+      </>
+    );
+  }
+
+  // Live terminé, pas de prochain live annoncé (état "closed" ou "past")
+  if (lastEvent) {
+    return (
+      <>
+        <p className="text-slate-700 text-sm font-medium">Dernier live</p>
+        <p className="text-slate-500 text-xs mt-0.5 capitalize">{formatEventDate(lastEvent.event_date)}</p>
+        <p className="text-slate-400 text-xs mt-2.5">Prochain live annoncé prochainement.</p>
+        <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
+        <a href="/temoignages/nouveau" className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors">
+          Partager un témoignage →
+        </a>
+      </>
+    );
+  }
+
+  // Aucun event — vrai état vide
+  return (
+    <>
+      <p className="text-slate-700 text-sm font-medium">Pas encore de live prévu</p>
+      <p className="text-slate-400 text-xs mt-1">Rejoignez la communauté des groupes de prière.</p>
+      <a
+        href="/inscription"
+        className="mt-3 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
+      >
+        Devenir ambassadeur
+      </a>
+    </>
+  );
+}
+
+export default function MapPublique({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries }: Props) {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
@@ -244,18 +371,17 @@ export default function MapPublique() {
           </ul>
         )}
       </div>
-      {/* Zéro ambassadeur dans le monde entier */}
+      {/* Carte vide — overlay contextuel selon l'état de l'app */}
       {loaded && hosts.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-lg px-6 py-5 text-center max-w-xs pointer-events-auto">
-            <p className="text-slate-700 text-sm font-medium">Aucune ambassade active pour l'instant</p>
-            <p className="text-slate-400 text-xs mt-1">Soyez le premier à en ouvrir une près de chez vous.</p>
-            <a
-              href="/inscription"
-              className="mt-3 inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors"
-            >
-              Devenir ambassadeur
-            </a>
+            <EmptyMapContent
+              nextEvent={nextEvent}
+              lastEvent={lastEvent}
+              liveInProgress={liveInProgress}
+              totalAmbassadors={totalAmbassadors}
+              totalCountries={totalCountries}
+            />
           </div>
         </div>
       )}

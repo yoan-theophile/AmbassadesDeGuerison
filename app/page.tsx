@@ -5,7 +5,7 @@ import { getHomepageData } from '@/lib/homepage-data';
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const { nextEvent, lastEvent, liveInProgress } = await getHomepageData();
+  const { nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries } = await getHomepageData();
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -16,6 +16,8 @@ export default async function HomePage() {
           nextEvent={nextEvent}
           lastEvent={lastEvent}
           liveInProgress={liveInProgress}
+          totalAmbassadors={totalAmbassadors}
+          totalCountries={totalCountries}
         />
       </div>
 
