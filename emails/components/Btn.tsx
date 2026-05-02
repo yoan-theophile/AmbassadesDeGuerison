@@ -1,0 +1,34 @@
+import { Button } from 'react-email';
+import * as React from 'react';
+
+interface Props {
+  href: string;
+  children: React.ReactNode;
+  color?: 'indigo' | 'green' | 'red';
+}
+
+const COLORS = {
+  indigo: '#4F46E5',
+  green:  '#16A34A',
+  red:    '#ef4444',
+};
+
+export function Btn({ href, children, color = 'indigo' }: Props) {
+  return (
+    <Button
+      href={href}
+      style={{
+        backgroundColor: COLORS[color],
+        color: '#ffffff',
+        padding: '12px 24px',
+        borderRadius: '6px',
+        textDecoration: 'none',
+        display: 'inline-block',
+        fontSize: '15px',
+        fontWeight: '500',
+      }}
+    >
+      {children}
+    </Button>
+  );
+}

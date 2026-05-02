@@ -650,6 +650,93 @@ npm run test:e2e
 
 ---
 
+---
+
+## Module 33 — Preview emails `/dev/emails`
+
+> **Prérequis :** `EMAIL_PREVIEW=true` dans `.env.local` (déjà présent). Sur Vercel Preview : variable ajoutée dans le dashboard Vercel → Settings → Environment Variables (scope : Preview).
+
+```bash
+npm run dev
+# Ouvrir http://localhost:3000/dev/emails
+```
+
+### 33.1 — Rendu et structure
+
+- [ ] La page `/dev/emails` s'affiche sans erreur (200)
+- [ ] La page `/dev/emails` en production (`NODE_ENV=production`, sans `EMAIL_PREVIEW`) retourne 404
+- [ ] Le compteur de templates en sous-titre affiche **19 templates**
+- [ ] Les 4 sections sont présentes : "Parcours ambassadeur", "Parcours visiteur", "Live", "Admin"
+- [ ] Chaque section contient le bon nombre d'iframes :
+  - Ambassadeur : 9 iframes
+  - Visiteur : 6 iframes
+  - Live : 1 iframe
+  - Admin : 3 iframes
+
+### 33.2 — Rendu visuel des emails
+
+- [ ] Chaque iframe affiche un email correctement rendu (pas de page blanche, pas d'erreur JS)
+- [ ] Les styles Next.js / Tailwind ne "débordent" pas dans les iframes (isolation `srcDoc`)
+- [ ] Les boutons CTA (indigo) s'affichent avec la bonne couleur
+- [ ] Les emails affichent les données mock : Marie Dubois, Lyon, France
+- [ ] Le bandeau "Guérison" / header logo est cohérent dans chaque email
+- [ ] Aucun `undefined` visible dans les textes (props mock manquantes)
+
+### 33.3 — Contenu (vérifier avec David)
+
+> Parcourir chaque email ligne par ligne avec David. Cocher quand le contenu est validé.
+
+| # | Template | Label dans la page | Validé |
+|---|---|---|---|
+| 1 | `magic-link` | Magic link (connexion standard) | [ ] |
+| 2 | `magic-link-bienvenue` | Magic link — bienvenue nouvel inscrit | [ ] |
+| 3 | `pre-validation-accordee` | Pré-validation accordée | [ ] |
+| 4 | `bienvenue-ambassadeur` | Bienvenue ambassadeur (validation finale) | [ ] |
+| 5 | `validation-finale` | Validation finale — ambassade active | [ ] |
+| 6 | `registration-confirmation` | Confirmation inscription | [ ] |
+| 7 | `campagne-ambassadeurs` | Campagne — invitation au prochain live | [ ] |
+| 8 | `feedback-post-live` | Feedback post-live | [ ] |
+| 9 | `contact-received-host` | Ambassadeur — demande de visite reçue | [ ] |
+| 10 | `contact-accepted` | Demande de contact acceptée | [ ] |
+| 11 | `contact-reserved` | Place réservée — coordonnées partielles | [ ] |
+| 12 | `contact-declined` | Demande refusée | [ ] |
+| 13 | `acceptation-visite` | Confirmation de visite — adresse dévoilée | [ ] |
+| 14 | `refus-visite` | Visite refusée | [ ] |
+| 15 | `campagne-visiteurs` | Campagne — prochain live | [ ] |
+| 16 | `signal-approved` | Signal approuvé — témoignage en direct | [ ] |
+| 17 | `nouvelle-activation-admin` | Nouvelle ambassade activée (admin) | [ ] |
+| 18 | `enrichissement-recu` | Questionnaire d'enrichissement soumis (admin) | [ ] |
+| 19 | `admin-alerte-no-activations` | Alerte — 0 hôtes actifs (admin) | [ ] |
+
+### 33.4 — Questions de contenu pour David
+
+> Ces questions sont à poser à David lors de la session de revue des emails. Elles concernent le ton pastoral, le vocabulaire, et les attentes des destinataires.
+
+| Domaine | Question |
+|---|---|
+| **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? |
+| **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? |
+| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? |
+| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? |
+| **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? |
+| **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? |
+| **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? |
+| **Contact visiteur** | L'email au visiteur quand sa place est réservée (`contact-reserved`) révèle l'email de l'hôte mais pas son adresse. C'est intentionnel — l'adresse arrive dans `acceptation-visite`. Ça te semble juste ? |
+| **Refus de visite** | Email `refus-visite` : "Votre demande auprès de [hôte] — mise à jour". Le ton est volontairement neutre pour ne pas stigmatiser. Tu veux quelque chose de plus pastoral ("nous sommes désolés...") ? |
+| **Campagne visiteurs** | Contient un lien de désinscription (`unsubscribeUrl`). Qui gère cette liste ? Il faudra une page `/unsubscribe?token=...` côté app. |
+| **Signal approuvé** | Email `signal-approved` : sélection pour témoigner en direct. C'est envoyé à qui exactement — aux personnes qui ont levé la main via `/admin/live` ? |
+| **Emails admin** | Les 3 emails admin (nouvelle activation, questionnaire, alerte 0 hôtes) vont à quelle adresse ? `RESEND_ADMIN_EMAIL` — c'est ton adresse perso ou une boîte partagée avec une équipe ? |
+| **Objet des emails** | Veux-tu relire les sujets (`subject`) de chaque email ? Ils sont visibles dans le code `lib/email/templates.ts` et c'est la première chose lue dans la boîte mail. |
+
+---
+
+| Date | Module | Statut | Notes |
+|---|---|---|---|
+| 2026-05-02 | M33 — Preview emails `/dev/emails` | ✅ mis en place | Page `/dev/emails` rendue à 200 en local. 19 templates React Email v6. Guard `EMAIL_PREVIEW` pour isoler de la prod. iframes `srcDoc` pour isolation CSS. Prêt pour revue contenu avec David. |
+
+---
+
 *Généré le 2026-05-01 — DavidTheryApp v1 — branch `develop`*
 *Mis à jour le 2026-05-02 — Session QA suite (dashboard, questionnaire, pages admin complètes)*
+*Mis à jour le 2026-05-02 — Module 33 ajouté : preview emails React Email v6*
 *États gérés par `scripts/demo-state.js`*
