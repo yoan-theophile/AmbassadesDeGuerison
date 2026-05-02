@@ -34,7 +34,7 @@ Ce dossier contient tout ce qu'il faut pour reprendre, opérer ou transmettre le
 | `DEPLOIEMENT.md` (racine) | Déploiement Vercel — commandes, variables, pièges CLI v53 |
 | `DESIGN.md` (racine) | Système de design — couleurs, typographie, spacing, responsive |
 | `SCENARIOS_DEMO.md` (racine) | Scénarios de démonstration pas à pas |
-| `QA_SCENARIOS.md` (racine) | Checklist QA emails + questions contenu à valider avec David |
+| `QA_SCENARIOS.md` (racine) | Checklist QA complète — carte, overlays, états DevOverlay, emails, admin, E2E |
 | `.env.local.example` (racine) | Template des variables d'environnement |
 | `config/features.ts` | Feature flags (activer/désactiver des modules) |
 
