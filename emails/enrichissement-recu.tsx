@@ -11,7 +11,7 @@ export default function EnrichissementRecu({ ambassadeurFirstName, adminUrl }: P
   return (
     <EmailLayout preview={`Questionnaire soumis — ${ambassadeurFirstName} attend sa validation finale`}>
       <Text style={p}>L'ambassadeur <strong>{ambassadeurFirstName}</strong> vient de soumettre son questionnaire d'enrichissement.</Text>
-      <Text style={p}>Son statut est maintenant <code>enrichment_pending</code>. Il attend votre validation finale.</Text>
+      <Text style={p}>Son profil enrichi est soumis — il attend votre validation finale.</Text>
       <Text style={p}>
         <Link href={adminUrl} style={link}>Valider dans l'admin →</Link>
       </Text>
