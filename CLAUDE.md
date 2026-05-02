@@ -156,9 +156,37 @@ Carte Leaflet plein écran avec :
 - **Popup des pins** : contient une ligne "Lieu de prière — lives de guérison" pour contextualiser l'action Contacter.
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
-- **État vide** (`MapPublique`) — deux comportements distincts :
-  - `hosts.length === 0` (aucun ambassadeur dans le monde) → overlay full-screen centré avec CTA "Devenir ambassadeur" (conditionné à `loaded`).
+- **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
+  - `hosts.length === 0` → composant `EmptyMapContent` affiché — overlay contextuel centré selon l'état de l'app :
+    - `liveInProgress && hosts.length === 0` (`live-zero`) → "Live en cours / Les ambassades confirment..." + lien "Regarder le live →" (conditionné à `lastEvent?.live_link`)
+    - `nextEvent` dans ≤ 2j → "PROCHAIN LIVE [date] / Les ambassades confirment leur participation..."
+    - `nextEvent` dans > 2j (`upcoming`, `blank`) → "PROCHAIN LIVE [date] / Les ambassades s'afficheront dès qu'elles confirmeront..." + stats + "Voir les témoignages →"
+    - `lastEvent && !nextEvent` (`closed`, `past`) → "Dernier live [date] / Prochain live annoncé prochainement." + stats + "Partager un témoignage →"
+    - Aucun event → "Pas encore de live prévu / Rejoignez la communauté..." + bouton "Devenir ambassadeur" (seul état avec ce CTA)
   - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
+  - `live_link` sur `events` : renseigné par David dans `/admin/planning` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
+
+## DevOverlay — simulation d'états (dev uniquement)
+
+`components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit, rendu uniquement si `process.env.NODE_ENV === 'development'`.
+
+Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 7 états disponibles :
+
+| État | Label | is_active | liveInProgress | nextEvent |
+|------|-------|-----------|---------------|-----------|
+| `live` | 🔴 Live | true (tous) | true | J+10 |
+| `live-zero` | 🔴 Live (0 confirm.) | false | true | J+10 |
+| `soon` | ⏱ Soon 3j | false | false | J+3 |
+| `upcoming` | 📅 Upcoming | false | false | J+10 |
+| `past` | ⏪ Past | false | false | aucun |
+| `closed` | 🔚 Closed | false | false | J+10 |
+| `blank` | 🫙 Blank 0 confirm. | false | false | J+10 (is_active=false) |
+
+**Règle critique** : seuls `live` et `live-zero` ont `event_date` dans la fenêtre live (`NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`). Tous les autres états ont `is_active=false` → carte vide → overlay contextuel affiché.
+
+**Fix `closed`** (commit 56a4d30) : l'état `closed` remet `demoFutureEvent` à J+10. Sans ce fix, après `past → closed`, evtFutur restait à J-10 ce qui maintenait l'overlay "Dernier live" au lieu de "Dernier live + prochain annoncé".
+
+Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en tant que `david.thery`, `theo.nelson.ia`, ou `marie.dubois` sans passer par Resend.
 
 ## Page témoignages publique (`/temoignages`)
 

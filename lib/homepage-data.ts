@@ -4,6 +4,7 @@ export type LiveEvent = {
   id: string;
   title: string;
   event_date: string;
+  live_link: string | null;
 };
 
 export type PublicTestimonial = {
@@ -41,14 +42,14 @@ export async function getHomepageData(): Promise<HomepageData> {
   ] = await Promise.all([
     supabase
       .from('events')
-      .select('id, title, event_date')
+      .select('id, title, event_date, live_link')
       .gt('event_date', nowISO)
       .order('event_date', { ascending: true })
       .limit(1)
       .maybeSingle(),
     supabase
       .from('events')
-      .select('id, title, event_date')
+      .select('id, title, event_date, live_link')
       .lte('event_date', nowISO)
       .order('event_date', { ascending: false })
       .limit(1)

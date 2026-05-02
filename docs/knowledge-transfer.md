@@ -59,7 +59,7 @@ npm install
 
 ### 2. Variables d'environnement
 
-Copier `.env.example` vers `.env.local` et remplir :
+Copier `.env.local.example` vers `.env.local` et remplir :
 
 ```env
 # Supabase
@@ -132,8 +132,11 @@ git push origin main
 
 ### Déploiement manuel (si besoin)
 
+Voir `DEPLOIEMENT.md` (racine) pour les commandes complètes, les variables d'environnement et les pièges connus du CLI Vercel v53.
+
 ```bash
-npx vercel --prod
+# Déployer le HEAD courant en production
+git archive --format=tgz HEAD | vercel deploy --archive=tgz --yes --scope yoan-theophiles-projects --prod
 ```
 
 ### Variables d'environnement en production
@@ -204,18 +207,29 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
+19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
-| Bienvenue ambassadeur | Hôte termine l'onboarding (inscription) |
-| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire |
-| Notification admin (nouvelle candidature) | Nouveau profil `pending_review` créé |
-| Notification admin (questionnaire soumis) | Hôte soumet questionnaire → `enrichment_pending` |
-| Signal approuvé | Admin approuve un signal live |
-| Nouvelle demande de contact | Visiteur soumet une demande → email à l'hôte |
-| Hôte accepte — adresse au visiteur | Hôte accepte la demande → adresse envoyée au visiteur |
-| Activation campagne ambassadeur | Cron envoie la campagne → lien `/accueillir/activer/[token]` |
-| Activation campagne visiteur | Cron envoie la campagne visiteurs → lien avec désinscription |
+| Magic link bienvenue | Nouvel inscrit — premier magic link |
+| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire + vidéo |
+| Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
+| Validation finale | Confirmation de l'activation finale |
+| Confirmation inscription | Nouvel ambassadeur inscrit |
+| Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
+| Feedback post-live | Ambassadeur invité à donner son retour après le live |
+| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien déclin |
+| Demande acceptée (visiteur) | Hôte accepte → visiteur informé |
+| Place réservée | Hôte a accepté, coordonnées partielles avant dévoilement adresse |
+| Demande refusée | Hôte refuse → visiteur redirigé vers la carte |
+| Confirmation visite — adresse dévoilée | Adresse complète envoyée au visiteur accepté |
+| Visite refusée | Refus à l'étape finale → visiteur redirigé |
+| Campagne visiteurs | Cron visiteurs → lien carte + lien désinscription |
+| Signal approuvé | Admin approuve un signal live → lien live envoyé à l'ambassadeur |
+| Nouvelle ambassade activée (admin) | Hôte passe `validated` → notification admin |
+| Questionnaire soumis (admin) | Hôte soumet questionnaire enrichissement → notification admin |
+| Alerte 0 hôtes actifs (admin) | Aucun hôte actif 48h avant un live |
 
 ### Voir les emails envoyés
 
