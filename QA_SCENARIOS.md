@@ -20,21 +20,25 @@ node scripts/magic-link.js david.thery@demo.fr
 # → ouvrir l'URL dans le navigateur
 ```
 
-**États disponibles (à lancer depuis la racine du projet) :**
+**États disponibles via le DevOverlay (bouton `DEV 🔧` coin bas-droit, dev uniquement) :**
 
-| Commande | Ce que ça produit |
+| Bouton DevOverlay | Ce que ça produit |
 |---|---|
-| `node scripts/demo-state.js live` | 🔴 Live en cours — EventBanner rouge, pins actifs |
-| `node scripts/demo-state.js soon` | ⏱ Prochain dans 3j — countdown |
-| `node scripts/demo-state.js upcoming` | 📅 Prochain dans 10j — état par défaut du seed |
-| `node scripts/demo-state.js past` | ⏪ Entre deux lives — aucun futur |
-| `node scripts/demo-state.js status` | Afficher l'état actuel sans modifier |
+| `🔴 Live` | Live en cours — EventBanner rouge, 7 pins actifs |
+| `🔴 Live (0 confirm.)` | Live en cours mais 0 pins (campagne pas encore envoyée) |
+| `⏱ Soon 3j` | Prochain dans 3j — countdown indigo |
+| `📅 Upcoming` | Prochain dans 10j — état par défaut du seed |
+| `⏪ Past` | Entre deux lives — aucun futur, overlay "Dernier live" |
+| `🔚 Closed` | Live vient de finir — juste hors fenêtre live, overlay "Dernier live" |
+| `🫙 Blank 0 confirm.` | Futur live annoncé, 0 ambassadeurs confirmés (avant campagne) |
+
+> Alternative CLI (si le DevOverlay n'est pas disponible) : `node scripts/demo-state.js <état>` avec les états `live`, `live-zero`, `soon`, `upcoming`, `past`, `closed`, `blank`.
 
 ---
 
 ## Module 1 — Page d'accueil publique `/`
 
-> Tester les 5 états via le **DevOverlay** (bouton `DEV 🔧` coin bas-droit, visible uniquement en `NODE_ENV=development`).
+> Tester les 7 états via le **DevOverlay** (bouton `DEV 🔧` coin bas-droit, visible uniquement en `NODE_ENV=development`).
 > Cliquer l'état voulu → rafraîchir si nécessaire (le router.refresh() est appelé automatiquement).
 > **Règle clé post-fix** : hors état `live`, `is_active = false` pour tous les hôtes → la carte est vide → l'overlay contextuel s'affiche.
 
@@ -63,13 +67,36 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] L'overlay affiche "Les ambassades confirment leur participation..."
 - [ ] Stats et lien témoignages présents
 
-### État : `live` (live en cours)
+### État : `live` (live en cours — ambassades confirmées)
 
 - [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" sur fond rouge/indigo intense
 - [ ] L'icône Radio clignote (pulsing)
 - [ ] **Les 7 pins sont activés** (is_active=TRUE) — tous visibles sur la carte
 - [ ] Cliquer sur un pin → popup avec CTA "Rejoindre cette ambassade" (ou équivalent live)
 - [ ] Aucun overlay de carte vide affiché (pins présents)
+
+### État : `live-zero` 🔴 (live en cours — 0 ambassades confirmées)
+
+> État simulant un live en cours mais dont la campagne email ambassadeurs n'a pas encore été envoyée.
+> `is_active = false` sur tous les hôtes → carte vide pendant le live.
+
+- [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" (identique à `live`)
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche "Live en cours" avec message "Les ambassades confirment leur participation..."
+- [ ] Si `live_link` est renseigné sur le dernier event : lien "Regarder le live →" visible et cliquable
+- [ ] Si `live_link` est null : le lien n'apparaît pas (guard conditionnel)
+
+### État : `blank` 🫙 (futur live annoncé, 0 confirmations)
+
+> Simule l'état entre l'annonce d'un live et l'envoi de la campagne ambassadeurs.
+> evtRecent (passé) is_active=false. evtFutur (J+10) is_active=false, inscriptions ouvertes.
+
+- [ ] L'EventBanner affiche "Prochain live le [date]" (blanc, pas de countdown car > 7j)
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche label "PROCHAIN LIVE" + date + "dans X jours"
+- [ ] Texte "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] Stats ambassadeurs/pays présentes
+- [ ] Lien "Voir les témoignages →" présent
 
 ### État : `closed` 🔚 (live vient de se terminer — nouveau)
 
@@ -606,20 +633,21 @@ npm run test:e2e
 
 ## Récapitulatif — Matrice états × fonctionnalités clés
 
-> `closed` = état DevOverlay uniquement (live vient de finir). Mécanisme prod à venir (bouton admin "Clôturer").
+> `closed` et `live-zero` = états DevOverlay uniquement (simulation). Mécanisme prod à venir (bouton admin "Clôturer").
+> `blank` = état DevOverlay uniquement (futur live annoncé, 0 ambassadeurs confirmés).
 
-| Fonctionnalité | `past` ⏪ | `closed` 🔚 | `upcoming` 📅 | `soon` ⏱ | `live` 🔴 |
-|---|:---:|:---:|:---:|:---:|:---:|
-| EventBanner — texte | "Dernier live il y a..." | "Dernier live..." / "Prochain live..." | "Prochain live le..." | Countdown | "Live en cours" |
-| EventBanner — couleur | blanc | blanc | blanc | indigo | rouge/indigo |
-| Carte — pins visibles | ✗ | ✗ | ✗ | ✗ | ✓ (7/7) |
-| Overlay contextuel | "Dernier live [date]" | "Dernier live [date]" | "Prochain live [date]" | "Live dans Xj" | absent (pins actifs) |
-| Overlay — lien CTA | Témoignage → | Témoignage → | Témoignages → | Témoignages → | — |
-| Overlay — stats ambassadeurs | ✓ | ✓ | ✓ | ✓ | — |
-| Dashboard — section Signaux | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Dashboard — formulaire témoignage | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `/admin/live` — feed actif | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Formulaire contact ambassade | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Fonctionnalité | `past` ⏪ | `closed` 🔚 | `blank` 🫙 | `upcoming` 📅 | `soon` ⏱ | `live-zero` 🔴 | `live` 🔴 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| EventBanner — texte | "Dernier live il y a..." | "Dernier live..." | "Prochain live le..." | "Prochain live le..." | Countdown | "Live en cours" | "Live en cours" |
+| EventBanner — couleur | blanc | blanc | blanc | blanc | indigo | rouge/indigo | rouge/indigo |
+| Carte — pins visibles | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (7/7) |
+| Overlay contextuel | "Dernier live [date]" | "Dernier live [date]" | "Prochain live [date]" | "Prochain live [date]" | "Live dans Xj" | "Live en cours" | absent |
+| Overlay — lien CTA | Témoignage → | Témoignage → | Témoignages → | Témoignages → | Témoignages → | live_link (si défini) | — |
+| Overlay — stats ambassadeurs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Dashboard — section Signaux | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Dashboard — formulaire témoignage | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/admin/live` — feed actif | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Formulaire contact ambassade | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ---
 
@@ -631,7 +659,7 @@ npm run test:e2e
 ### 35.1 — Présence et ouverture
 
 - [ ] Bouton `DEV 🔧` visible en bas à droite en dev, absent en prod (process.env.NODE_ENV check)
-- [ ] Cliquer → panneau s'ouvre avec 5 boutons état + section Magic Link
+- [ ] Cliquer → panneau s'ouvre avec 7 boutons état + section Magic Link
 - [ ] Cliquer `✕` → panneau se ferme
 
 ### 35.2 — Transitions depuis `live`
@@ -642,6 +670,8 @@ npm run test:e2e
 - [ ] `[Live]` → `[⏱ Soon 3j]` : pins disparaissent, overlay "Live dans 2 jours..." apparaît
 - [ ] `[Live]` → `[🔚 Closed]` : pins disparaissent, overlay "Dernier live [date]" apparaît
 - [ ] `[Live]` → `[⏪ Past]` : pins disparaissent, overlay "Dernier live [date]" apparaît
+- [ ] `[Live]` → `[🔴 Live (0 confirm.)]` : pins disparaissent, overlay "Live en cours" apparaît
+- [ ] `[Live]` → `[🫙 Blank]` : pins disparaissent, overlay "Prochain live [date]" apparaît
 
 ### 35.3 — État `🔚 Closed` (nouveau)
 
@@ -652,7 +682,34 @@ npm run test:e2e
 - [ ] `events.event_date` est dans la fenêtre "juste après le live" (WINDOW_H + 1h dans le passé)
 - [ ] nextEvent (futur) reste intact — non modifié par `closed`
 
-### 35.4 — Magic Link depuis le panneau
+### 35.4 — État `🔴 Live (0 confirm.)` — live-zero
+
+> Simule un live en cours sans ambassade confirmée : campagne email non envoyée.
+> `event_date = J-2h`, `is_active = false` sur tous les hôtes.
+
+- [ ] Bouton `🔴 Live (0 confirm.)` présent dans le panneau DevOverlay
+- [ ] Après clic : `currentState === 'live-zero'` → bouton actif
+- [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" (identique à `live`)
+- [ ] `host_activations.is_active = false` — aucun pin visible sur la carte
+- [ ] L'overlay affiche le message "Les ambassades confirment leur participation..."
+- [ ] Si `events.live_link` est renseigné dans le seed : lien "Regarder le live →" visible
+- [ ] Si `events.live_link` est null : le lien est absent (guard `lastEvent?.live_link`)
+
+### 35.5 — État `🫙 Blank` — futur annoncé, 0 confirmations
+
+> Simule l'état entre l'annonce du prochain live et l'envoi de la campagne ambassadeurs.
+> evtRecent (passé) is_active=false. evtFutur (J+10) is_active=false.
+
+- [ ] Bouton `🫙 Blank 0 confirm.` présent dans le panneau DevOverlay
+- [ ] Après clic : `currentState === 'blank'` → bouton actif
+- [ ] L'EventBanner affiche "Prochain live le [date]" (≥ 7j, donc format date complète)
+- [ ] `host_activations.is_active = false` sur les deux events — aucun pin visible
+- [ ] L'overlay affiche "PROCHAIN LIVE" + date + "dans 10 jours"
+- [ ] Texte "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] Stats ambassadeurs/pays affichées
+- [ ] Lien "Voir les témoignages →" présent
+
+### 35.6 — Magic Link depuis le panneau
 
 - [ ] Bouton rapide `david.thery` → email auto-rempli
 - [ ] Bouton rapide `theo.nelson.ia` → email auto-rempli
@@ -686,13 +743,17 @@ npm run test:e2e
 - [ ] Texte : "Les ambassades confirment leur participation..."
 - [ ] Stats et lien témoignages présents
 
-### 36.3 — État `live` + aucun hôte confirmé (cas rare)
+### 36.3 — État `live-zero` (live en cours, 0 ambassades confirmées)
 
-> Simulable en passant `live` puis supprimant manuellement les host_activations actives en DB.
+> Simulable via le bouton `🔴 Live (0 confirm.)` du DevOverlay.
+> C'est l'état produit par `lib/dev/state.ts` état `live-zero` : `is_active=false` sur tous les hôtes.
 
-- [ ] Overlay affiche "Live en cours" + "Les ambassades confirment leur participation..."
-- [ ] Pas de lien CTA (cas edge — live actif mais vide)
-- [ ] Stats présentes si totalAmbassadors > 0
+- [ ] Overlay affiche "Live en cours" (ou label équivalent)
+- [ ] Texte "Les ambassades confirment leur participation..."
+- [ ] Lien "Regarder le live →" visible si `lastEvent.live_link` est renseigné
+- [ ] Lien absent si `lastEvent.live_link` est null
+- [ ] Stats affichées si `totalAmbassadors > 0`
+- [ ] **Test live_link** : vérifier dans Supabase que `events.live_link` du seed evtRecent est bien `https://youtube.com/live/example-recent`
 
 ### 36.4 — État `closed` ou `past` (live terminé, prochain non annoncé)
 
