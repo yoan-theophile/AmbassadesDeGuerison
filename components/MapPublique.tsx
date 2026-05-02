@@ -17,6 +17,7 @@ interface Props {
   liveInProgress: boolean;
   totalAmbassadors: number;
   totalCountries: number;
+  soonThresholdDays: number;
 }
 
 interface HostPin {
@@ -71,7 +72,7 @@ function StatsLine({ totalAmbassadors, totalCountries }: { totalAmbassadors: num
   );
 }
 
-function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries }: Props) {
+function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
   const daysUntilNext = nextEvent
     ? Math.ceil((new Date(nextEvent.event_date).getTime() - Date.now()) / 86_400_000)
     : null;
@@ -97,8 +98,8 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
     );
   }
 
-  // Prochain live dans ≤ 2 jours (état "soon" — confirmations en cours)
-  if (nextEvent && daysUntilNext !== null && daysUntilNext <= 2) {
+  // Prochain live dans ≤ soonThresholdDays jours (état "soon" — confirmations en cours)
+  if (nextEvent && daysUntilNext !== null && daysUntilNext <= soonThresholdDays) {
     const label = daysUntilNext <= 0 ? "aujourd'hui" : `dans ${daysUntilNext} jour${daysUntilNext > 1 ? 's' : ''}`;
     return (
       <>
@@ -162,7 +163,7 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
   );
 }
 
-export default function MapPublique({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries }: Props) {
+export default function MapPublique({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
@@ -381,6 +382,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               liveInProgress={liveInProgress}
               totalAmbassadors={totalAmbassadors}
               totalCountries={totalCountries}
+              soonThresholdDays={soonThresholdDays}
             />
           </div>
         </div>

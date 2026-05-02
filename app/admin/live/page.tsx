@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import AdminFeed from '@/components/AdminFeed';
 import LiveTestimonialsCounter from '@/components/LiveTestimonialsCounter';
 import AdminLayout from '@/components/AdminLayout';
+import LiveCloseButton from '@/components/LiveCloseButton';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 
@@ -78,15 +79,20 @@ export default async function AdminLivePage() {
           </div>
         )}
 
-        <div className="mb-6">
-          <h1 className="text-base font-semibold text-slate-800">
-            {event ? event.title : 'Live en cours'}
-          </h1>
-          {eventDate && (
-            <p className="text-sm text-slate-400 mt-0.5">{eventDate}</p>
-          )}
-          {!event && (
-            <p className="text-sm text-slate-400 mt-0.5">Aucun événement trouvé</p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-base font-semibold text-slate-800">
+              {event ? event.title : 'Live en cours'}
+            </h1>
+            {eventDate && (
+              <p className="text-sm text-slate-400 mt-0.5">{eventDate}</p>
+            )}
+            {!event && (
+              <p className="text-sm text-slate-400 mt-0.5">Aucun événement trouvé</p>
+            )}
+          </div>
+          {isCurrentLive && event && (
+            <LiveCloseButton eventId={event.id} />
           )}
         </div>
 

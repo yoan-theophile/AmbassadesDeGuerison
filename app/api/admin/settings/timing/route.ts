@@ -14,6 +14,7 @@ export async function PATCH(req: NextRequest) {
     'visitor_auto_decline_days_before',
     'feedback_days_after',
     'queue_aging_days',
+    'soon_threshold_days',
   ] as const;
 
   const updates: Record<string, number> = {};

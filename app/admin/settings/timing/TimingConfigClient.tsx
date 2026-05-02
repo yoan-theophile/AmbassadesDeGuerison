@@ -35,6 +35,11 @@ const FIELDS: { key: keyof TimingConfig; label: string; tooltip: string }[] = [
     label: 'Archivage demandes (jours)',
     tooltip: 'Nombre de jours avant qu\'une demande sans réponse soit considérée comme périmée.',
   },
+  {
+    key: 'soon_threshold_days',
+    label: 'Seuil "bientôt" (jours)',
+    tooltip: 'Quand le prochain live est dans ≤ N jours, l\'overlay affiche "Les ambassades confirment leur participation" au lieu de la date seule.',
+  },
 ];
 
 interface Props { config: TimingConfig }
