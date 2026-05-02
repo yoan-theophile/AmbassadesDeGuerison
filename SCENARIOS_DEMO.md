@@ -1,5 +1,5 @@
 # Démo David Théry — 45 minutes
-## Ambassades de Guérison — v0.1.3.0
+## Ambassades de Guérison — v0.1.4.0
 
 > **Setup avant que David arrive :**
 > 1. `supabase db query --linked --file scripts/reset-db.sql && node scripts/seed.js`
@@ -161,9 +161,13 @@ Deux colonnes :
 - **Mains levées** : Aminata (Dakar) en `pending` → cliquer *"Approuver"* → signal passe en approuvé
 - **Témoignages** : compteur — cliquer → redirige vers `/admin/temoignages` pré-filtré
 
+Montrer aussi le bouton **"Clôturer le live"** (coin haut droit) → confirmer → tous les pins disparaissent de la carte publique immédiatement.
+
 *À dire :*
 > « Cette page reste ouverte sur un 2e écran pendant le live. Vous voyez en temps
-> réel les ambassadeurs qui veulent partager quelque chose à l'antenne. »
+> réel les ambassadeurs qui veulent partager quelque chose à l'antenne. En fin de live,
+> un clic sur "Clôturer" remet tous les pins à zéro — les visiteurs ne peuvent plus
+> envoyer de demandes. »
 
 ---
 
@@ -173,17 +177,17 @@ Ces questions sont importantes. Certaines ont une réponse dans le code, d'autre
 
 ---
 
-### Q1 — Comment David clôture le live en production ?
+### Q1 — La clôture manuelle suffit-elle, ou faut-il une clôture automatique ?
 
-**Situation actuelle :** seul le DevOverlay (réservé au développeur) peut remettre les épingles à zéro après un live. Il n'existe pas encore de bouton "Clôturer le live" dans l'admin.
+**Situation actuelle :** le bouton "Clôturer le live" existe dans `/admin/live` (option A implémentée). Un clic remet `is_active = false` sur tous les hôtes de l'event. La clôture automatique n'existe pas encore.
 
-**Question :** Qui décide que le live est terminé ? David lui-même ? Son assistante ? Automatiquement après X heures ?
+**Question :** Est-ce que David (ou son assistante) clôturera manuellement à chaque live, ou préfère-t-il une sécurité automatique en cas d'oubli ?
 
-**Enjeu :** si personne ne clôture, les épingles restent visibles le lendemain matin. Des visiteurs pourraient envoyer des demandes hors live.
+**Enjeu :** si personne ne clique "Clôturer" après le live, les épingles restent visibles le lendemain matin. Des visiteurs pourraient envoyer des demandes hors fenêtre live.
 
 **Options à lui proposer :**
-- A) Bouton "Clôturer le live" dans `/admin/live` → remet `is_active = false` sur tous les hôtes de l'event
-- B) Clôture automatique : X heures après `event_date` (ex : +6h), le cron remet tout à zéro
+- A) Manuel uniquement — le bouton dans `/admin/live` suffit ✅ déjà livré
+- B) Clôture automatique : X heures après `event_date` (ex : +6h), un cron remet tout à zéro
 - C) Les deux : automatique + bouton manuel si live raccourci
 
 ---
@@ -288,4 +292,4 @@ Puis DevOverlay → **`📅 Upcoming`** pour repartir propre.
 
 ---
 
-*Mis à jour 2026-05-02 — v0.1.3.0 (réécriture complète post-ship : overlays contextuels, 45 min, 7 questions à débattre avec David)*
+*Mis à jour 2026-05-03 — v0.1.4.0 (Q1 mise à jour : bouton "Clôturer le live" livré dans /admin/live ; section 3d complétée)*
