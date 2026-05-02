@@ -17,11 +17,54 @@ Tests DB (triggers, RLS) : nécessite `supabase start` (Docker).
 
 - Next.js 15 App Router, TypeScript, Tailwind CSS
 - Supabase : PostgreSQL + Auth magic links + RLS
-- Resend : emails (notifications, magic links)
+- Resend : emails (notifications, magic links) — templates dans `emails/*.tsx` (React Email v6)
 - Leaflet + OpenStreetMap : carte publique
 - PWA : manifest + service worker (cache Leaflet tiles)
+- Vercel : hébergement production (Fluid Compute, région IAD1 Washington)
+
+## Déploiement Vercel
+
+Projet : **`davidthery-app`** — compte `yoan-theophiles-projects`
+- **Production** : https://davidthery-app.vercel.app
+- **Dashboard** : https://vercel.com/yoan-theophiles-projects/davidthery-app
+- **Lien local** : `.vercel/project.json` (ajouté au `.gitignore`)
+
+### Déployer depuis un SHA git précis (sans les fichiers locaux non committés)
+
+```bash
+git archive --format=tgz <SHA> | vercel deploy --archive=tgz --yes --scope yoan-theophiles-projects --prod
+# Omettre --prod pour un déploiement preview
+```
+
+Préférer cette approche à `vercel deploy` classique quand des modifications non committées sont en cours.
+
+### Variables d'environnement — portées
+
+Toutes les variables sont configurées sur les deux scopes. Seule différence :
+
+| Variable | Production | Preview |
+|----------|-----------|---------|
+| `EMAIL_PREVIEW` | `false` — `/dev/emails` retourne 404 | **`true`** — route active |
+
+`NEXT_PUBLIC_APP_URL` est `https://davidthery-app.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
+
+Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API REST (token dans `%APPDATA%\com.vercel.cli\Data\auth.json`).
 
 ## Développement local
+
+### Preview emails (React Email)
+
+19 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
+`lib/email/templates.ts` contient les fonctions `sendXxx` qui utilisent `react:` au lieu de `html:`.
+
+**Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
+Ajouter dans `.env.local` :
+```
+EMAIL_PREVIEW=true
+```
+La route retourne 404 en production (sans cette variable).
+
+Données mock dans `emails/__mocks__/index.ts` — basées sur les profils seed (Marie, JP, Sophie).
 
 ### Connexion admin sans e-mail (Resend sandbox)
 
