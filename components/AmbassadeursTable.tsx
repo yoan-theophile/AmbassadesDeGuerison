@@ -54,7 +54,7 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; className:
 };
 
 const HOST_TYPE_LABELS: Record<string, string> = {
-  individual: 'Particulier',
+  individual: 'Domicile',
   church:     'Église',
 };
 

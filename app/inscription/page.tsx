@@ -8,8 +8,8 @@ import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 const TYPES = [
-  { value: 'individual', label: 'Domicile / particulier' },
-  { value: 'church', label: 'Église / lieu de culte' },
+  { value: 'individual', label: 'Domicile — lieu de prière' },
+  { value: 'church', label: 'Église — lieu de prière' },
 ];
 
 export default function InscriptionPage() {
