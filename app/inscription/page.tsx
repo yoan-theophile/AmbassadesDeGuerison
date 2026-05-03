@@ -22,6 +22,7 @@ export default function InscriptionPage() {
   const [form, setForm] = useState({
     email: '',
     first_name: '',
+    last_name: '',
     phone: '',
     city: '',
     country: 'France',
@@ -126,11 +127,14 @@ export default function InscriptionPage() {
               <Field label="Prénom" required>
                 <input type="text" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required className={inputCls} placeholder="Marie" />
               </Field>
+              <Field label="Nom" required>
+                <input type="text" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required className={inputCls} placeholder="Dupont" />
+              </Field>
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
               </Field>
-              <Field label="Téléphone (optionnel)">
-                <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
+              <Field label="Téléphone" required>
+                <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} required maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
                 <p className="text-xs text-slate-400 mt-1">Uniquement visible par l'équipe — jamais transmis aux visiteurs.</p>
               </Field>
               <CityInput
@@ -142,7 +146,7 @@ export default function InscriptionPage() {
                   setForm((prev) => ({ ...prev, city, lat, lng, ...(country ? { country } : {}) }))
                 }
               />
-              {form.city && !form.lat && (
+              {form.city && form.lat == null && (
                 <p className="text-xs text-amber-600 -mt-1">
                   Sélectionnez votre ville dans la liste pour confirmer votre position sur la carte.
                 </p>
@@ -157,7 +161,7 @@ export default function InscriptionPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.first_name || !form.email || !form.city || !form.lat}
+                disabled={!form.first_name || !form.last_name || !form.email || !form.phone.trim() || !form.city || form.lat == null}
                 className={`${btnPrimary} flex items-center gap-2 justify-center`}
               >
                 Continuer <ArrowRight className="w-4 h-4" />
@@ -200,7 +204,7 @@ export default function InscriptionPage() {
 
               <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 border border-slate-100">
                 <p className="font-medium text-slate-800 mb-1">Récapitulatif</p>
-                <p className="text-slate-600">{form.first_name} — {form.city}, {form.country}</p>
+                <p className="text-slate-600">{form.first_name} {form.last_name} — {form.city}, {form.country}</p>
                 <p className="text-slate-500 text-xs mt-0.5">
                   {TYPES.find((t) => t.value === form.type)?.label} · {form.capacity} personnes
                 </p>
