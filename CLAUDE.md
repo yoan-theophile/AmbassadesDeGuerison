@@ -216,7 +216,8 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 
 - En-tête : icône `Sparkles` + titre **"Ce que Dieu a fait"** + sous-titre + stats (N témoignages • M villes).
 - Filtre par live : `TemoignageLiveFilter` (client component) — `<select>` qui navigue vers `?live=<uuid>`. Filtrage server-side dans la query Supabase.
-- Grille 2 colonnes (`sm:grid-cols-2 items-start`) — hauteurs libres par colonne.
+- Colonne unique (`flex flex-col gap-4`) — meilleure lisibilité pour du contenu textuel long.
+- Pagination 20 par page (param `?page=N`), identique à `/admin/ambassadeurs`. `getTemoignages` accepte `page` + retourne `total` via `{ count: 'exact' }`. Stats (N témoignages, M villes) calculées sur l'ensemble, pas seulement la page courante (`getTotalCities` requête séparée).
 - **`TemoignageCard`** (client component) : icône `Quote` indigo en haut, texte sans guillemets, `line-clamp-4` par défaut. Si `scrollHeight > clientHeight`, bouton **"Lire la suite"** apparaît ; **"Réduire"** pour replier.
 - Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) OU `{visitor_name}, {submitter_city}` pour les témoignages anonymes + titre du live en indigo.
 - Jointure Supabase many-to-one → retourne un objet, pas un tableau. Normaliser avec `Array.isArray ? [0] : direct`.

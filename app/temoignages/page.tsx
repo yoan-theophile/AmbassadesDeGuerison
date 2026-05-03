@@ -4,23 +4,44 @@ import TemoignageCard from '@/components/TemoignageCard';
 import TemoignageShareButtons from '@/components/TemoignageShareButtons';
 import TemoignageLiveFilter from '@/components/TemoignageLiveFilter';
 import Link from 'next/link';
-import { MapPin, Sparkles, PenLine, Users, Globe } from 'lucide-react';
+import { MapPin, Sparkles, PenLine, Users, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ambassades-guerison.fr';
+const PAGE_SIZE = 20;
 
-async function getTemoignages(eventId?: string) {
+async function getTemoignages(eventId?: string, page = 1) {
+  const supabase = createServiceClient();
+  const offset = (page - 1) * PAGE_SIZE;
+
+  let query = supabase
+    .from('testimonials')
+    .select('id, content, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city, country), event:events(id, title)', { count: 'exact' })
+    .eq('is_visible', true)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  if (eventId) query = query.eq('event_id', eventId);
+  const { data, count } = await query;
+  return { temoignages: data ?? [], total: count ?? 0 };
+}
+
+async function getTotalCities(eventId?: string) {
   const supabase = createServiceClient();
   let query = supabase
     .from('testimonials')
-    .select('id, content, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city, country), event:events(id, title)')
-    .eq('is_visible', true)
-    .order('created_at', { ascending: false });
-
+    .select('submitter_city, host_profile:host_profiles(city)', { count: 'exact' })
+    .eq('is_visible', true);
   if (eventId) query = query.eq('event_id', eventId);
   const { data } = await query;
-  return data ?? [];
+  const cities = new Set<string>();
+  (data ?? []).forEach((t) => {
+    const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
+    const city = (hp as { city?: string } | null)?.city ?? (t as Record<string, unknown>).submitter_city as string | null;
+    if (city) cities.add(city);
+  });
+  return cities.size;
 }
 
 async function getEvents() {
@@ -36,30 +57,35 @@ async function getEvents() {
 export default async function TemoignagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ live?: string }>;
+  searchParams: Promise<{ live?: string; page?: string }>;
 }) {
-  const { live } = await searchParams;
-  const [temoignages, events] = await Promise.all([
-    getTemoignages(live),
+  const { live, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+
+  const [{ temoignages, total }, cityCount, events] = await Promise.all([
+    getTemoignages(live, page),
+    getTotalCities(live),
     getEvents(),
   ]);
 
-  const cities = new Set<string>();
-  temoignages.forEach((t) => {
-    const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
-    const city = hp?.city ?? (t as Record<string, unknown>).submitter_city as string | null;
-    if (city) cities.add(city);
-  });
-
+  const totalPages = Math.ceil(total / PAGE_SIZE);
   const activeEvent = live ? events.find((e) => e.id === live) : null;
   const pageUrl = `${APP_URL}/temoignages`;
   const waText = `Ce que Dieu a fait — témoignages des lives de David Théry : ${pageUrl}`;
+
+  function buildPageUrl(p: number) {
+    const params = new URLSearchParams();
+    if (live) params.set('live', live);
+    if (p > 1) params.set('page', String(p));
+    const qs = params.toString();
+    return `/temoignages${qs ? `?${qs}` : ''}`;
+  }
 
   return (
     <>
       <AppHeader />
       <main className="min-h-screen bg-slate-50">
-        <div className="max-w-3xl mx-auto px-4 py-12">
+        <div className="max-w-2xl mx-auto px-4 py-12">
 
           {/* En-tête */}
           <div className="text-center mb-8">
@@ -72,16 +98,16 @@ export default async function TemoignagesPage({
             </p>
 
             {/* Stats */}
-            {temoignages.length > 0 && (
+            {total > 0 && (
               <div className="flex items-center justify-center gap-4 mt-4">
                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                   <Users className="w-3.5 h-3.5 text-indigo-400" />
-                  {temoignages.length} témoignage{temoignages.length > 1 ? 's' : ''}
+                  {total} témoignage{total > 1 ? 's' : ''}
                 </span>
-                {cities.size > 0 && (
+                {cityCount > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
                     <Globe className="w-3.5 h-3.5 text-indigo-400" />
-                    {cities.size} ville{cities.size > 1 ? 's' : ''}
+                    {cityCount} ville{cityCount > 1 ? 's' : ''}
                   </span>
                 )}
               </div>
@@ -97,7 +123,7 @@ export default async function TemoignagesPage({
             />
           )}
 
-          {/* Grille ou état vide */}
+          {/* Liste ou état vide */}
           {temoignages.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-slate-400 text-sm">
@@ -115,7 +141,7 @@ export default async function TemoignagesPage({
             </div>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 items-start">
+              <div className="flex flex-col gap-4">
                 {temoignages.map((t) => {
                   const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
                   const ev = Array.isArray(t.event) ? t.event[0] : t.event;
@@ -135,6 +161,29 @@ export default async function TemoignagesPage({
                   );
                 })}
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8">
+                  {page > 1 ? (
+                    <Link
+                      href={buildPageUrl(page - 1)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" /> Précédent
+                    </Link>
+                  ) : <span />}
+                  <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+                  {page < totalPages ? (
+                    <Link
+                      href={buildPageUrl(page + 1)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      Suivant <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  ) : <span />}
+                </div>
+              )}
 
               {/* CTAs */}
               <div className="mt-12 space-y-6 text-center">
