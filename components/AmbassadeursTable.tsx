@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -240,8 +240,8 @@ export default function AmbassadeursTable({
                   const isLoading = actionLoading === a.id;
                   const isExpanded = expandedId === a.id;
                   return (
-                    <>
-                      <tr key={a.id} className="hover:bg-slate-50/50">
+                    <React.Fragment key={a.id}>
+                      <tr className="hover:bg-slate-50/50">
                         <td className="px-4 py-3">
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : a.id)}
@@ -280,7 +280,7 @@ export default function AmbassadeursTable({
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${a.id}-detail`}>
+                        <tr>
                           <td colSpan={9} className="px-6 pb-5 pt-3 bg-slate-50/60 border-b border-slate-100">
                             <div className="max-w-2xl">
                               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
@@ -300,7 +300,7 @@ export default function AmbassadeursTable({
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
