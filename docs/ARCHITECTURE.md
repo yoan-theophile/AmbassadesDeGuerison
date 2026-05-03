@@ -289,7 +289,7 @@ Mis à jour manuellement à chaque PR significative.
 | Carte publique (pins) | ✅ | `GET /api/host-activations` | |
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
-| Inscription ambassadeur | ✅ | `POST /api/inscriptions` | |
+| Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. |
 | Pipeline candidat (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | Toggle "J'accueille / Inactif" dans `/dashboard` |
