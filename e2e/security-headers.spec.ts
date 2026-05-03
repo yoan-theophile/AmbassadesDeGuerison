@@ -27,11 +27,3 @@ test.describe('Sécurité — API publiques', () => {
     expect([200, 400, 422]).toContain(res.status());
   });
 });
-
-test.describe('Sécurité — pages preview', () => {
-  test('/preview a une meta robots noindex', async ({ page }) => {
-    await page.goto('/preview/homepage-poster');
-    const robots = await page.locator('meta[name="robots"]').getAttribute('content');
-    expect(robots).toContain('noindex');
-  });
-});

@@ -507,17 +507,6 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 27 — Pages preview (noindex)
-
-> Ces pages ne doivent pas être indexées par Google.
-
-- [ ] `/preview/homepage-poster` charge sans erreur
-- [ ] `/preview/homepage-annuaire` charge sans erreur
-- [ ] `/preview/homepage-storytelling` charge sans erreur
-- [ ] Chaque page preview a une meta `robots: noindex`
-
----
-
 ## Module 28 — APIs : sécurité
 
 ### Honeypot
@@ -805,7 +794,6 @@ npm run test:e2e
 | 2026-05-01 | M24 — Admin settings timing | ✅ | 6 champs numériques (J avant/après). API PATCH 200. Feedback "Sauvegardé" 3s dans bouton (code OK, timing difficile à capturer via JS). |
 | 2026-05-01 | M25 — Auth `/auth` | ✅ | Formulaire magic link. Soumission email inconnu → "Vérifiez votre messagerie" (anti-énumération, comportement normal). |
 | 2026-05-01 | M26 — Pages publiques | ✅ | /faq (12 Q&A) OK. /contact-equipe → formulaire + "Message envoyé" OK. /page-inexistante → 404 "Page introuvable" + CTA. |
-| 2026-05-01 | M27 — Pages preview | ✅ | /preview/homepage-poster, /annuaire, /storytelling → 200 + meta noindex, nofollow confirmé. |
 | 2026-05-01 | M3 — Flux visiteur `/live/[event_id]/ambassade/[host_id]` | ✅ corrigé | Page charge avec infos ambassade + formulaire. Bug critique : VisitRequestForm envoyait `visitor_first_name/email/...` mais l'API attend `first_name/email/consent`. Fix : renommage des clés JSON. Après fix : 201 + action_token. |
 | 2026-05-01 | M5 — Page visiteur `/visitor/[token]` | ✅ | État "en attente" : event, ambassade, "Marie a reçu votre demande", "Sous 24h". Token invalide → "Page introuvable". |
 | 2026-05-01 | M6 — Page hôte `/accueillir/[token]` | ✅ | Note : route est `/accueillir/[token]` (pas `/accueil-invite/`). Infos visiteur (Lucas, 2 personnes, message), boutons "J'accueille" / "Je ne peux pas" visibles. |
