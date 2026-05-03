@@ -109,13 +109,14 @@ CREATE TABLE admin_users (
 
 -- Activation par live (opt-in explicite — is_active=FALSE par défaut)
 CREATE TABLE host_activations (
-  id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-  host_profile_id UUID    NOT NULL REFERENCES host_profiles(id) ON DELETE CASCADE,
-  event_id        UUID    NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  capacity        INT     NOT NULL DEFAULT 10 CHECK (capacity > 0),
-  accepted_count  INT     NOT NULL DEFAULT 0  CHECK (accepted_count >= 0),
-  is_active       BOOLEAN DEFAULT FALSE,
-  is_full         BOOLEAN DEFAULT FALSE,
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_profile_id UUID        NOT NULL REFERENCES host_profiles(id) ON DELETE CASCADE,
+  event_id        UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  capacity        INT         NOT NULL DEFAULT 10 CHECK (capacity > 0),
+  accepted_count  INT         NOT NULL DEFAULT 0  CHECK (accepted_count >= 0),
+  is_active       BOOLEAN     DEFAULT FALSE,
+  is_full         BOOLEAN     DEFAULT FALSE,
+  created_at      TIMESTAMPTZ DEFAULT now(),
   UNIQUE (host_profile_id, event_id)
 );
 
