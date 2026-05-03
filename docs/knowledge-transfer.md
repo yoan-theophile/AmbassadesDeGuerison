@@ -207,7 +207,7 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-17 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 | Template | Déclenché quand |
 |----------|----------------|
@@ -230,6 +230,8 @@ ORDER BY ls.created_at DESC;
 | Nouvelle ambassade activée (admin) | Hôte passe `validated` → notification admin |
 | Questionnaire soumis (admin) | Hôte soumet questionnaire enrichissement → notification admin |
 | Alerte 0 hôtes actifs (admin) | Aucun hôte actif 48h avant un live |
+| Nouvelle candidature (admin) | Ambassadeur s'inscrit → notification admin (action requise : valider) |
+| Demande d'aide visiteur (admin) | Visiteur soumet une demande d'aide → notification admin avec le message |
 
 ### Voir les emails envoyés
 

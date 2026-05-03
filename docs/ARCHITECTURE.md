@@ -27,7 +27,7 @@
 │  │  Cron Jobs (Vercel Cron)                            │    │
 │  │  /api/cron/dispatch-campaigns (08:00 UTC)           │    │
 │  │  /api/cron/send-feedback-emails (10:00 UTC)         │    │
-│  │  /api/cron/check-activations (non activé)           │    │
+│  │  /api/cron/check-activations (09:00 UTC)            │    │
 │  └─────────────────────────────────────────────────────┘    │
 └────────────────────┬────────────────────────────────────────┘
                      │ PostgreSQL (port 6543 — pooler PgBouncer)
@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  17 templates TSX (React Email v6) — emails transactionnels │
+│  19 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -296,8 +296,8 @@ Mis à jour manuellement à chaque PR significative.
 | Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte) |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
-| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel, **cron non schedulé** (pas de `vercel.json`) |
-| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join, cron non schedulé |
+| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join — cron désactivé (hors production) |
 | Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
 | Clôture live | ❌ | — | Pas de bouton admin. DevOverlay uniquement (dev). **Décision D1 : créer bouton dans `/admin/live`** |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
@@ -326,9 +326,9 @@ Mis à jour manuellement à chaque PR significative.
 
 | Cron | Route | Schedule | Statut prod |
 |------|-------|----------|-------------|
-| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ✅ Schedulé dans `vercel.json` |
-| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⚠️ Schedulé — **bug SQL join** à corriger avant usage réel |
-| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` (suggéré) | ⏸ **Non activé** — route écrite, à ajouter dans `vercel.json` |
+| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ⏸ Désactivé (hors production) |
+| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⏸ Désactivé — **bug SQL join** à corriger avant activation |
+| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` | ⏸ Désactivé (hors production) |
 | Auto-decline visiteurs | `/api/cron/auto-decline` | — | 💀 **Supprimé** (David ne l'a pas demandé) |
 
 ---
@@ -399,9 +399,9 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
 | `GET/PATCH /api/admin/settings/onboarding` | Config vidéo/PDF onboarding | Admin | ✅ |
 | `GET /api/admin/settings/timing` | Config timing (lecture) | Admin | ✅ |
-| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ✅ Schedulé |
-| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⚠️ Schedulé — bug SQL join |
-| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Non activé |
+| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
+| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⏸ Désactivé — bug SQL join |
+| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
 | `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
 | `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
