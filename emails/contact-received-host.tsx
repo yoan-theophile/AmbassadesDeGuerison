@@ -26,7 +26,7 @@ export default function ContactReceivedHost({
       {visitorMessage && (
         <Text style={p}>Message : <em>"{visitorMessage}"</em></Text>
       )}
-      <Text style={muted}>Sa place sera confirmée automatiquement dans 24 heures. Si vous n'êtes pas en mesure de l'accueillir, cliquez ici :</Text>
+      <Text style={muted}>Si vous n'êtes pas en mesure de l'accueillir, cliquez ici :</Text>
       <Btn href={declineUrl} color="red">Refuser cette demande</Btn>
     </EmailLayout>
   );

@@ -51,7 +51,7 @@ export default async function VisitorConfirmationPage({ params }: Props) {
         ? 'Demande acceptée !'
         : status === 'declined'
         ? 'Demande non retenue cette fois.'
-        : 'Sous 24h en général.',
+        : 'Dès que possible.',
     },
     {
       id: 'address',

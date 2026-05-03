@@ -60,12 +60,6 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName, con
     }
   }
 
-  const contactHint: Record<string, string> = {
-    email: 'par e-mail',
-    whatsapp: 'via WhatsApp',
-    telephone: 'par téléphone',
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Étape : identité */}
@@ -153,7 +147,7 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName, con
       {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
       <p className="text-slate-400 text-xs leading-relaxed">
-        L'adresse vous sera transmise {contactHint[contactMode] ?? 'prochainement'} — {hostName} a 24h pour confirmer.
+        L'ambassadeur se réserve le droit d'accepter ou non votre demande.
       </p>
 
       <button

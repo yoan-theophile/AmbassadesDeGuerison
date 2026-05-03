@@ -17,7 +17,7 @@ const FAQ = [
   },
   {
     q: "L'ambassadeur peut-il refuser ma demande ?",
-    a: "Oui. L'ambassadeur a 24h pour confirmer ou refuser. S'il ne répond pas dans les temps, votre demande est annulée automatiquement et vous êtes informé. Il y a souvent d'autres ambassades disponibles.",
+    a: "Oui. L'ambassadeur peut accepter ou refuser votre demande. Si votre demande n'est pas retenue, vous en serez informé par e-mail. Il y a souvent d'autres ambassades disponibles.",
   },
   {
     q: "Est-ce que je peux venir avec ma famille ?",

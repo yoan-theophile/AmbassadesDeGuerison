@@ -88,7 +88,7 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
           </div>
           <p className="text-slate-800 font-medium text-sm">Demande envoyée !</p>
           <p className="text-slate-500 text-xs mt-1 leading-relaxed">
-            L'adresse de {hostName} sera disponible dans 24 heures.
+            Vous recevrez une notification par e-mail dès que l'ambassadeur aura répondu.
           </p>
         </div>
 
@@ -117,13 +117,6 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
       </div>
     );
   }
-
-  const contactHint: Record<string, string> = {
-    email: 'par e-mail',
-    whatsapp: 'via WhatsApp',
-    telephone: 'par téléphone',
-  };
-  const hint = contactHint[contactMode] ?? 'prochainement';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
@@ -176,7 +169,7 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
       {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
       <p className="text-slate-400 text-xs">
-        Coordonnées transmises {hint} — disponibles dans 24 heures.
+        L'ambassadeur se réserve le droit d'accepter ou non votre demande.
       </p>
 
       <button
