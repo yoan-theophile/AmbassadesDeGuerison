@@ -141,6 +141,7 @@ Flux admin-driven (self-service supprimé) :
 - **Validation géocodage** : double couche — (1) frontend : bouton "Continuer" désactivé tant que `form.lat == null`, hint ambre si texte tapé sans sélection ; (2) API : `POST /api/inscriptions` retourne 400 si `lat` ou `lng` absents. Évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`). Le check utilise `== null` (et non `!lat`) pour ne pas bloquer les villes à latitude 0 (équateur).
 - **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
 - **`CountrySelect`** (`components/ui/CountrySelect.tsx`) : expose le nom du pays (`"Cameroun"`), pas le code ISO. Pays épinglés : FR, BE, CH, CA, LU, MA, SN, CI, CM.
+- **Types de lieux** (`TYPES` dans `inscription/page.tsx`) : `individual` → "Domicile — lieu de prière", `church` → "Église — lieu de prière". Labels publics orientés ministère. En admin (`AmbassadeursTable`) : "Domicile" / "Église" (court). Sur la carte (popup) : "Lieu de prière à domicile" / "Lieu de prière en église".
 
 ## Pages admin
 
@@ -175,7 +176,7 @@ Carte Leaflet plein écran avec :
   3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
   4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
 - **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
-- **Popup des pins** : contient une ligne "Lieu de prière — lives de guérison" pour contextualiser l'action Contacter.
+- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Couleurs des pins : domicile = indigo `#6366f1`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
 - **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
@@ -215,13 +216,13 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 ## Page témoignages publique (`/temoignages`)
 
 - En-tête : icône `Sparkles` + titre **"Ce que Dieu a fait"** + sous-titre + stats (N témoignages • M villes).
-- Filtre par live : `TemoignageLiveFilter` (client component) — `<select>` qui navigue vers `?live=<uuid>`. Filtrage server-side dans la query Supabase.
+- Filtre par live : `TemoignageLiveFilter` (client component) — dropdown custom (pas `<select>` natif) avec recherche intégrée, navigue vers `?live=<uuid>`. Filtrage server-side dans la query Supabase. Affiché en ligne avec le CTA "Partager le mien" (lien discret) visible dès l'arrivée.
 - Colonne unique (`flex flex-col gap-4`) — meilleure lisibilité pour du contenu textuel long.
 - Pagination 20 par page (param `?page=N`), identique à `/admin/ambassadeurs`. `getTemoignages` accepte `page` + retourne `total` via `{ count: 'exact' }`. Stats (N témoignages, M villes) calculées sur l'ensemble, pas seulement la page courante (`getTotalCities` requête séparée).
 - **`TemoignageCard`** (client component) : icône `Quote` indigo en haut, texte sans guillemets, `line-clamp-4` par défaut. Si `scrollHeight > clientHeight`, bouton **"Lire la suite"** apparaît ; **"Réduire"** pour replier.
 - Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) OU `{visitor_name}, {submitter_city}` pour les témoignages anonymes + titre du live en indigo.
 - Jointure Supabase many-to-one → retourne un objet, pas un tableau. Normaliser avec `Array.isArray ? [0] : direct`.
-- CTA "Partage ton témoignage" → `/temoignages/nouveau` (public, sans auth).
+- CTA principal "Partage ton témoignage" en bas de page. CTA discret "Partager le mien" visible à côté du filtre (accessible sans scroller).
 - Bouton WhatsApp + copier le lien (`TemoignageShareButtons` client component).
 
 ## Page formulaire témoignage (`/temoignages/nouveau`)
