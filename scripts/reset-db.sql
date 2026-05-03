@@ -54,6 +54,7 @@ CREATE TABLE host_profiles (
   id                     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                UUID        REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name             TEXT        NOT NULL,
+  last_name              TEXT        NOT NULL,
   email                  TEXT        NOT NULL UNIQUE,
   host_type              TEXT        NOT NULL DEFAULT 'individual'
     CHECK (host_type IN ('individual', 'church')),
@@ -81,7 +82,7 @@ CREATE TABLE host_profiles (
   -- Photos (profil public, pièce admin-only via RLS)
   profile_photo_url      TEXT,
   room_photo_urls        TEXT[],
-  phone                  TEXT,
+  phone                  TEXT        NOT NULL,
   -- Questionnaire enrichi — admin-only (RLS strict)
   healing_challenge_done BOOLEAN,
   church_attendance      TEXT,
@@ -266,7 +267,7 @@ INSERT INTO event_timing_config (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 CREATE VIEW host_profiles_public AS
 SELECT
-  id, user_id, first_name, host_type, church_subtype,
+  id, user_id, first_name, last_name, host_type, church_subtype,
   city, country, lat, lng, geocoding_failed,
   whatsapp_group_url, address_public, contact_mode,
   capacity, consignes, viewing_setup, profile_photo_url,
