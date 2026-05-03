@@ -212,6 +212,10 @@ export default function InscriptionPage() {
 
               {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
+              <p className="text-xs text-slate-500 leading-relaxed">
+                En soumettant cette demande, vous reconnaissez que l'équipe de David Thery se réserve le droit d'accepter ou de refuser toute candidature, sans avoir à en justifier les raisons.
+              </p>
+
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(2)} className={btnSecondary}>
                   <ArrowLeft className="w-4 h-4" />
