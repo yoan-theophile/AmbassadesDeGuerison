@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-type DevState = 'live' | 'live-zero' | 'soon' | 'upcoming' | 'past' | 'closed' | 'blank';
+type DevState = 'live' | 'live-zero' | 'soon' | 'soon-confirmed' | 'upcoming' | 'upcoming-confirmed' | 'past' | 'closed' | 'blank';
 
 const QUICK_EMAILS = [
   'david.thery@demo.fr',
@@ -15,7 +15,9 @@ const STATE_LABELS: Record<DevState, string> = {
   live: '🔴 Live',
   'live-zero': '🔴 Live (0 confirm.)',
   soon: '⏱ Soon 3j',
+  'soon-confirmed': '⏱ Soon 3j ✓ pins',
   upcoming: '📅 Upcoming',
+  'upcoming-confirmed': '📅 Upcoming ✓ pins',
   past: '⏪ Past',
   closed: '🔚 Closed',
   blank: '🫙 Blank 0 confirm.',

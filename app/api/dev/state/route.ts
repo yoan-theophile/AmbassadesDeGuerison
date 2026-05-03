@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/server';
 import { applyState, type DevState } from '@/lib/dev/state';
 
-const VALID_STATES: DevState[] = ['live', 'live-zero', 'soon', 'upcoming', 'past', 'closed', 'blank'];
+const VALID_STATES: DevState[] = ['live', 'live-zero', 'soon', 'soon-confirmed', 'upcoming', 'upcoming-confirmed', 'past', 'closed', 'blank'];
 
 export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV !== 'development') {
