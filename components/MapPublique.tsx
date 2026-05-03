@@ -338,7 +338,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       {/* Barre de recherche par ville */}
       <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 lg:w-80 pointer-events-auto">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
           <input
             type="text"
             value={searchQuery}
