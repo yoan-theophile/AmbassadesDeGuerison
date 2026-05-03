@@ -62,6 +62,7 @@ Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API R
 Templates **supprimés** (orphelins — jamais appelés depuis une route) :
 - `magic-link-bienvenue.tsx` — variante bienvenue du magic link, redondante avec `registration-confirmation`
 - `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
+- `contact-reserved.tsx` — "place réservée" envoyée au visiteur avant acceptation de l'hôte ; supprimée quand le flux a été corrigé (seul `acceptation-visite` est envoyé, après acceptation explicite de l'hôte)
 
 **Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
 Ajouter dans `.env.local` :

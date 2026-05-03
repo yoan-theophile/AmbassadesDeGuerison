@@ -218,10 +218,9 @@ ORDER BY ls.created_at DESC;
 | Confirmation inscription | Nouvel ambassadeur inscrit |
 | Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
 | Feedback post-live | Ambassadeur invité à donner son retour après le live |
-| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien /refuser/[token] |
-| Place réservée | Envoyé au visiteur dès sa demande — email + WhatsApp de l'hôte (adresse physique non encore transmise, en attente d'acceptation explicite de l'hôte) |
+| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien /accueillir/[token] (accepter) + lien /refuser/[token] (refuser) |
 | Demande refusée | Hôte refuse via /refuser/[token] → visiteur redirigé vers la carte |
-| Confirmation visite — adresse dévoilée | Hôte accepte via /accueillir/[token] → adresse complète envoyée au visiteur |
+| Confirmation visite — adresse dévoilée | Hôte accepte via /accueillir/[token] → adresse complète + e-mail + lien WhatsApp envoyés au visiteur |
 | Visite refusée | Refus à l'étape /accueillir → visiteur redirigé |
 | Campagne visiteurs | Cron visiteurs → lien carte + lien désinscription |
 | Signal approuvé | Admin approuve un signal live → lien live envoyé à l'ambassadeur |
