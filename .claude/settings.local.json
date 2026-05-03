@@ -67,7 +67,9 @@
       "PowerShell(& \"C:\\\\Users\\\\tagne\\\\.claude\\\\skills\\\\gstack\\\\browse\\\\dist\\\\browse.exe\" screenshot 2>&1)",
       "PowerShell(& \"C:\\\\Users\\\\tagne\\\\.claude\\\\skills\\\\gstack\\\\browse\\\\dist\\\\browse.exe\" goto \"http://localhost:3000/\" 2>&1)",
       "Skill(browse)",
-      "Skill(browse:*)"
+      "Skill(browse:*)",
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\tagne\\\\Documents\\\\projects\\\\DavidTheryApp\" -Name \"proxy.ts\" -Recurse -ErrorAction SilentlyContinue)"
     ]
   }
 }

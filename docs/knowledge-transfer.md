@@ -331,6 +331,33 @@ curl -X POST https://api.supabase.com/v1/projects/TON_PROJECT_ID/restore \
   -H "Authorization: Bearer TON_SUPABASE_TOKEN"
 ```
 
+### "Les routes API retournent 404 en dev (DevOverlay, carte, etc.)"
+
+**Symptôme** : `POST /api/dev/state` et `GET /api/host-activations` retournent une page HTML 404
+(la page not-found du projet) au lieu de JSON. Les pages (`/`, `/temoignages`…) fonctionnent
+normalement. Se produit après avoir modifié des fichiers source puis redémarré le serveur.
+
+**Cause** : Next.js 16 sort les artefacts Turbopack de dev dans `.next/dev/` (répertoire séparé
+de `.next/` utilisé par `next build`). Si des chunks compilés d'une session précédente sont
+présents et que leurs sources ont été modifiées depuis, le runtime Turbopack de la nouvelle
+session ne peut pas les exécuter → toutes les route handlers retournent 404.
+
+**Fix** :
+
+```bash
+# Arrêter le serveur dev, puis :
+rm -rf .next/dev
+npm run dev
+# Turbopack recompile chaque route à la première requête (~5-10 s)
+```
+
+Sur Windows PowerShell :
+
+```powershell
+Remove-Item -Recurse -Force .next\dev
+npm run dev
+```
+
 ### "Le trigger host_activations ne s'est pas déclenché"
 
 Le trigger `trg_auto_activate_host_on_validated` crée automatiquement une entrée
