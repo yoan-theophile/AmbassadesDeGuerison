@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { getHomepageData } from '@/lib/homepage-data';
+import { getCountdown, daysSince } from '@/lib/preview-utils';
 import { createServiceClient } from '@/lib/supabase/server';
+import { Radio } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomepageAnnuaire() {
-  const { nextEvent, totalAmbassadors, totalCountries } = await getHomepageData();
+  const { nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries } = await getHomepageData();
 
   const supabase = createServiceClient();
   const { data: hosts } = await supabase
@@ -19,10 +21,25 @@ export default async function HomepageAnnuaire() {
   return (
     <main className="bg-white min-h-[calc(100vh-41px)] px-4 py-12">
       <div className="max-w-2xl mx-auto">
+        {/* Badge live en cours */}
+        {liveInProgress && (
+          <div className="flex items-center gap-2 mb-6 bg-indigo-50 px-4 py-2 rounded-full w-fit">
+            <Radio className="w-4 h-4 text-indigo-600 animate-pulse" />
+            <span className="text-indigo-700 text-sm font-medium">Live en cours</span>
+          </div>
+        )}
+
         {/* Countdown discret */}
-        {countdown && (
+        {!liveInProgress && countdown && (
           <p className="text-right text-xs text-slate-400 mb-8 tabular-nums">
             Prochain live dans {countdown}
+          </p>
+        )}
+
+        {/* Dernier live */}
+        {!nextEvent && lastEvent && (
+          <p className="text-xs text-slate-400 mb-8">
+            Dernier live il y a {daysSince(lastEvent.event_date)} jour{daysSince(lastEvent.event_date) > 1 ? 's' : ''} — prochain annoncé prochainement
           </p>
         )}
 
@@ -97,12 +114,3 @@ function buildCountryTable(hosts: { country: string; city: string }[]): Row[] {
     .sort((a, b) => b.count - a.count);
 }
 
-function getCountdown(eventDate?: string): string | null {
-  if (!eventDate) return null;
-  const diff = new Date(eventDate).getTime() - Date.now();
-  if (diff <= 0) return null;
-  const days = Math.floor(diff / 86_400_000);
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-  if (days > 0) return `${days}j ${hours}h`;
-  return `${hours}h`;
-}

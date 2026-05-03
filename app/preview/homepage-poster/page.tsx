@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { getHomepageData } from '@/lib/homepage-data';
+import { getCountdown, daysSince } from '@/lib/preview-utils';
 import { Radio } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function HomepagePoster() {
   const { nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries } = await getHomepageData();
@@ -65,20 +68,3 @@ export default async function HomepagePoster() {
   );
 }
 
-function getCountdown(eventDate?: string): string | null {
-  if (!eventDate) return null;
-  const now = Date.now();
-  const target = new Date(eventDate).getTime();
-  const diff = target - now;
-  if (diff <= 0) return null;
-  const days = Math.floor(diff / 86_400_000);
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-  const mins = Math.floor((diff % 3_600_000) / 60_000);
-  if (days > 0) return `${days}j ${hours}h ${mins}min`;
-  if (hours > 0) return `${hours}h ${mins}min`;
-  return `${mins} min`;
-}
-
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
-}

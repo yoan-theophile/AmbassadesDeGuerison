@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { getHomepageData } from '@/lib/homepage-data';
-import { Quote } from 'lucide-react';
+import { getCountdown, daysSince } from '@/lib/preview-utils';
+import { Quote, Radio } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function HomepageStorytelling() {
-  const { nextEvent, totalAmbassadors, topTestimonials } = await getHomepageData();
+  const { nextEvent, lastEvent, liveInProgress, totalAmbassadors, topTestimonials } = await getHomepageData();
 
   const countdown = getCountdown(nextEvent?.event_date);
   const lead = topTestimonials[0];
@@ -63,8 +66,19 @@ export default async function HomepageStorytelling() {
         <p className="text-indigo-200 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
           Chaque ambassade est une maison ouverte. Un canapé, un écran, une prière partagée.
         </p>
-        {countdown && (
+        {liveInProgress && (
+          <div className="flex items-center justify-center gap-2 mb-4 bg-white/10 px-4 py-2 rounded-full w-fit mx-auto">
+            <Radio className="w-4 h-4 text-white animate-pulse" />
+            <span className="text-white text-sm font-medium">Live en cours</span>
+          </div>
+        )}
+        {!liveInProgress && countdown && (
           <p className="text-indigo-200 text-xs mb-6">Prochain live dans {countdown}</p>
+        )}
+        {!nextEvent && lastEvent && (
+          <p className="text-indigo-200 text-xs mb-6">
+            Dernier live il y a {daysSince(lastEvent.event_date)} jour{daysSince(lastEvent.event_date) > 1 ? 's' : ''} — prochain annoncé prochainement
+          </p>
         )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-xs mx-auto">
           <Link
@@ -85,14 +99,3 @@ export default async function HomepageStorytelling() {
   );
 }
 
-function getCountdown(eventDate?: string): string | null {
-  if (!eventDate) return null;
-  const diff = new Date(eventDate).getTime() - Date.now();
-  if (diff <= 0) return null;
-  const days = Math.floor(diff / 86_400_000);
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-  const mins = Math.floor((diff % 3_600_000) / 60_000);
-  if (days > 0) return `${days}j ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}min`;
-  return `${mins} min`;
-}
