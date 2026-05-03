@@ -20,7 +20,7 @@ export async function POST(_req: NextRequest, { params }: Props) {
         event_id,
         host_profiles!inner(
           first_name, address_private, contact_mode,
-          email, whatsapp_group_url
+          email, phone, whatsapp_group_url
         ),
         events!inner(title, event_date)
       )
@@ -64,11 +64,13 @@ export async function POST(_req: NextRequest, { params }: Props) {
           contact.visitor_email,
           contact.visitor_first_name,
           host.first_name,
-          host.address_private ?? 'Adresse communiquée par l\'hôte',
-          null,
+          host.address_private ?? "Adresse communiquée par l'hôte",
+          host.phone ?? null,
           event.title,
           eventDate,
-          contactEquipeUrl
+          contactEquipeUrl,
+          host.email ?? null,
+          host.whatsapp_group_url ?? null,
         ),
       ]);
     }

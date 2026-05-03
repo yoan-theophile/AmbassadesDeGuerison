@@ -114,13 +114,14 @@ export async function sendNewContactRequestHost(
   visitorEmail: string,
   visitorWhatsapp: string | null,
   visitorMessage: string | null,
+  acceptUrl: string,
   declineUrl: string,
 ) {
   return getResend().emails.send({
     from: FROM(), to,
     subject: `${visitorFirstName} souhaite rejoindre votre ambassade`,
     react: React.createElement(ContactReceivedHost, {
-      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, declineUrl,
+      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
     }),
   });
 }
@@ -162,12 +163,14 @@ export async function sendAcceptationVisite(
   eventTitle: string,
   eventDate: string,
   contactEquipeUrl: string,
+  hostEmail: string | null = null,
+  hostWhatsappGroupUrl: string | null = null,
 ) {
   return getResend().emails.send({
     from: FROM(), to,
     subject: `${hostFirstName} vous accueille — voici l'adresse`,
     react: React.createElement(AcceptationVisite, {
-      visitorFirstName, hostFirstName, hostAddress, hostPhone, eventTitle, eventDate, contactEquipeUrl,
+      visitorFirstName, hostFirstName, hostAddress, hostPhone, hostEmail, hostWhatsappGroupUrl, eventTitle, eventDate, contactEquipeUrl,
     }),
   });
 }

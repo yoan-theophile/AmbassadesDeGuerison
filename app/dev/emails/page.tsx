@@ -52,7 +52,7 @@ export default async function EmailPreviewPage() {
     render(<RegistrationConfirmation firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} />),
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
-    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} declineUrl={m.declineUrl} />),
+    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} />),
     render(<ContactReserved visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostCity={m.jp.city} hostEmail={m.host.email} hostWhatsappGroupUrl={m.host.whatsappGroupUrl} accueilUrl={m.accueilUrl} availableAt={m.availableAt} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
     render(<AcceptationVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostAddress={m.host.address} hostPhone={m.host.phone} eventTitle={m.liveTitle} eventDate={m.liveDate} contactEquipeUrl={m.contactEquipeUrl} />),

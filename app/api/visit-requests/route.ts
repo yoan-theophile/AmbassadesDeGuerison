@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendNewContactRequestHost } from '@/lib/email/templates';
+import { FEATURES } from '@/config/features';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -88,6 +90,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Vous avez déjà fait une demande pour cette ambassade' }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (FEATURES.EMAIL_NOTIFICATIONS) {
+    const { data: host } = await supabase
+      .from('host_profiles')
+      .select('email, first_name, whatsapp_group_url')
+      .eq('id', host_profile_id)
+      .single();
+
+    if (host) {
+      const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accueillir/${data.action_token}`;
+      const declineUrl = `${process.env.NEXT_PUBLIC_APP_URL}/refuser/${data.action_token}`;
+      Promise.allSettled([
+        sendNewContactRequestHost(
+          host.email,
+          host.first_name,
+          first_name.trim(),
+          emailLower,
+          phoneTrimmed,
+          message?.trim() || null,
+          acceptUrl,
+          declineUrl,
+        ),
+      ]);
+    }
   }
 
   return NextResponse.json({ id: data.id, action_token: data.action_token }, { status: 201 });

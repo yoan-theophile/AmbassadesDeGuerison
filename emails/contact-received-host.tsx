@@ -9,11 +9,12 @@ interface Props {
   visitorEmail: string;
   visitorWhatsapp?: string | null;
   visitorMessage?: string | null;
+  acceptUrl: string;
   declineUrl: string;
 }
 
 export default function ContactReceivedHost({
-  hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, declineUrl,
+  hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
 }: Props) {
   return (
     <EmailLayout preview={`${visitorFirstName} souhaite rejoindre votre ambassade`}>
@@ -26,7 +27,8 @@ export default function ContactReceivedHost({
       {visitorMessage && (
         <Text style={p}>Message : <em>"{visitorMessage}"</em></Text>
       )}
-      <Text style={muted}>Si vous n'êtes pas en mesure de l'accueillir, cliquez ici :</Text>
+      <Btn href={acceptUrl}>J'accueille {visitorFirstName}</Btn>
+      <Text style={muted}>Si vous n'êtes pas en mesure de l'accueillir :</Text>
       <Btn href={declineUrl} color="red">Refuser cette demande</Btn>
     </EmailLayout>
   );
