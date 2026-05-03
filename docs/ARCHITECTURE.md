@@ -304,7 +304,7 @@ Mis à jour manuellement à chaque PR significative.
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` Supabase Storage |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` créé par `reset-db.sql` section 9 |
 | Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
