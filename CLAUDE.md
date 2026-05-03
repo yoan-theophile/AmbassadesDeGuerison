@@ -138,6 +138,7 @@ Flux admin-driven (self-service supprimé) :
 
 ## Formulaire d'inscription (`/inscription`)
 
+- **Champs obligatoires étape 1** : Prénom (`first_name`), Nom (`last_name`), E-mail, Téléphone (`phone`), Ville (avec géocodage confirmé), Pays. Le bouton "Continuer" est désactivé tant que l'un de ces champs est vide ou que `form.lat` est absent.
 - **`CityInput`** (`components/ui/CityInput.tsx`) : autocomplétion Nominatim via `/api/geocode`. Le `onChange` expose `(city, lat?, lng?, country?)`. `country` est transmis uniquement lors d'une sélection dans le dropdown (pas lors d'une saisie libre).
 - **Validation géocodage** : le bouton "Continuer" (étape 1) est désactivé tant que `form.lat` est absent. Un hint ambre s'affiche si du texte est tapé sans sélection dans la liste — évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`).
 - **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
