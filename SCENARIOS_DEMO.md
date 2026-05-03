@@ -44,7 +44,7 @@
 
 ## Bloc 1 — La carte publique (10 min)
 
-### 1a — Ce que voit un visiteur entre deux lives (état Upcoming)
+### 1a — Ce que voit un visiteur entre deux lives, 0 confirmations (état Upcoming)
 
 La DB est déjà en état `upcoming`. Ouvrir `localhost:3000`.
 
@@ -60,7 +60,33 @@ Ce que David doit voir :
 > combien d'ambassades existent déjà, et peut lire les témoignages. La carte n'affiche
 > aucune épingle pour ne pas créer de demandes hors fenêtre live. »
 
-### 1b — Pendant le live (état Live)
+### 1b — Live J+3, certains ambassadeurs ont déjà confirmé (état Soon-Confirmed)
+
+DevOverlay → clic **`⏱ Soon 3j ✓ pins`**.
+
+Ce que David doit voir :
+- **4 épingles apparaissent** sur la carte (les 4 premières activations du seed)
+- Overlay absent (des ambassadeurs sont déjà là)
+- Bandeau EventBanner : *"Prochain live le [date+3j] à [heure]"*
+
+*À dire :*
+> « Si la campagne email est envoyée tôt, certains ambassadeurs cliquent dès le lendemain.
+> Leurs épingles apparaissent sur la carte immédiatement après le clic — même trois jours
+> avant le live. Les visiteurs peuvent déjà repérer une ambassade proche. »
+
+### 1c — Live J+10, certains ambassadeurs ont déjà confirmé (état Upcoming-Confirmed)
+
+DevOverlay → clic **`📅 Upcoming ✓ pins`**.
+
+Ce que David doit voir :
+- **4 épingles** visibles sur la carte
+- Bandeau : *"Prochain live le [date+10j] à [heure]"*
+
+*À dire :*
+> « Même scénario à J+10 — ceux qui ont cliqué rapidement sur la campagne sont déjà
+> visibles. Les autres rejoindront au fur et à mesure. »
+
+### 1d — Pendant le live (état Live)
 
 DevOverlay → clic **`🔴 Live`**.
 
@@ -78,7 +104,7 @@ Montrer :
 - Cliquer sur **Jean-Pierre (Lyon)** → badge *"Complet"* (80/80)
 - Cliquer sur **Marie (Paris)** → *"15 places"* → bouton *"Contacter →"*
 
-### 1c — Live en cours, aucune ambassade confirmée (état Live-Zero)
+### 1e — Live en cours, aucune ambassade confirmée (état Live-Zero)
 
 DevOverlay → clic **`🔴 Live (0 confirm.)`**.
 

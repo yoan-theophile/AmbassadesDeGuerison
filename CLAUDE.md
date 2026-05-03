@@ -193,19 +193,21 @@ Carte Leaflet plein écran avec :
 
 `components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit, rendu uniquement si `process.env.NODE_ENV === 'development'`.
 
-Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 7 états disponibles :
+Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 9 états disponibles :
 
 | État | Label | is_active | liveInProgress | nextEvent |
 |------|-------|-----------|---------------|-----------|
 | `live` | 🔴 Live | true (tous) | true | J+10 |
 | `live-zero` | 🔴 Live (0 confirm.) | false | true | J+10 |
 | `soon` | ⏱ Soon 3j | false | false | J+3 |
+| `soon-confirmed` | ⏱ Soon 3j ✓ pins | partiel (4 premiers) | false | J+3 |
 | `upcoming` | 📅 Upcoming | false | false | J+10 |
+| `upcoming-confirmed` | 📅 Upcoming ✓ pins | partiel (4 premiers) | false | J+10 |
 | `past` | ⏪ Past | false | false | aucun |
 | `closed` | 🔚 Closed | false | false | J+10 |
 | `blank` | 🫙 Blank 0 confirm. | false | false | J+10 (is_active=false) |
 
-**Règle critique** : seuls `live` et `live-zero` ont `event_date` dans la fenêtre live (`NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`). Tous les autres états ont `is_active=false` → carte vide → overlay contextuel affiché.
+**Règle critique** : seuls `live` et `live-zero` ont `event_date` dans la fenêtre live (`NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`). `soon-confirmed` et `upcoming-confirmed` activent 4 `host_activations` sur l'événement futur — les pins apparaissent sur la carte avant le live, simulant des ambassadeurs qui ont cliqué tôt sur le lien de campagne. Tous les autres états ont `is_active=false` → carte vide → overlay contextuel affiché.
 
 **Fix `closed`** (commit 56a4d30) : l'état `closed` remet `demoFutureEvent` à J+10. Sans ce fix, après `past → closed`, evtFutur restait à J-10 ce qui maintenait l'overlay "Dernier live" au lieu de "Dernier live + prochain annoncé".
 
