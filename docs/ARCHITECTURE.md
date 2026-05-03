@@ -174,8 +174,10 @@ Carte publique — le pin apparaît
   ▼
 Pendant le live — visiteur contacte un hôte
   │  POST /api/contact-requests (ou /api/visit-requests)
-  │  → email sendContactReceivedHost (notifie l'hôte)
-  │  → email sendContactAccepted/Declined selon réponse
+  │  → email contact-received-host (hôte notifié + lien /refuser/[token])
+  │  → email contact-reserved (visiteur : email + WhatsApp hôte, adresse non encore transmise)
+  │  → hôte accepte via /accueillir/[token] → email acceptation-visite (adresse complète au visiteur)
+  │     ou hôte refuse via /refuser/[token] → email contact-declined
   │
   ▼
 Après le live

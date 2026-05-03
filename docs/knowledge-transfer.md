@@ -212,19 +212,17 @@ ORDER BY ls.created_at DESC;
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
-| Magic link bienvenue | Nouvel inscrit — premier magic link |
 | Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire + vidéo |
 | Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
 | Validation finale | Confirmation de l'activation finale |
 | Confirmation inscription | Nouvel ambassadeur inscrit |
 | Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
 | Feedback post-live | Ambassadeur invité à donner son retour après le live |
-| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien déclin |
-| Demande acceptée (visiteur) | Hôte accepte → visiteur informé |
-| Place réservée | Hôte a accepté, coordonnées partielles avant dévoilement adresse |
-| Demande refusée | Hôte refuse → visiteur redirigé vers la carte |
-| Confirmation visite — adresse dévoilée | Adresse complète envoyée au visiteur accepté |
-| Visite refusée | Refus à l'étape finale → visiteur redirigé |
+| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien /refuser/[token] |
+| Place réservée | Envoyé au visiteur dès sa demande — email + WhatsApp de l'hôte (adresse physique non encore transmise, en attente d'acceptation explicite de l'hôte) |
+| Demande refusée | Hôte refuse via /refuser/[token] → visiteur redirigé vers la carte |
+| Confirmation visite — adresse dévoilée | Hôte accepte via /accueillir/[token] → adresse complète envoyée au visiteur |
+| Visite refusée | Refus à l'étape /accueillir → visiteur redirigé |
 | Campagne visiteurs | Cron visiteurs → lien carte + lien désinscription |
 | Signal approuvé | Admin approuve un signal live → lien live envoyé à l'ambassadeur |
 | Nouvelle ambassade activée (admin) | Hôte passe `validated` → notification admin |

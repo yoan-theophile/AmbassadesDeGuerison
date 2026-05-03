@@ -222,7 +222,7 @@ node scripts/magic-link.js david.thery@demo.fr
 > Token = `action_token` d'une demande de contact acceptée.
 
 - [ ] La page charge avec les infos du visiteur et de l'ambassade
-- [ ] Adresse privée de l'hôte visible (après le délai de 24h ou immédiatement si testé directement)
+- [ ] Adresse privée de l'hôte visible si la demande est acceptée
 - [ ] Token invalide → 404 ou message d'erreur approprié
 
 ---
