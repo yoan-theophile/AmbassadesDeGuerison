@@ -5,6 +5,8 @@ describe('Inscription — payload ambassadeur', () => {
     const formState = {
       email: 'marie@test.fr',
       first_name: 'Marie',
+      last_name: 'Dupont',
+      phone: '+33 6 12 34 56 78',
       city: 'Paris',
       country: 'France',
       lat: 48.8566,
@@ -23,6 +25,8 @@ describe('Inscription — payload ambassadeur', () => {
     const apiPayload = {
       email: 'marie@test.fr',
       first_name: 'Marie',
+      last_name: 'Dupont',
+      phone: '+33 6 12 34 56 78',
       city: 'Paris',
       country: 'France',
       type: 'individual',
@@ -34,7 +38,7 @@ describe('Inscription — payload ambassadeur', () => {
     const insertRow = {
       ...apiPayload,
       contact_mode: 'email' as const,
-      status: 'pending_onboarding',
+      status: 'pending_review',
     };
 
     expect(insertRow.contact_mode).toBe('email');
@@ -42,24 +46,32 @@ describe('Inscription — payload ambassadeur', () => {
   });
 
   it('valide les champs obligatoires du formulaire étape 1', () => {
-    const required = ['email', 'first_name', 'city'];
+    const required = ['email', 'first_name', 'last_name', 'phone', 'city'];
 
-    const incompleteForm = { email: 'test@test.fr', first_name: '', city: '' };
+    const incompleteForm = {
+      email: 'test@test.fr',
+      first_name: '',
+      last_name: '',
+      phone: '',
+      city: '',
+    };
     const missingFields = required.filter(
       (f) => !incompleteForm[f as keyof typeof incompleteForm]
     );
 
     expect(missingFields).toContain('first_name');
+    expect(missingFields).toContain('last_name');
+    expect(missingFields).toContain('phone');
     expect(missingFields).toContain('city');
     expect(missingFields).not.toContain('email');
   });
 
   it('le bouton Continuer est bloqué si lat est absent (ville tapée sans sélection dropdown)', () => {
-    // Simule l'état du formulaire quand l'utilisateur tape une ville
-    // sans cliquer sur une suggestion — lat/lng restent undefined
     const formTypedOnly = {
       first_name: 'Marie',
+      last_name: 'Dupont',
       email: 'marie@test.fr',
+      phone: '+33 6 12 34 56 78',
       city: 'Paris',
       lat: undefined as number | undefined,
       lng: undefined as number | undefined,
@@ -67,27 +79,77 @@ describe('Inscription — payload ambassadeur', () => {
 
     const canContinue =
       !!formTypedOnly.first_name &&
+      !!formTypedOnly.last_name &&
       !!formTypedOnly.email &&
+      !!formTypedOnly.phone.trim() &&
       !!formTypedOnly.city &&
       !!formTypedOnly.lat;
 
     expect(canContinue).toBe(false);
   });
 
-  it('le bouton Continuer est débloqué quand lat/lng sont confirmés via le dropdown', () => {
-    const formWithGeocode = {
+  it('le bouton Continuer est bloqué si last_name est vide', () => {
+    const form = {
       first_name: 'Marie',
+      last_name: '',
       email: 'marie@test.fr',
+      phone: '+33 6 12 34 56 78',
       city: 'Paris',
       lat: 48.8566,
       lng: 2.3522,
     };
 
     const canContinue =
-      !!formWithGeocode.first_name &&
-      !!formWithGeocode.email &&
-      !!formWithGeocode.city &&
-      !!formWithGeocode.lat;
+      !!form.first_name &&
+      !!form.last_name &&
+      !!form.email &&
+      !!form.phone.trim() &&
+      !!form.city &&
+      !!form.lat;
+
+    expect(canContinue).toBe(false);
+  });
+
+  it('le bouton Continuer est bloqué si phone est vide', () => {
+    const form = {
+      first_name: 'Marie',
+      last_name: 'Dupont',
+      email: 'marie@test.fr',
+      phone: '',
+      city: 'Paris',
+      lat: 48.8566,
+      lng: 2.3522,
+    };
+
+    const canContinue =
+      !!form.first_name &&
+      !!form.last_name &&
+      !!form.email &&
+      !!form.phone.trim() &&
+      !!form.city &&
+      !!form.lat;
+
+    expect(canContinue).toBe(false);
+  });
+
+  it('le bouton Continuer est débloqué quand tous les champs obligatoires sont remplis', () => {
+    const formComplete = {
+      first_name: 'Marie',
+      last_name: 'Dupont',
+      email: 'marie@test.fr',
+      phone: '+33 6 12 34 56 78',
+      city: 'Paris',
+      lat: 48.8566,
+      lng: 2.3522,
+    };
+
+    const canContinue =
+      !!formComplete.first_name &&
+      !!formComplete.last_name &&
+      !!formComplete.email &&
+      !!formComplete.phone.trim() &&
+      !!formComplete.city &&
+      !!formComplete.lat;
 
     expect(canContinue).toBe(true);
   });
