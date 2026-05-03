@@ -176,7 +176,7 @@ Carte Leaflet plein écran avec :
   3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
   4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
 - **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
-- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Couleurs des pins : domicile = indigo `#6366f1`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
+- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Couleurs des pins : domicile = indigo `#4f46e5`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
 - **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
