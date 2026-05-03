@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendAideVisiteurAdmin } from '@/lib/email/templates';
+import { FEATURES } from '@/config/features';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -38,6 +40,10 @@ export async function POST(req: NextRequest) {
       event_id: event_id || null,
     }),
   });
+
+  if (FEATURES.EMAIL_NOTIFICATIONS) {
+    await sendAideVisiteurAdmin(email.trim().toLowerCase(), message.trim().slice(0, 500)).catch(() => {});
+  }
 
   return NextResponse.json({ success: true }, { status: 201 });
 }

@@ -2,6 +2,8 @@ import { Resend } from 'resend';
 import * as React from 'react';
 
 import MagicLink from '@/emails/magic-link';
+import NouvelleInscriptionAdmin from '@/emails/nouvelle-inscription-admin';
+import AideVisiteurAdmin from '@/emails/aide-visiteur-admin';
 import PreValidationAccordee from '@/emails/pre-validation-accordee';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
@@ -199,6 +201,30 @@ export async function sendSignalApproved(to: string, firstName: string, liveLink
     from: FROM(), to,
     subject: 'Vous avez été sélectionné pour témoigner en direct !',
     react: React.createElement(SignalApproved, { firstName, liveLink }),
+  });
+}
+
+export async function sendNouvelleInscriptionAdmin(firstName: string, city: string, country: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: process.env.RESEND_ADMIN_EMAIL!,
+    subject: `Nouvelle candidature — ${firstName}, ${city}`,
+    react: React.createElement(NouvelleInscriptionAdmin, {
+      firstName, city, country,
+      adminUrl: `${APP_URL()}/admin/ambassadeurs`,
+    }),
+  });
+}
+
+export async function sendAideVisiteurAdmin(visitorEmail: string, message: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: process.env.RESEND_ADMIN_EMAIL!,
+    subject: `Demande d'aide visiteur — ${visitorEmail}`,
+    react: React.createElement(AideVisiteurAdmin, {
+      visitorEmail, message,
+      adminUrl: `${APP_URL()}/admin/live`,
+    }),
   });
 }
 
