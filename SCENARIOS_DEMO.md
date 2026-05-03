@@ -140,13 +140,14 @@ DevOverlay → revenir en **`🔴 Live`**.
 1. DevOverlay → **`📅 Upcoming`** (retour à carte vide)
 2. L'overlay affiche le bouton *"Devenir ambassadeur"* n'apparaît que dans l'état "aucun live prévu" — expliquer : les autres états ont un CTA différent (témoignages, pas inscription)
 3. Ou : ouvrir directement `localhost:3000/inscription`
-4. Étape 1 : taper "Toul" → suggestion Nominatim → sélectionner "Toulouse, France" → pays se remplit automatiquement
-5. Étape 2 : Domicile, 12 places, adresse
+4. Étape 1 : remplir Prénom, Nom, E-mail, Téléphone (tous obligatoires) — taper "Toul" → suggestion Nominatim → **sélectionner** "Toulouse, France" dans la liste (ne pas juste taper) → pays se remplit automatiquement
+5. Étape 2 : Domicile, 12 places, adresse privée
 6. Étape 3 : récapitulatif → Envoyer
 
 *À dire :*
 > « Le bouton "Continuer" reste bloqué tant qu'une ville n'est pas sélectionnée
-> dans la liste. Pas de coordonnées = pas d'épingle sur la carte. »
+> dans la liste. Pas de coordonnées = pas d'épingle sur la carte.
+> La validation est double : frontend ET API — impossible de s'inscrire sans géocodage. »
 
 ---
 

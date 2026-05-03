@@ -251,14 +251,14 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Étape 1 — Informations personnelles
 
-- [ ] Champs obligatoires : prénom, email, ville, pays
-- [ ] Champ **téléphone** (optionnel) visible après l'email — label "Téléphone (optionnel)", type tel, maxLength 20, note de confidentialité sous le champ
+- [ ] Champs obligatoires : prénom, **nom**, email, **téléphone**, ville, pays — bouton "Continuer" bloqué si l'un manque
+- [ ] Champ **téléphone** (obligatoire) — label "Téléphone", type tel, maxLength 20, note de confidentialité sous le champ
 - [ ] `CityInput` : saisir "Paris" → dropdown Nominatim apparaît → sélectionner "Paris, Île-de-France" → coordonnées lat/lng renseignées
-- [ ] Sans sélection dans le dropdown → hint ambre "Sélectionnez une ville dans la liste"
-- [ ] Bouton "Continuer" désactivé si `lat` est absent
+- [ ] Sans sélection dans le dropdown → hint ambre "Sélectionnez votre ville dans la liste pour confirmer votre position sur la carte"
+- [ ] Bouton "Continuer" désactivé si `lat == null` (ville tapée sans sélection dropdown)
 - [ ] Sélectionner une ville étrangère (ex: "Yaoundé") → pays bascule automatiquement sur "Cameroun"
 - [ ] `CountrySelect` : pays épinglés (FR, BE, CH, CA, LU, MA, SN, CI, CM) visibles en premier
-- [ ] Soumettre avec un téléphone → `host_profiles.phone` sauvegardé en DB
+- [ ] Soumettre → `host_profiles.phone`, `host_profiles.last_name` sauvegardés en DB
 
 ### Étape 2 — Type d'ambassade
 
@@ -513,6 +513,9 @@ node scripts/magic-link.js david.thery@demo.fr
 
 - [ ] `POST /api/temoignages` avec `website` rempli → 200 silencieux (pas de vrai enregistrement)
 - [ ] `POST /api/inscriptions` avec `website` rempli → 200 silencieux
+- [ ] `POST /api/inscriptions` sans `lat`/`lng` → 400 `"Champs obligatoires manquants."`
+- [ ] `POST /api/inscriptions` sans `last_name` → 400 `"Champs obligatoires manquants."`
+- [ ] `POST /api/inscriptions` sans `phone` → 400 `"Champs obligatoires manquants."`
 
 ### Rate limiting
 
@@ -800,6 +803,7 @@ npm run test:e2e
 | 2026-05-01 | M10 — Témoignages publics `/temoignages` | ✅ | 16 témoignages • 10 villes. Filtre par live (combobox custom) → 9 témoignages "Nuit de Prière". "Filtré sur", "Effacer ×", "Lire la suite", WhatsApp/Copier link OK. |
 | 2026-05-01 | M11 — Formulaire témoignage | ✅ | Bouton désactivé < 20 chars. Compteur 96/2000. Soumission → "Merci pour ton témoignage" screen OK. Pré-sélection live, prénom + ville optionnels OK. |
 | 2026-05-01 | M8 — Inscription `/inscription` | ✅ corrigé | 3 étapes OK. Autocomplétion Nominatim + auto-pays OK. Bouton "Continuer" bloqué sans sélection dropdown. Bug critique : API insérait `status='pending_onboarding'` → violation contrainte check. Fix : status → `'pending_review'`. Redirect post-soumission → écran "Demande envoyée" (remplace ancien `/onboarding`). Ambassadeur Lucie visible dans admin `pending_review`. |
+| 2026-05-03 | M8 — Validation lat/lng inscription | ✅ fix | **Bug** : `POST /api/inscriptions` acceptait `lat`/`lng` null → profil créé sans coordonnées → ambassadeur invisible sur la carte (filtré silencieusement par `host-activations/route.ts`). **Fix double couche** : (1) API ligne 28 : `lat == null \|\| lng == null` → 400 ; (2) frontend `inscription/page.tsx` : check `form.lat == null` (remplace `!form.lat`, corrige edge case lat=0). Champs `last_name` et `phone` (obligatoires) également ajoutés au check API et au disabled du bouton. |
 | 2026-05-01 | M9 — Onboarding | ⚠️ obsolète | Flux `pending_onboarding → /onboarding → active` remplacé par review admin. `/api/onboarding/complete` référence encore ces statuts (dead code). Sophie seed a déjà `pending_review`. Page `/onboarding` non reliée au nouveau flux. |
 | 2026-05-01 | M7 — Flux visiteur refus | ✅ | Bénédicte refusée via `/accueillir/[token]` (bouton "Je ne peux pas"). Page `/visitor/[token]` passe en état "Demande non retenue" avec bandeau "Pas de place cette fois". |
 | 2026-05-01 | M12 — Page visiteur états | ✅ | Avant refus : état "en attente". Après refus : "Demande non retenue". Token invalide → "Page introuvable" + CTA "Retour à la carte". |

@@ -308,7 +308,7 @@ Alerte l'admin si 0 hôtes actifs pour le prochain live.
 1. Vérifier que l'événement existe et que `event_date` est correct
 2. Vérifier que les hôtes ont `status = 'validated'` dans `host_profiles`
 3. Vérifier que `host_activations.is_active = TRUE` pour cet événement
-4. Vérifier que `lat` et `lng` ne sont pas NULL (si NULL, `geocoding_failed = TRUE`)
+4. Vérifier que `lat` et `lng` ne sont pas NULL — depuis la validation API (`POST /api/inscriptions` retourne 400 si lat/lng absents), tout nouveau profil a obligatoirement des coordonnées. Si un profil ancien a `lat = NULL`, l'ambassadeur ne s'affichera jamais sur la carte : corriger via `UPDATE host_profiles SET lat = ..., lng = ... WHERE id = '...'`
 
 ### "Un hôte ne reçoit pas ses emails"
 

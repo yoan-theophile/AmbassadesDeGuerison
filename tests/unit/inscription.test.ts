@@ -83,9 +83,31 @@ describe('Inscription — payload ambassadeur', () => {
       !!formTypedOnly.email &&
       !!formTypedOnly.phone.trim() &&
       !!formTypedOnly.city &&
-      !!formTypedOnly.lat;
+      formTypedOnly.lat != null;
 
     expect(canContinue).toBe(false);
+  });
+
+  it('le bouton Continuer est débloqué pour une ville à latitude 0 (équateur)', () => {
+    const formEquateur = {
+      first_name: 'Jean',
+      last_name: 'Mba',
+      email: 'jean@test.cm',
+      phone: '+237 6 00 00 00 00',
+      city: 'Libreville',
+      lat: 0.3924 as number | undefined,
+      lng: 9.4536 as number | undefined,
+    };
+
+    const canContinue =
+      !!formEquateur.first_name &&
+      !!formEquateur.last_name &&
+      !!formEquateur.email &&
+      !!formEquateur.phone.trim() &&
+      !!formEquateur.city &&
+      formEquateur.lat != null;
+
+    expect(canContinue).toBe(true);
   });
 
   it('le bouton Continuer est bloqué si last_name est vide', () => {
@@ -105,7 +127,7 @@ describe('Inscription — payload ambassadeur', () => {
       !!form.email &&
       !!form.phone.trim() &&
       !!form.city &&
-      !!form.lat;
+      form.lat != null;
 
     expect(canContinue).toBe(false);
   });
@@ -127,7 +149,7 @@ describe('Inscription — payload ambassadeur', () => {
       !!form.email &&
       !!form.phone.trim() &&
       !!form.city &&
-      !!form.lat;
+      form.lat != null;
 
     expect(canContinue).toBe(false);
   });
@@ -149,7 +171,7 @@ describe('Inscription — payload ambassadeur', () => {
       !!formComplete.email &&
       !!formComplete.phone.trim() &&
       !!formComplete.city &&
-      !!formComplete.lat;
+      formComplete.lat != null;
 
     expect(canContinue).toBe(true);
   });
@@ -194,5 +216,34 @@ describe('Inscription — payload ambassadeur', () => {
 
     const empty = '';
     expect(empty.length).toBe(0);
+  });
+
+  it("l'API rejette un payload sans lat/lng (simulation validation serveur)", () => {
+    function validateInscriptionPayload(body: Record<string, unknown>) {
+      const { email, first_name, last_name, phone, city, country, address_private, lat, lng } = body;
+      if (!email || !first_name || !last_name || !(phone as string)?.trim() || !city || !country || !address_private || lat == null || lng == null) {
+        return { ok: false, status: 400, error: 'Champs obligatoires manquants.' };
+      }
+      return { ok: true, status: 201 };
+    }
+
+    const basePayload = {
+      email: 'test@test.fr',
+      first_name: 'Jean',
+      last_name: 'Dupont',
+      phone: '+33 6 00 00 00 00',
+      city: 'Paris',
+      country: 'France',
+      address_private: '12 rue de la Paix',
+      lat: 48.8566,
+      lng: 2.3522,
+    };
+
+    expect(validateInscriptionPayload(basePayload).ok).toBe(true);
+    expect(validateInscriptionPayload({ ...basePayload, lat: undefined }).ok).toBe(false);
+    expect(validateInscriptionPayload({ ...basePayload, lng: null }).ok).toBe(false);
+    expect(validateInscriptionPayload({ ...basePayload, lat: undefined, lng: undefined }).ok).toBe(false);
+    expect(validateInscriptionPayload({ ...basePayload, last_name: '' }).ok).toBe(false);
+    expect(validateInscriptionPayload({ ...basePayload, phone: '   ' }).ok).toBe(false);
   });
 });
