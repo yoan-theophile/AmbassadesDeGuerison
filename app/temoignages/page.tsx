@@ -114,14 +114,23 @@ export default async function TemoignagesPage({
             )}
           </div>
 
-          {/* Filtre par live */}
-          {events.length > 0 && (
-            <TemoignageLiveFilter
-              events={events.map((e) => ({ id: e.id as string, title: e.title as string, event_date: e.event_date as string }))}
-              currentLive={live}
-              activeEventTitle={activeEvent?.title as string | undefined}
-            />
-          )}
+          {/* Filtre par live + CTA partage discret */}
+          <div className="flex items-center justify-between gap-4 mb-6">
+            {events.length > 0 ? (
+              <TemoignageLiveFilter
+                events={events.map((e) => ({ id: e.id as string, title: e.title as string, event_date: e.event_date as string }))}
+                currentLive={live}
+                activeEventTitle={activeEvent?.title as string | undefined}
+              />
+            ) : <span />}
+            <Link
+              href={`/temoignages/nouveau${live ? `?live=${live}` : ''}`}
+              className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:underline whitespace-nowrap shrink-0"
+            >
+              <PenLine className="w-3.5 h-3.5" />
+              Partager le mien
+            </Link>
+          </div>
 
           {/* Liste ou état vide */}
           {temoignages.length === 0 ? (
@@ -170,16 +179,16 @@ export default async function TemoignagesPage({
                       href={buildPageUrl(page - 1)}
                       className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" /> Précédent
+                      <ChevronLeft className="w-3.5 h-3.5" /> Plus récents
                     </Link>
                   ) : <span />}
-                  <span className="text-xs text-slate-400">Page {page} / {totalPages}</span>
+                  <span className="text-xs text-slate-400">{page} / {totalPages}</span>
                   {page < totalPages ? (
                     <Link
                       href={buildPageUrl(page + 1)}
                       className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
                     >
-                      Suivant <ChevronRight className="w-3.5 h-3.5" />
+                      Témoignages plus anciens <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   ) : <span />}
                 </div>

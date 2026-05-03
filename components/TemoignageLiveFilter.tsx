@@ -64,7 +64,7 @@ export default function TemoignageLiveFilter({ events, currentLive, activeEventT
   }
 
   return (
-    <div className="mb-6">
+    <div>
       <div ref={containerRef} className="relative inline-block min-w-[220px]">
         <button
           type="button"
