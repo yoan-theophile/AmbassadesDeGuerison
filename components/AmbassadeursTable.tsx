@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 interface Ambassadeur {
   id: string;
   first_name: string;
+  last_name: string;
   email: string;
   city: string;
   country: string;
@@ -250,7 +251,7 @@ export default function AmbassadeursTable({
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{a.first_name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{a.first_name} {a.last_name}</td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{a.city}, {a.country}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
