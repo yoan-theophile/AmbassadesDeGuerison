@@ -309,7 +309,7 @@ export default function DashboardPage() {
   const statusLabels: Record<string, string> = {
     pending_review:     'Candidature en cours',
     pre_approved:       'Pré-approuvé',
-    enrichment_pending: 'Questionnaire à compléter',
+    enrichment_pending: 'En attente de validation',
     validated:          'Actif',
     suspended:          'Suspendu',
     rejected:           'Refusé',
