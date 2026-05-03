@@ -257,6 +257,7 @@ async function run() {
     title: 'Nuit de Prière — Souffle nouveau',
     description: 'Nuit de prière collective depuis les ambassades du monde entier.',
     youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    live_link: 'https://youtube.com/live/example-recent',
     event_date: daysAgo(7),
   });
   console.log(`  OK [J-7]  ${evtRecent.title}  (event principal pour démo modération)`);

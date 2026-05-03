@@ -32,7 +32,7 @@ Lors de chaque live, des milliers de personnes regardent seules chez elles. Les 
 - **Supabase** — PostgreSQL, Auth (magic links), RLS
 - **Tailwind CSS** — design system
 - **Leaflet + OpenStreetMap** — carte publique
-- **Resend** — e-mails transactionnels
+- **Resend + React Email v6** — e-mails transactionnels (17 templates TSX dans `emails/*.tsx`)
 - **Nominatim** — géocodage des villes
 
 ## Lancer en local
@@ -61,6 +61,16 @@ node scripts/seed.js
 ```bash
 node scripts/magic-link.js david.thery@demo.fr
 ```
+
+### Preview des emails
+
+Ajouter dans `.env.local` :
+
+```
+EMAIL_PREVIEW=true
+```
+
+Puis ouvrir [http://localhost:3000/dev/emails](http://localhost:3000/dev/emails) pour visualiser les 17 templates dans le navigateur (sans envoyer d'email). Disponible aussi sur les Vercel Preview deployments si `EMAIL_PREVIEW=true` est configuré dans les variables d'environnement Vercel (scope : Preview).
 
 ## État du projet
 

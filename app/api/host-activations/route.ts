@@ -7,31 +7,28 @@ export const revalidate = 0;
 export async function GET() {
   const supabase = createServiceClient();
 
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowISO = now.toISOString();
+  const windowHours = Number(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? 4);
+  const windowStart = new Date(now.getTime() - windowHours * 3_600_000).toISOString();
 
-  // Préfère le dernier live passé ; fallback sur le prochain futur si aucun live passé
-  let { data: lastEvent } = await supabase
-    .from('events')
-    .select('id')
-    .lte('event_date', now)
-    .order('event_date', { ascending: false })
-    .limit(1)
-    .single();
+  // Priorité : live en cours → prochain event → dernier event passé (carte vide)
+  let referenceEvent =
+    (await supabase.from('events').select('id')
+      .lte('event_date', nowISO).gte('event_date', windowStart)
+      .order('event_date', { ascending: false }).limit(1).maybeSingle()).data ??
+    (await supabase.from('events').select('id')
+      .gt('event_date', nowISO)
+      .order('event_date', { ascending: true }).limit(1).maybeSingle()).data ??
+    (await supabase.from('events').select('id')
+      .lte('event_date', nowISO)
+      .order('event_date', { ascending: false }).limit(1).maybeSingle()).data;
 
-  if (!lastEvent) {
-    const { data: futureEvent } = await supabase
-      .from('events')
-      .select('id')
-      .gt('event_date', now)
-      .order('event_date', { ascending: true })
-      .limit(1)
-      .single();
-    lastEvent = futureEvent;
-  }
-
-  if (!lastEvent) {
+  if (!referenceEvent) {
     return NextResponse.json([]);
   }
+
+  const lastEvent = referenceEvent;
 
   const { data, error } = await supabase
     .from('host_activations')

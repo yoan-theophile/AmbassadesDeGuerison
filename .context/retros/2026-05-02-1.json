@@ -1,0 +1,40 @@
+{
+  "date": "2026-05-02",
+  "window": "7d",
+  "metrics": {
+    "commits": 51,
+    "contributors": 1,
+    "prs_merged": 0,
+    "insertions": 9753,
+    "deletions": 1757,
+    "net_loc": 7996,
+    "test_files_touched": 12,
+    "active_days": 3,
+    "sessions": 4,
+    "deep_sessions": 2,
+    "micro_sessions": 2,
+    "avg_session_minutes": 96,
+    "active_coding_minutes": 386,
+    "raw_loc_per_session_hour": 1517,
+    "feat_pct": 0.37,
+    "fix_pct": 0.25,
+    "docs_pct": 0.18,
+    "style_pct": 0.08,
+    "test_pct": 0.06,
+    "chore_pct": 0.06,
+    "peak_hour": 14,
+    "ai_assisted_commits": 7
+  },
+  "authors": {
+    "Théophile Tagne": {
+      "commits": 51,
+      "insertions": 9753,
+      "deletions": 1757,
+      "top_area": "app/admin/, app/api/, app/dashboard/"
+    }
+  },
+  "version_range": ["pre-pivot", "post-pivot+ordre8"],
+  "streak_days": 2,
+  "notes": "Pivot live-driven complet (Ordres 1-8) shippé en 2 sessions concentrées. Solo dev. Phase de conception (pas de prod). Démo David pending.",
+  "tweetable": "Semaine du 25 avr → 2 mai : 51 commits, 9.7k LOC, 25% fix ratio, 4 sessions. Pivot live-driven complet (Ordres 1-8) + 2 QA passes + design polish — solo. Streak 2j."
+}

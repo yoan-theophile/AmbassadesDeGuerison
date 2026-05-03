@@ -1,4 +1,6 @@
 @AGENTS.md
+@docs/ARCHITECTURE.md
+@docs/knowledge-transfer.md
 
 ## Projet
 
@@ -17,11 +19,58 @@ Tests DB (triggers, RLS) : nécessite `supabase start` (Docker).
 
 - Next.js 15 App Router, TypeScript, Tailwind CSS
 - Supabase : PostgreSQL + Auth magic links + RLS
-- Resend : emails (notifications, magic links)
+- Resend : emails (notifications, magic links) — templates dans `emails/*.tsx` (React Email v6)
 - Leaflet + OpenStreetMap : carte publique
 - PWA : manifest + service worker (cache Leaflet tiles)
+- Vercel : hébergement production (Fluid Compute, région IAD1 Washington)
+
+## Déploiement Vercel
+
+Projet : **`davidthery-app`** — compte `yoan-theophiles-projects`
+- **Production** : https://davidthery-app.vercel.app
+- **Dashboard** : https://vercel.com/yoan-theophiles-projects/davidthery-app
+- **Lien local** : `.vercel/project.json` (ajouté au `.gitignore`)
+
+### Déployer depuis un SHA git précis (sans les fichiers locaux non committés)
+
+```bash
+git archive --format=tgz <SHA> | vercel deploy --archive=tgz --yes --scope yoan-theophiles-projects --prod
+# Omettre --prod pour un déploiement preview
+```
+
+Préférer cette approche à `vercel deploy` classique quand des modifications non committées sont en cours.
+
+### Variables d'environnement — portées
+
+Toutes les variables sont configurées sur les deux scopes. Seule différence :
+
+| Variable | Production | Preview |
+|----------|-----------|---------|
+| `EMAIL_PREVIEW` | `false` — `/dev/emails` retourne 404 | **`true`** — route active |
+
+`NEXT_PUBLIC_APP_URL` est `https://davidthery-app.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
+
+Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API REST (token dans `%APPDATA%\com.vercel.cli\Data\auth.json`).
 
 ## Développement local
+
+### Preview emails (React Email)
+
+17 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
+`lib/email/templates.ts` contient les fonctions `sendXxx` qui utilisent `react:` au lieu de `html:`.
+
+Templates **supprimés** (orphelins — jamais appelés depuis une route) :
+- `magic-link-bienvenue.tsx` — variante bienvenue du magic link, redondante avec `registration-confirmation`
+- `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
+
+**Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
+Ajouter dans `.env.local` :
+```
+EMAIL_PREVIEW=true
+```
+La route retourne 404 en production (sans cette variable).
+
+Données mock dans `emails/__mocks__/index.ts` — basées sur les profils seed (Marie, JP, Sophie).
 
 ### Connexion admin sans e-mail (Resend sandbox)
 
@@ -52,6 +101,23 @@ node scripts/seed.js                                      # insère les données
 | `marie.dubois@demo.fr` | ambassadeur | `validated` |
 | `jp.martin@demo.fr` | ambassadeur | `validated` (complet) |
 | `sophie.leroux@demo.fr` | ambassadeur | `pending_review` (utile pour tester le dashboard candidature) |
+
+## Crons email
+
+Déclarés dans `vercel.json` (Vercel Cron) et en miroir dans `.github/workflows/` (GitHub Actions, désactivés par défaut) :
+
+| Route | Schedule | Rôle |
+|-------|----------|------|
+| `/api/cron/dispatch-campaigns` | `0 8 * * *` | Envoie les campagnes planifiées (`scheduled_campaigns`) aux ambassadeurs et visiteurs |
+| `/api/cron/send-feedback-emails` | `0 10 * * *` | Envoie les emails de feedback post-live aux hôtes ayant participé |
+
+Route **écrite mais non activée** (à ajouter dans `vercel.json` quand prêt) :
+
+| Route | Schedule suggéré | Rôle |
+|-------|----------|------|
+| `/api/cron/check-activations` | `0 9 * * *` | Envoie `admin-alerte-no-activations` si 0 hôtes actifs pour le prochain live |
+
+Toutes les routes cron exigent le header `x-cron-secret: $CRON_SECRET`.
 
 ## Pipeline d'activation ambassadeur
 
@@ -113,9 +179,37 @@ Carte Leaflet plein écran avec :
 - **Popup des pins** : contient une ligne "Lieu de prière — lives de guérison" pour contextualiser l'action Contacter.
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
-- **État vide** (`MapPublique`) — deux comportements distincts :
-  - `hosts.length === 0` (aucun ambassadeur dans le monde) → overlay full-screen centré avec CTA "Devenir ambassadeur" (conditionné à `loaded`).
+- **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
+  - `hosts.length === 0` → composant `EmptyMapContent` affiché — overlay contextuel centré selon l'état de l'app :
+    - `liveInProgress && hosts.length === 0` (`live-zero`) → "Live en cours / Les ambassades confirment..." + lien "Regarder le live →" (conditionné à `lastEvent?.live_link`)
+    - `nextEvent` dans ≤ 2j → "PROCHAIN LIVE [date] / Les ambassades confirment leur participation..."
+    - `nextEvent` dans > 2j (`upcoming`, `blank`) → "PROCHAIN LIVE [date] / Les ambassades s'afficheront dès qu'elles confirmeront..." + stats + "Voir les témoignages →"
+    - `lastEvent && !nextEvent` (`closed`, `past`) → "Dernier live [date] / Prochain live annoncé prochainement." + stats + "Partager un témoignage →"
+    - Aucun event → "Pas encore de live prévu / Rejoignez la communauté..." + bouton "Devenir ambassadeur" (seul état avec ce CTA)
   - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
+  - `live_link` sur `events` : renseigné par David dans `/admin/planning` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
+
+## DevOverlay — simulation d'états (dev uniquement)
+
+`components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit, rendu uniquement si `process.env.NODE_ENV === 'development'`.
+
+Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 7 états disponibles :
+
+| État | Label | is_active | liveInProgress | nextEvent |
+|------|-------|-----------|---------------|-----------|
+| `live` | 🔴 Live | true (tous) | true | J+10 |
+| `live-zero` | 🔴 Live (0 confirm.) | false | true | J+10 |
+| `soon` | ⏱ Soon 3j | false | false | J+3 |
+| `upcoming` | 📅 Upcoming | false | false | J+10 |
+| `past` | ⏪ Past | false | false | aucun |
+| `closed` | 🔚 Closed | false | false | J+10 |
+| `blank` | 🫙 Blank 0 confirm. | false | false | J+10 (is_active=false) |
+
+**Règle critique** : seuls `live` et `live-zero` ont `event_date` dans la fenêtre live (`NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`). Tous les autres états ont `is_active=false` → carte vide → overlay contextuel affiché.
+
+**Fix `closed`** (commit 56a4d30) : l'état `closed` remet `demoFutureEvent` à J+10. Sans ce fix, après `past → closed`, evtFutur restait à J-10 ce qui maintenait l'overlay "Dernier live" au lieu de "Dernier live + prochain annoncé".
+
+Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en tant que `david.thery`, `theo.nelson.ia`, ou `marie.dubois` sans passer par Resend.
 
 ## Page témoignages publique (`/temoignages`)
 
@@ -145,6 +239,24 @@ Carte Leaflet plein écran avec :
 - **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
 - Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
 - Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
+
+## Pages preview homepage (`/preview`)
+
+3 directions de design alternatives pour la homepage — non indexées (`noindex, nofollow`). À montrer à David pour qu'il choisisse une direction visuelle.
+
+| Route | Direction | Description |
+|-------|-----------|-------------|
+| `/preview/homepage-poster` | Poster | Hero typographique, pas de carte |
+| `/preview/homepage-annuaire` | Annuaire | Compteur géant + tableau pays/villes |
+| `/preview/homepage-storytelling` | Storytelling | Témoignages en plein écran défilants |
+
+**Utilitaire partagé** : `lib/preview-utils.ts` — `getCountdown()` et `daysSince()`. Les 3 pages importent depuis ce fichier.
+
+**États gérés** : `liveInProgress` (badge Radio pulsing), `nextEvent` (countdown), `!nextEvent && lastEvent` (message "Dernier live il y a X jours").
+
+**Navigation** : `app/preview/layout.tsx` — barre de navigation sticky entre les 3 directions.
+
+**Tester avec le DevOverlay** : bouton `DEV 🔧` bas-droite sur `localhost:3000` — cycler les 7 états (live, live-zero, soon, upcoming, past, closed, blank) puis naviguer vers `/preview/homepage-*`.
 
 ## Règles importantes
 

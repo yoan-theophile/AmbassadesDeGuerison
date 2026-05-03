@@ -59,7 +59,7 @@ npm install
 
 ### 2. Variables d'environnement
 
-Copier `.env.example` vers `.env.local` et remplir :
+Copier `.env.local.example` vers `.env.local` et remplir :
 
 ```env
 # Supabase
@@ -132,8 +132,11 @@ git push origin main
 
 ### Déploiement manuel (si besoin)
 
+Voir `DEPLOIEMENT.md` (racine) pour les commandes complètes, les variables d'environnement et les pièges connus du CLI Vercel v53.
+
 ```bash
-npx vercel --prod
+# Déployer le HEAD courant en production
+git archive --format=tgz HEAD | vercel deploy --archive=tgz --yes --scope yoan-theophiles-projects --prod
 ```
 
 ### Variables d'environnement en production
@@ -204,18 +207,29 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
+17 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
-| Bienvenue ambassadeur | Hôte termine l'onboarding (inscription) |
-| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire |
-| Notification admin (nouvelle candidature) | Nouveau profil `pending_review` créé |
-| Notification admin (questionnaire soumis) | Hôte soumet questionnaire → `enrichment_pending` |
-| Signal approuvé | Admin approuve un signal live |
-| Nouvelle demande de contact | Visiteur soumet une demande → email à l'hôte |
-| Hôte accepte — adresse au visiteur | Hôte accepte la demande → adresse envoyée au visiteur |
-| Activation campagne ambassadeur | Cron envoie la campagne → lien `/accueillir/activer/[token]` |
-| Activation campagne visiteur | Cron envoie la campagne visiteurs → lien avec désinscription |
+| Magic link bienvenue | Nouvel inscrit — premier magic link |
+| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire + vidéo |
+| Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
+| Validation finale | Confirmation de l'activation finale |
+| Confirmation inscription | Nouvel ambassadeur inscrit |
+| Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
+| Feedback post-live | Ambassadeur invité à donner son retour après le live |
+| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien déclin |
+| Demande acceptée (visiteur) | Hôte accepte → visiteur informé |
+| Place réservée | Hôte a accepté, coordonnées partielles avant dévoilement adresse |
+| Demande refusée | Hôte refuse → visiteur redirigé vers la carte |
+| Confirmation visite — adresse dévoilée | Adresse complète envoyée au visiteur accepté |
+| Visite refusée | Refus à l'étape finale → visiteur redirigé |
+| Campagne visiteurs | Cron visiteurs → lien carte + lien désinscription |
+| Signal approuvé | Admin approuve un signal live → lien live envoyé à l'ambassadeur |
+| Nouvelle ambassade activée (admin) | Hôte passe `validated` → notification admin |
+| Questionnaire soumis (admin) | Hôte soumet questionnaire enrichissement → notification admin |
+| Alerte 0 hôtes actifs (admin) | Aucun hôte actif 48h avant un live |
 
 ### Voir les emails envoyés
 
@@ -259,16 +273,9 @@ Déclenche l'envoi des campagnes email dont la date d'envoi est atteinte.
 → Envoie les emails aux campaign_recipients, marque status='sent'
 ```
 
-### auto-decline.yml
+### ~~auto-decline.yml~~ — Supprimé
 
-Décline automatiquement les demandes de contact sans réponse de l'hôte après 24h.
-
-```
-.github/workflows/auto-decline.yml
-→ Cron : quotidien
-→ Action : POST /api/cron/auto-decline
-→ Passe les contact_requests en status='declined' si created_at < now - 24h et status='pending'
-```
+Route `/api/cron/auto-decline` supprimée (David ne l'a pas demandé). Workflow GH Actions conservé dans l'historique git.
 
 ### feedback-emails.yml
 
@@ -276,8 +283,20 @@ Envoie les emails de retour d'expérience aux visiteurs après chaque live.
 
 ```
 .github/workflows/feedback-emails.yml
-→ Cron : déclenché manuellement ou après la fin d'un live
-→ Action : POST /api/cron/feedback-emails
+→ Cron : quotidien (10:00 UTC) — schedulé dans vercel.json
+→ Action : POST /api/cron/send-feedback-emails
+→ ⚠️ Bug SQL join à corriger avant usage réel (voir ARCHITECTURE.md)
+```
+
+### check-activations.yml — Non activé
+
+Alerte l'admin si 0 hôtes actifs pour le prochain live.
+
+```
+.github/workflows/check-activations.yml
+→ Cron : non schedulé (workflow_dispatch uniquement)
+→ Action : POST /api/cron/check-activations
+→ À activer dans vercel.json quand prêt (schedule suggéré : 0 9 * * *)
 ```
 
 ---
@@ -310,6 +329,33 @@ Si ça semble bloqué, recharger la page. Ce n'est pas du temps réel (pas de We
 # Ou via l'API :
 curl -X POST https://api.supabase.com/v1/projects/TON_PROJECT_ID/restore \
   -H "Authorization: Bearer TON_SUPABASE_TOKEN"
+```
+
+### "Les routes API retournent 404 en dev (DevOverlay, carte, etc.)"
+
+**Symptôme** : `POST /api/dev/state` et `GET /api/host-activations` retournent une page HTML 404
+(la page not-found du projet) au lieu de JSON. Les pages (`/`, `/temoignages`…) fonctionnent
+normalement. Se produit après avoir modifié des fichiers source puis redémarré le serveur.
+
+**Cause** : Next.js 16 sort les artefacts Turbopack de dev dans `.next/dev/` (répertoire séparé
+de `.next/` utilisé par `next build`). Si des chunks compilés d'une session précédente sont
+présents et que leurs sources ont été modifiées depuis, le runtime Turbopack de la nouvelle
+session ne peut pas les exécuter → toutes les route handlers retournent 404.
+
+**Fix** :
+
+```bash
+# Arrêter le serveur dev, puis :
+rm -rf .next/dev
+npm run dev
+# Turbopack recompile chaque route à la première requête (~5-10 s)
+```
+
+Sur Windows PowerShell :
+
+```powershell
+Remove-Item -Recurse -Force .next\dev
+npm run dev
 ```
 
 ### "Le trigger host_activations ne s'est pas déclenché"

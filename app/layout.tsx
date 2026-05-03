@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
+import DevOverlay from '@/components/DevOverlay';
 
 const geist = Geist({ variable: '--font-geist', subsets: ['latin'] });
 
@@ -24,7 +25,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className={`${geist.variable} h-full antialiased`}>
-      <body className={`${geist.className} min-h-full flex flex-col`}>{children}</body>
+      <body className={`${geist.className} min-h-full flex flex-col`}>
+        {children}
+        {process.env.NODE_ENV !== 'production' && <DevOverlay />}
+      </body>
     </html>
   );
 }

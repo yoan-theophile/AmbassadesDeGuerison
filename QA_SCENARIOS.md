@@ -20,29 +20,38 @@ node scripts/magic-link.js david.thery@demo.fr
 # → ouvrir l'URL dans le navigateur
 ```
 
-**États disponibles (à lancer depuis la racine du projet) :**
+**États disponibles via le DevOverlay (bouton `DEV 🔧` coin bas-droit, dev uniquement) :**
 
-| Commande | Ce que ça produit |
+| Bouton DevOverlay | Ce que ça produit |
 |---|---|
-| `node scripts/demo-state.js live` | 🔴 Live en cours — EventBanner rouge, pins actifs |
-| `node scripts/demo-state.js soon` | ⏱ Prochain dans 3j — countdown |
-| `node scripts/demo-state.js upcoming` | 📅 Prochain dans 10j — état par défaut du seed |
-| `node scripts/demo-state.js past` | ⏪ Entre deux lives — aucun futur |
-| `node scripts/demo-state.js status` | Afficher l'état actuel sans modifier |
+| `🔴 Live` | Live en cours — EventBanner rouge, 7 pins actifs |
+| `🔴 Live (0 confirm.)` | Live en cours mais 0 pins (campagne pas encore envoyée) |
+| `⏱ Soon 3j` | Prochain dans 3j — countdown indigo |
+| `📅 Upcoming` | Prochain dans 10j — état par défaut du seed |
+| `⏪ Past` | Entre deux lives — aucun futur, overlay "Dernier live" |
+| `🔚 Closed` | Live vient de finir — juste hors fenêtre live, overlay "Dernier live" |
+| `🫙 Blank 0 confirm.` | Futur live annoncé, 0 ambassadeurs confirmés (avant campagne) |
+
+> Alternative CLI (si le DevOverlay n'est pas disponible) : `node scripts/demo-state.js <état>` avec les états `live`, `live-zero`, `soon`, `upcoming`, `past`, `closed`, `blank`.
 
 ---
 
 ## Module 1 — Page d'accueil publique `/`
 
-> Tester les 4 états via `demo-state.js`. Rafraîchir le navigateur après chaque changement d'état.
+> Tester les 7 états via le **DevOverlay** (bouton `DEV 🔧` coin bas-droit, visible uniquement en `NODE_ENV=development`).
+> Cliquer l'état voulu → rafraîchir si nécessaire (le router.refresh() est appelé automatiquement).
+> **Règle clé post-fix** : hors état `live`, `is_active = false` pour tous les hôtes → la carte est vide → l'overlay contextuel s'affiche.
 
-### État : `upcoming` (défaut seed — prochain dans 10j)
+### État : `upcoming` (prochain dans 10j — défaut seed)
 
 - [ ] La carte Leaflet s'affiche plein écran sans erreur
 - [ ] L'EventBanner affiche la date du prochain live (ex : "Prochain live le lundi 11 mai")
 - [ ] L'EventBanner est sur fond blanc/clair (pas rouge)
-- [ ] Les 7 pins d'ambassadeurs apparaissent sur la carte
-- [ ] Cliquer sur un pin → popup avec nom, ville, CTA "Contacter"
+- [ ] **Aucun pin** sur la carte (is_active=false après le fix DevOverlay)
+- [ ] L'overlay contextuel s'affiche au centre : label "PROCHAIN LIVE", date formatée, "dans X jours"
+- [ ] L'overlay affiche "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] L'overlay affiche les stats "N ambassadeurs · X pays"
+- [ ] L'overlay contient un lien "Voir les témoignages →" pointant vers `/temoignages`
 - [ ] La barre de recherche par ville est visible (haut-gauche)
 - [ ] Saisir "Lyon" dans la recherche → dropdown Nominatim → cliquer → la carte recentre sur Lyon
 - [ ] Le footer affiche "Ambassades de Guérison — rejoignez un groupe de prière..."
@@ -53,24 +62,68 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] L'EventBanner affiche un countdown (ex : "Prochain live dans 2j 23h 59min")
 - [ ] Le fond de l'EventBanner est indigo
 - [ ] Le countdown se met à jour si on attend quelques secondes
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche : label "PROCHAIN LIVE", date, "dans X jour(s)" (≤ 2j)
+- [ ] L'overlay affiche "Les ambassades confirment leur participation..."
+- [ ] Stats et lien témoignages présents
 
-### État : `live` (live en cours)
+### État : `live` (live en cours — ambassades confirmées)
 
 - [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" sur fond rouge/indigo intense
 - [ ] L'icône Radio clignote (pulsing)
-- [ ] Les 7 pins sont activés (is_active=TRUE) — tous visibles sur la carte
+- [ ] **Les 7 pins sont activés** (is_active=TRUE) — tous visibles sur la carte
 - [ ] Cliquer sur un pin → popup avec CTA "Rejoindre cette ambassade" (ou équivalent live)
+- [ ] Aucun overlay de carte vide affiché (pins présents)
 
-### État : `past` (aucun futur)
+### État : `live-zero` 🔴 (live en cours — 0 ambassades confirmées)
+
+> État simulant un live en cours mais dont la campagne email ambassadeurs n'a pas encore été envoyée.
+> `is_active = false` sur tous les hôtes → carte vide pendant le live.
+
+- [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" (identique à `live`)
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche "Live en cours" avec message "Les ambassades confirment leur participation..."
+- [ ] Si `live_link` est renseigné sur le dernier event : lien "Regarder le live →" visible et cliquable
+- [ ] Si `live_link` est null : le lien n'apparaît pas (guard conditionnel)
+
+### État : `blank` 🫙 (futur live annoncé, 0 confirmations)
+
+> Simule l'état entre l'annonce d'un live et l'envoi de la campagne ambassadeurs.
+> evtRecent (passé) is_active=false. evtFutur (J+10) is_active=false, inscriptions ouvertes.
+
+- [ ] L'EventBanner affiche "Prochain live le [date]" (blanc, pas de countdown car > 7j)
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche label "PROCHAIN LIVE" + date + "dans X jours"
+- [ ] Texte "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] Stats ambassadeurs/pays présentes
+- [ ] Lien "Voir les témoignages →" présent
+
+### État : `closed` 🔚 (live vient de se terminer — nouveau)
+
+> État `closed` = event_date il y a (WINDOW_H + 1h), is_active=false. liveInProgress=false. nextEvent intact.
+
+- [ ] L'EventBanner affiche l'état "Dernier live..." ou "Prochain live le..." selon nextEvent
+- [ ] **Aucun pin** sur la carte (is_active=false)
+- [ ] L'overlay contextuel affiche "Dernier live" + date du live clôturé
+- [ ] L'overlay affiche "Prochain live annoncé prochainement."
+- [ ] L'overlay affiche les stats ambassadeurs/pays
+- [ ] L'overlay contient un lien "Partager un témoignage →" pointant vers `/temoignages/nouveau`
+- [ ] **Test de transition critique** : passer de `live` (pins visibles) → `closed` → pins disparaissent, overlay apparaît
+
+### État : `past` (aucun futur — les deux events dans le passé)
 
 - [ ] L'EventBanner affiche "Dernier live il y a 7 jours — prochainement"
 - [ ] Fond blanc/neutre
-- [ ] Les pins restent visibles sur la carte (les ambassades existent toujours)
+- [ ] **Aucun pin** sur la carte (is_active=false — corrigé, ne plus afficher les pins après un live)
+- [ ] L'overlay contextuel affiche "Dernier live" + date du dernier event
+- [ ] L'overlay affiche "Prochain live annoncé prochainement."
+- [ ] Lien "Partager un témoignage →" présent
 
 ### Responsive
 
 - [ ] Sur mobile (375px) : la carte est plein écran, l'EventBanner est lisible
 - [ ] La barre de recherche ne chevauche pas le header sur mobile
+- [ ] L'overlay carte vide est centré et lisible sur mobile (max-w-xs avec padding)
 
 ---
 
@@ -580,16 +633,153 @@ npm run test:e2e
 
 ## Récapitulatif — Matrice états × fonctionnalités clés
 
-| Fonctionnalité | `past` ⏪ | `upcoming` 📅 | `soon` ⏱ | `live` 🔴 |
-|---|:---:|:---:|:---:|:---:|
-| EventBanner — texte | "Dernier live il y a..." | "Prochain live le..." | Countdown | "Live en cours" |
-| EventBanner — couleur | blanc | blanc | indigo | rouge/indigo |
-| Carte — pins visibles | ✓ | ✓ | ✓ | ✓ |
-| Carte — pins actifs (is_active) | ✗ | partiel (3/7) | partiel | ✓ (7/7) |
-| Dashboard — section Signaux | ✗ | ✗ | ✗ | ✓ |
-| Dashboard — formulaire témoignage | ✓ | ✓ | ✓ | ✓ |
-| `/admin/live` — feed actif | ✗ | ✗ | ✗ | ✓ |
-| Formulaire contact ambassade | ✓ | ✓ | ✓ | ✓ |
+> `closed` et `live-zero` = états DevOverlay uniquement (simulation). Mécanisme prod à venir (bouton admin "Clôturer").
+> `blank` = état DevOverlay uniquement (futur live annoncé, 0 ambassadeurs confirmés).
+
+| Fonctionnalité | `past` ⏪ | `closed` 🔚 | `blank` 🫙 | `upcoming` 📅 | `soon` ⏱ | `live-zero` 🔴 | `live` 🔴 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| EventBanner — texte | "Dernier live il y a..." | "Dernier live..." | "Prochain live le..." | "Prochain live le..." | Countdown | "Live en cours" | "Live en cours" |
+| EventBanner — couleur | blanc | blanc | blanc | blanc | indigo | rouge/indigo | rouge/indigo |
+| Carte — pins visibles | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (7/7) |
+| Overlay contextuel | "Dernier live [date]" | "Dernier live [date]" | "Prochain live [date]" | "Prochain live [date]" | "Live dans Xj" | "Live en cours" | absent |
+| Overlay — lien CTA | Témoignage → | Témoignage → | Témoignages → | Témoignages → | Témoignages → | live_link (si défini) | — |
+| Overlay — stats ambassadeurs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Dashboard — section Signaux | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Dashboard — formulaire témoignage | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/admin/live` — feed actif | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Formulaire contact ambassade | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+---
+
+## Module 35 — DevOverlay — états et transitions `/` (dev only)
+
+> Le bouton `DEV 🔧` en bas à droite n'est visible qu'en `NODE_ENV=development`.
+> Ces scénarios vérifient que les mutations DB du DevOverlay reflètent correctement l'état de la carte.
+
+### 35.1 — Présence et ouverture
+
+- [ ] Bouton `DEV 🔧` visible en bas à droite en dev, absent en prod (process.env.NODE_ENV check)
+- [ ] Cliquer → panneau s'ouvre avec 7 boutons état + section Magic Link
+- [ ] Cliquer `✕` → panneau se ferme
+
+### 35.2 — Transitions depuis `live`
+
+> Prérequis : cliquer `🔴 Live` → vérifier que 7 pins sont visibles.
+
+- [ ] `[Live]` → `[📅 Upcoming]` : pins disparaissent, overlay "Prochain live [date]" apparaît
+- [ ] `[Live]` → `[⏱ Soon 3j]` : pins disparaissent, overlay "Live dans 2 jours..." apparaît
+- [ ] `[Live]` → `[🔚 Closed]` : pins disparaissent, overlay "Dernier live [date]" apparaît
+- [ ] `[Live]` → `[⏪ Past]` : pins disparaissent, overlay "Dernier live [date]" apparaît
+- [ ] `[Live]` → `[🔴 Live (0 confirm.)]` : pins disparaissent, overlay "Live en cours" apparaît
+- [ ] `[Live]` → `[🫙 Blank]` : pins disparaissent, overlay "Prochain live [date]" apparaît
+
+### 35.3 — État `🔚 Closed` (nouveau)
+
+- [ ] Bouton `🔚 Closed` présent dans le panneau DevOverlay
+- [ ] Après clic : `currentState === 'closed'` → bouton passe en fond indigo
+- [ ] La carte reflète `liveInProgress = false` (pas de bandeau "Live en cours")
+- [ ] `host_activations.is_active = false` confirmé en DB — aucun pin visible
+- [ ] `events.event_date` est dans la fenêtre "juste après le live" (WINDOW_H + 1h dans le passé)
+- [ ] nextEvent (futur) reste intact — non modifié par `closed`
+
+### 35.4 — État `🔴 Live (0 confirm.)` — live-zero
+
+> Simule un live en cours sans ambassade confirmée : campagne email non envoyée.
+> `event_date = J-2h`, `is_active = false` sur tous les hôtes.
+
+- [ ] Bouton `🔴 Live (0 confirm.)` présent dans le panneau DevOverlay
+- [ ] Après clic : `currentState === 'live-zero'` → bouton actif
+- [ ] L'EventBanner affiche "Live en cours — rejoignez-nous" (identique à `live`)
+- [ ] `host_activations.is_active = false` — aucun pin visible sur la carte
+- [ ] L'overlay affiche le message "Les ambassades confirment leur participation..."
+- [ ] Si `events.live_link` est renseigné dans le seed : lien "Regarder le live →" visible
+- [ ] Si `events.live_link` est null : le lien est absent (guard `lastEvent?.live_link`)
+
+### 35.5 — État `🫙 Blank` — futur annoncé, 0 confirmations
+
+> Simule l'état entre l'annonce du prochain live et l'envoi de la campagne ambassadeurs.
+> evtRecent (passé) is_active=false. evtFutur (J+10) is_active=false.
+
+- [ ] Bouton `🫙 Blank 0 confirm.` présent dans le panneau DevOverlay
+- [ ] Après clic : `currentState === 'blank'` → bouton actif
+- [ ] L'EventBanner affiche "Prochain live le [date]" (≥ 7j, donc format date complète)
+- [ ] `host_activations.is_active = false` sur les deux events — aucun pin visible
+- [ ] L'overlay affiche "PROCHAIN LIVE" + date + "dans 10 jours"
+- [ ] Texte "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] Stats ambassadeurs/pays affichées
+- [ ] Lien "Voir les témoignages →" présent
+
+### 35.6 — Magic Link depuis le panneau
+
+- [ ] Bouton rapide `david.thery` → email auto-rempli
+- [ ] Bouton rapide `theo.nelson.ia` → email auto-rempli
+- [ ] Bouton rapide `marie.dubois` → email auto-rempli
+- [ ] Cliquer `→` → lien généré affiché (tronqué 60 chars + "…")
+- [ ] Bouton "Copier" → lien dans le clipboard
+- [ ] Bouton "Ouvrir →" → nouvel onglet, connexion automatique
+
+---
+
+## Module 36 — Overlay contextuel carte vide — 5 variantes
+
+> Ces scénarios valident le composant `EmptyMapContent` dans `MapPublique.tsx`.
+> Prérequis : seed DB propre, utiliser le DevOverlay pour changer d'état.
+
+### 36.1 — État `upcoming` (≥ 3 jours avant le live)
+
+- [ ] Overlay centré visible (carte sans pins)
+- [ ] Label "PROCHAIN LIVE" en majuscules (uppercase tracking-wider)
+- [ ] Date formatée en français (ex : "mercredi 13 mai") — capitalize
+- [ ] Heure formatée (ex : "à 20h00")
+- [ ] Mention "dans X jours" correcte
+- [ ] Texte : "Les ambassades s'afficheront dès qu'elles confirmeront leur participation."
+- [ ] Ligne stats : "N ambassadeurs · X pays" (données réelles de getHomepageData)
+- [ ] Lien "Voir les témoignages →" href="/temoignages"
+
+### 36.2 — État `soon` (≤ 2 jours avant le live)
+
+- [ ] Label "PROCHAIN LIVE" présent
+- [ ] Mention "dans X jour(s)" (singulier si 1 jour)
+- [ ] Texte : "Les ambassades confirment leur participation..."
+- [ ] Stats et lien témoignages présents
+
+### 36.3 — État `live-zero` (live en cours, 0 ambassades confirmées)
+
+> Simulable via le bouton `🔴 Live (0 confirm.)` du DevOverlay.
+> C'est l'état produit par `lib/dev/state.ts` état `live-zero` : `is_active=false` sur tous les hôtes.
+
+- [ ] Overlay affiche "Live en cours" (ou label équivalent)
+- [ ] Texte "Les ambassades confirment leur participation..."
+- [ ] Lien "Regarder le live →" visible si `lastEvent.live_link` est renseigné
+- [ ] Lien absent si `lastEvent.live_link` est null
+- [ ] Stats affichées si `totalAmbassadors > 0`
+- [ ] **Test live_link** : vérifier dans Supabase que `events.live_link` du seed evtRecent est bien `https://youtube.com/live/example-recent`
+
+### 36.4 — État `closed` ou `past` (live terminé, prochain non annoncé)
+
+- [ ] Titre "Dernier live" (texte gras, ardoise)
+- [ ] Date du dernier live formatée (ex : "lundi 28 avril")
+- [ ] Texte "Prochain live annoncé prochainement."
+- [ ] Stats ambassadeurs/pays
+- [ ] Lien "Partager un témoignage →" href="/temoignages/nouveau"
+
+### 36.5 — Aucun event (vrai état vide)
+
+> Simulable en supprimant tous les events de la DB (hors scope seed standard).
+
+- [ ] Titre "Pas encore de live prévu"
+- [ ] Texte "Rejoignez la communauté des groupes de prière."
+- [ ] Bouton indigo "Devenir ambassadeur" href="/inscription" (le seul état avec ce CTA)
+- [ ] Aucun lien témoignages (pas de live = pas de témoignages existants)
+
+### 36.6 — Overlay viewport vide (hôtes existent mais hors champ)
+
+> Distinct de la carte vide : des pins existent mais le viewport ne les contient pas.
+> Simulable en état `live` (pins actifs) + zoomer sur une région sans ambassade.
+
+- [ ] Le hint discret bas-centré apparaît : "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →"
+- [ ] L'overlay `EmptyMapContent` n'apparaît PAS (hosts.length > 0)
+- [ ] Le hint disparaît dès qu'on revient sur une zone avec des pins
 
 ---
 
@@ -650,6 +840,101 @@ npm run test:e2e
 
 ---
 
+---
+
+## Module 33 — Preview emails `/dev/emails`
+
+> **Prérequis :** `EMAIL_PREVIEW=true` dans `.env.local` (déjà présent). Sur Vercel Preview : variable ajoutée dans le dashboard Vercel → Settings → Environment Variables (scope : Preview).
+
+```bash
+npm run dev
+# Ouvrir http://localhost:3000/dev/emails
+```
+
+### 33.1 — Rendu et structure
+
+- [x] La page `/dev/emails` s'affiche sans erreur (200)
+- [x] La page `/dev/emails` en production (`NODE_ENV=production`, sans `EMAIL_PREVIEW`) retourne 404 — guard `if (!process.env.EMAIL_PREVIEW) notFound()` confirmé dans le code
+- [x] Le compteur de templates en sous-titre affiche **17 templates**
+- [x] Les 4 sections sont présentes : "Parcours ambassadeur", "Parcours visiteur", "Live", "Admin"
+- [x] Chaque section contient le bon nombre d'iframes :
+  - Ambassadeur : 8 iframes
+  - Visiteur : 5 iframes
+  - Live : 1 iframe
+  - Admin : 3 iframes
+
+### 33.2 — Rendu visuel des emails
+
+- [x] Chaque iframe affiche un email correctement rendu (pas de page blanche, pas d'erreur JS)
+- [x] Les styles Next.js / Tailwind ne "débordent" pas dans les iframes (isolation `srcDoc`)
+- [x] Les boutons CTA (indigo) s'affichent avec la bonne couleur
+- [x] Les emails affichent les données mock : Marie Dubois, Lyon, France
+- [x] Aucun `undefined` visible dans les textes (props mock manquantes)
+- ~~Le bandeau "Guérison" / header logo est cohérent dans chaque email~~ — les emails n'ont pas de logo/bandeau image (EmailLayout minimaliste text-only). À discuter avec David si un logo est souhaité.
+
+### 33.3 — Contenu (vérifier avec David)
+
+> Parcourir chaque email ligne par ligne avec David. Cocher quand le contenu est validé.
+
+| # | Template | Label dans la page | Validé |
+|---|---|---|---|
+| 1 | `magic-link` | Magic link (connexion standard) | [ ] |
+| ~~2~~ | ~~`magic-link-bienvenue`~~ | ~~Magic link — bienvenue nouvel inscrit~~ | 🗑 Supprimé — redondant avec `registration-confirmation` |
+| 3 | `pre-validation-accordee` | Pré-validation accordée | [ ] |
+| 4 | `bienvenue-ambassadeur` | Bienvenue ambassadeur (validation finale) | [ ] |
+| 5 | `validation-finale` | Validation finale — ambassade active | [ ] |
+| 6 | `registration-confirmation` | Confirmation inscription | [ ] |
+| 7 | `campagne-ambassadeurs` | Campagne — invitation au prochain live | [ ] |
+| 8 | `feedback-post-live` | Feedback post-live | [ ] |
+| 9 | `contact-received-host` | Ambassadeur — demande de visite reçue | [ ] |
+| ~~10~~ | ~~`contact-accepted`~~ | ~~Demande de contact acceptée~~ | 🗑 Supprimé — étape intermédiaire retirée du flux contact |
+| 11 | `contact-reserved` | Place réservée — coordonnées partielles | [ ] |
+| 12 | `contact-declined` | Demande refusée | [ ] |
+| 13 | `acceptation-visite` | Confirmation de visite — adresse dévoilée | [ ] |
+| 14 | `refus-visite` | Visite refusée | [ ] |
+| 15 | `campagne-visiteurs` | Campagne — prochain live | [ ] |
+| 16 | `signal-approved` | Signal approuvé — témoignage en direct | [ ] |
+| 17 | `nouvelle-activation-admin` | Nouvelle ambassade activée (admin) | [ ] |
+| 18 | `enrichissement-recu` | Questionnaire d'enrichissement soumis (admin) | [ ] |
+| 19 | `admin-alerte-no-activations` | Alerte — 0 hôtes actifs (admin) | [ ] |
+
+### 33.4 — Questions de contenu pour David
+
+> Ces questions sont à poser à David lors de la session de revue des emails. Elles concernent le ton pastoral, le vocabulaire, et les attentes des destinataires.
+> 
+> **Analyse préalable /qa (2026-05-02)** — réponses anticipées depuis la perspective pastorale de David. À valider avec lui en session.
+
+| Domaine | Question | Analyse /qa |
+|---|---|---|
+| **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? | Garder "ambassadeur" dans les emails internes. Dans `campagne-visiteurs`, ajouter une ligne de contextualisation ("chez des particuliers ou des petites églises") pour les non-initiés. C'est déjà en partie là. |
+| **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? | Prénom seul est le bon registre pastoral. Ajouter le nom = ton administratif. Pas de changement. |
+| **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. `magic-link-bienvenue` a été supprimé (redondant). Le magic link standard reste fonctionnel. |
+| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? | Bon ton. "Bonne nouvelle !" est du vocabulaire pastoral naturel. Option d'enrichissement : "Vous faites partie de ceux qui étendent le réseau de guérison dans le monde." — pas bloquant. |
+| **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? | **OUI, recommandé.** `validation-finale` se termine par "Merci d'ouvrir votre maison. C'est là que tout se passe." — ajouter "— David Théry" transforme l'email système en lettre personnelle. Idem pour `bienvenue-ambassadeur`. |
+| **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? | Utilisé à chaque live. Ajouter un placeholder dans le champ admin : "Décris le live en 1-2 phrases. Ex : Ce soir, David priera pour les malades." |
+| **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? | Formulaire interne (`/feedback?token=...`). La page n'existe pas encore — à construire. Google Form = perte de données et coupure de marque. |
+| **Contact visiteur** | L'email au visiteur quand sa place est réservée (`contact-reserved`) révèle l'email de l'hôte mais pas son adresse. C'est intentionnel — l'adresse arrive dans `acceptation-visite`. Ça te semble juste ? | Oui, intentionnel et juste. Deux étapes : contact partiel → adresse complète après confirmation. Protège la vie privée de l'hôte. |
+| **Refus de visite** | Email `refus-visite` : "Votre demande auprès de [hôte] — mise à jour". Le ton est volontairement neutre pour ne pas stigmatiser. Tu veux quelque chose de plus pastoral ("nous sommes désolés...") ? | Pas de changement. "Ne vous découragez pas — les ambassades grandissent à chaque live." est déjà pastoral et encourageant. |
+| **Campagne visiteurs** | Contient un lien de désinscription (`unsubscribeUrl`). Qui gère cette liste ? Il faudra une page `/unsubscribe?token=...` côté app. | **Action requise.** Page `/unsubscribe/[token]` obligatoire (RGPD). N'existe pas encore. À ajouter avant envoi de vrais emails. |
+| **Signal approuvé** | Email `signal-approved` : sélection pour témoigner en direct. C'est envoyé à qui exactement — aux personnes qui ont levé la main via `/admin/live` ? | Oui — ambassadeurs ayant levé la main dans l'app, David approuve via `/admin/live`, l'email part. Suggestion : préciser "YouTube" dans le CTA ("Rejoindre le live YouTube"). |
+| **Emails admin** | Les 3 emails admin (nouvelle activation, questionnaire, alerte 0 hôtes) vont à quelle adresse ? `RESEND_ADMIN_EMAIL` — c'est ton adresse perso ou une boîte partagée avec une équipe ? | Pour le MVP : adresse perso. Quand le réseau grandira : prévoir une boîte équipe. L'alerte `admin-alerte-no-activations` mentionne `fn_auto_activate_hosts_for_event` — terme trop technique si David lit ses alertes. |
+| **Objet des emails** | Veux-tu relire les sujets (`subject`) de chaque email ? Ils sont visibles dans le code `lib/email/templates.ts` et c'est la première chose lue dans la boîte mail. | 2 sujets à affiner : templates 4 et 6 sont trop génériques ("Bienvenue dans les Ambassades de Guérison !"). Suggestion : personnaliser avec le prénom. Rapport complet dans `.gstack/qa-reports/qa-report-dev-emails-2026-05-02.md`. |
+
+---
+
+| Date | Module | Statut | Notes |
+|---|---|---|---|
+| 2026-05-02 | M33 — Preview emails `/dev/emails` | ✅ mis en place | Page `/dev/emails` rendue à 200 en local. 19 templates React Email v6. Guard `EMAIL_PREVIEW` pour isoler de la prod. iframes `srcDoc` pour isolation CSS. Prêt pour revue contenu avec David. |
+| 2026-05-02 | M33 — QA /dev/emails | ✅ passé | 19/19 iframes chargées, 0 erreur console. ISSUE-001 fixé (`enrichment_pending` raw retiré). 13 questions Module 33 pré-analysées. Score santé 95/100. 2 actions RGPD requises avant prod : `/unsubscribe/[token]` + `/feedback?token`. |
+| 2026-05-02 | M29 — Tests auto | ✅ 149/149 | vitest 18 fichiers, 0 échec. Aucune régression suite aux modifications overlay + DevOverlay état `closed`. |
+| 2026-05-02 | M1 — Overlay contextuel (fix DevOverlay) | ✅ passé | Bug fix confirmé : `live → upcoming` → is_active=false, 0 pin. `live → soon` → idem. `live → closed` → overlay "Prochain live [date]" (nextEvent intact). `past` → overlay "Dernier live samedi 25 avril · Prochain live annoncé prochainement · Partager un témoignage →". Stats "7 ambassadeurs · 6 pays" affichées dans tous les états vides. Lien témoignages présent. |
+| 2026-05-02 | M35 — DevOverlay état `closed` | ✅ passé | Bouton "🔚 Closed" présent. Transition live→closed : pins disparaissent, overlay contextuel apparaît. `is_active=false` en DB confirmé. nextEvent non modifié par l'état closed. |
+
+---
+
 *Généré le 2026-05-01 — DavidTheryApp v1 — branch `develop`*
 *Mis à jour le 2026-05-02 — Session QA suite (dashboard, questionnaire, pages admin complètes)*
-*États gérés par `scripts/demo-state.js`*
+*Mis à jour le 2026-05-02 — Module 33 ajouté : preview emails React Email v6*
+*Mis à jour le 2026-05-02 — Module 33 passé : QA /dev/emails, 13 questions pré-analysées, ISSUE-001 fixé*
+*Mis à jour le 2026-05-02 — M1 corrigé + M35/M36 ajoutés : overlay contextuel carte vide + DevOverlay état `closed`*
+*États gérés par le DevOverlay (bouton DEV 🔧 en dev) — remplace `scripts/demo-state.js` pour les tests UI*

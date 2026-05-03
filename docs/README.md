@@ -12,6 +12,7 @@ Ce dossier contient tout ce qu'il faut pour reprendre, opérer ou transmettre le
 | Un nouveau développeur | [knowledge-transfer.md](./knowledge-transfer.md) |
 | David ou son équipe (non-technique) | [presentation-david.md](./presentation-david.md) |
 | Un dev qui veut comprendre les choix | [decisions.md](./decisions.md) |
+| Un dev qui veut comprendre comment ça s'articule | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 
 ---
 
@@ -19,6 +20,7 @@ Ce dossier contient tout ce qu'il faut pour reprendre, opérer ou transmettre le
 
 | Fichier | Pour qui | Ce qu'il contient |
 |---------|----------|------------------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Développeur | Couches du système, flux de données, sécurité, rendu SSR/Client |
 | [knowledge-transfer.md](./knowledge-transfer.md) | Développeur | Setup, stack, BDD, déploiement, opérations courantes, incidents |
 | [presentation-david.md](./presentation-david.md) | Non-technique | Ce que l'app fait, pourquoi, comment — sans jargon |
 | [decisions.md](./decisions.md) | Développeur | Pourquoi on a fait ces choix (pas juste quoi, mais pourquoi) |
@@ -31,8 +33,10 @@ Ce dossier contient tout ce qu'il faut pour reprendre, opérer ou transmettre le
 |---------|------------------|
 | `README.md` (racine) | Vue synthétique, installation rapide |
 | `CLAUDE.md` (racine) | Guide développeur détaillé — règles, patterns, composants |
+| `DEPLOIEMENT.md` (racine) | Déploiement Vercel — commandes, variables, pièges CLI v53 |
 | `DESIGN.md` (racine) | Système de design — couleurs, typographie, spacing, responsive |
 | `SCENARIOS_DEMO.md` (racine) | Scénarios de démonstration pas à pas |
+| `QA_SCENARIOS.md` (racine) | Checklist QA complète — carte, overlays, états DevOverlay, emails, admin, E2E |
 | `.env.local.example` (racine) | Template des variables d'environnement |
 | `config/features.ts` | Feature flags (activer/désactiver des modules) |
 

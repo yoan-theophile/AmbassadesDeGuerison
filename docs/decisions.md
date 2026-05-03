@@ -173,6 +173,42 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 
 ---
 
+### 2026-05 | Carte vide entre les lives — is_active comme source de vérité
+
+**Décision :** Entre deux lives, aucun pin n'est affiché sur la carte publique. `host_activations.is_active = false` est la règle par défaut. Les pins n'apparaissent que pendant le live actif.
+
+**Pourquoi :** Un visiteur qui arrive entre deux lives et voit une carte pleine de pins ne comprend pas qu'il ne peut pas rejoindre une ambassade maintenant. La carte vide + un overlay contextuel ("Prochain live le...") est plus honnête et plus utile. On ne veut pas générer des demandes de contact hors fenêtre live.
+
+**Alternatives écartées :**
+- Laisser les pins visibles en permanence : crée des attentes non gérables entre les lives.
+- Désactiver les demandes de contact plutôt que les pins : confus pour le visiteur (pins = "disponible" dans son esprit).
+
+---
+
+### 2026-05 | Overlays contextuels au lieu d'une carte vide générique
+
+**Décision :** Quand `hosts.length === 0`, un composant `EmptyMapContent` affiche un message adapté selon l'état de l'app (live en cours, prochain live annoncé, dernier live passé, aucun live prévu) avec les stats de la communauté et un CTA pertinent.
+
+**Pourquoi :** David a besoin que les visiteurs comprennent QUAND est le prochain live, voient que la communauté existe déjà (N ambassadeurs dans X pays), et aient accès aux témoignages qui sont le cœur de son ministère. Un écran vide générique ("Aucune ambassade active") n'informe pas et décourage.
+
+**Alternatives écartées :**
+- Message générique unique : ne donne pas de date, ne contextualise pas.
+- Redirection vers une page d'attente dédiée : perd le bénéfice de la carte comme point d'entrée.
+
+---
+
+### 2026-05 | `live_link` par événement, pas URL fixe du channel
+
+**Décision :** Chaque événement dans la table `events` possède un champ `live_link` (nullable) que David renseigne dans `/admin/planning` lors de la création du live. L'overlay "live-zero" utilise `lastEvent.live_link` pour afficher "Regarder le live →".
+
+**Pourquoi :** L'URL d'un live YouTube change à chaque session (lien de diffusion unique). Une URL fixe du channel renverrait vers la page d'accueil de David, pas vers le live en cours. En demandant à David de saisir le lien au moment de créer l'événement, le lien est toujours précis.
+
+**Alternatives écartées :**
+- URL fixe `youtube.com/@DavidThery` : pointe vers le channel, pas le live. Mauvaise UX pendant un live.
+- Dériver l'URL automatiquement : nécessiterait l'API YouTube (quota, complexité inutile).
+
+---
+
 ## À compléter
 
 Ajouter ici chaque décision significative prise lors du développement :
