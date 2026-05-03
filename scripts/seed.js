@@ -115,7 +115,8 @@ async function run() {
 
   const hostsData = [
     {
-      first_name: 'Marie', email: 'marie.dubois@demo.fr',
+      first_name: 'Marie', last_name: 'Dubois', email: 'marie.dubois@demo.fr',
+      phone: '+33 6 12 34 56 78',
       city: 'Paris', country: 'France',
       host_type: 'individual', contact_mode: 'email', capacity: 15,
       address_private: '12 rue de la Paix, 75001 Paris',
@@ -124,7 +125,8 @@ async function run() {
       lat: 48.8698, lng: 2.3315, status: 'validated',
     },
     {
-      first_name: 'Jean-Pierre', email: 'jp.martin@demo.fr',
+      first_name: 'Jean-Pierre', last_name: 'Martin', email: 'jp.martin@demo.fr',
+      phone: '+33 6 98 76 54 32',
       city: 'Lyon', country: 'France',
       host_type: 'church', contact_mode: 'whatsapp', capacity: 80,
       address_private: '5 place Bellecour, 69002 Lyon',
@@ -135,7 +137,8 @@ async function run() {
       lat: 45.7578, lng: 4.8320, status: 'validated',
     },
     {
-      first_name: 'Fatou', email: 'fatou.diallo@demo.fr',
+      first_name: 'Fatou', last_name: 'Diallo', email: 'fatou.diallo@demo.fr',
+      phone: '+32 478 00 11 22',
       city: 'Bruxelles', country: 'Belgique',
       host_type: 'individual', contact_mode: 'telephone', capacity: 40,
       address_private: 'Avenue Louise 54, 1050 Bruxelles',
@@ -144,7 +147,8 @@ async function run() {
       lat: 50.8503, lng: 4.3517, status: 'validated',
     },
     {
-      first_name: 'Samuel', email: 'samuel.eko@demo.fr',
+      first_name: 'Samuel', last_name: 'Eko', email: 'samuel.eko@demo.fr',
+      phone: '+1 514 123 4567',
       city: 'Montréal', country: 'Canada',
       host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
       address_private: '1420 rue Sherbrooke O, Montréal, QC H3G 1K4',
@@ -153,7 +157,8 @@ async function run() {
       lat: 45.5017, lng: -73.5673, status: 'validated',
     },
     {
-      first_name: 'Claire', email: 'claire.bernard@demo.fr',
+      first_name: 'Claire', last_name: 'Bernard', email: 'claire.bernard@demo.fr',
+      phone: '+41 78 901 23 45',
       city: 'Genève', country: 'Suisse',
       host_type: 'individual', contact_mode: 'email', capacity: 8,
       address_private: 'Rue du Rhône 10, 1204 Genève',
@@ -162,7 +167,8 @@ async function run() {
       lat: 46.2044, lng: 6.1432, status: 'validated',
     },
     {
-      first_name: 'Kofi', email: 'kofi.asante@demo.fr',
+      first_name: 'Kofi', last_name: 'Asante', email: 'kofi.asante@demo.fr',
+      phone: '+225 07 01 23 45 67',
       city: 'Abidjan', country: "Côte d'Ivoire",
       host_type: 'church', contact_mode: 'whatsapp', capacity: 120,
       address_private: 'Carrefour Anono, Cocody, Abidjan',
@@ -173,7 +179,8 @@ async function run() {
       lat: 5.3600, lng: -4.0083, status: 'validated',
     },
     {
-      first_name: 'Aminata', email: 'aminata.sow@demo.fr',
+      first_name: 'Aminata', last_name: 'Sow', email: 'aminata.sow@demo.fr',
+      phone: '+221 77 123 45 67',
       city: 'Dakar', country: 'Sénégal',
       host_type: 'church', contact_mode: 'whatsapp', capacity: 60,
       address_private: 'Quartier Almadies, Dakar',
@@ -184,7 +191,8 @@ async function run() {
     },
     // Sophie : candidate en attente de validation (pour tester /inscription → /onboarding)
     {
-      first_name: 'Sophie', email: 'sophie.leroux@demo.fr',
+      first_name: 'Sophie', last_name: 'Leroux', email: 'sophie.leroux@demo.fr',
+      phone: '+33 6 55 44 33 22',
       city: 'Bordeaux', country: 'France',
       host_type: 'individual', contact_mode: 'email', capacity: 10,
       address_private: "8 cours de l'Intendance, 33000 Bordeaux",
