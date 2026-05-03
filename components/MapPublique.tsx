@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { Search } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap } from 'leaflet';
 
@@ -335,21 +336,24 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
       {/* Barre de recherche par ville */}
-      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 pointer-events-auto">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => {
-            const q = e.target.value;
-            setSearchQuery(q);
-            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-            searchTimeoutRef.current = setTimeout(() => searchCity(q), 400);
-          }}
-          onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
-          onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-          placeholder="Rechercher une ville…"
-          className="w-full bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl shadow-md px-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow"
-        />
+      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 lg:w-80 pointer-events-auto">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              const q = e.target.value;
+              setSearchQuery(q);
+              if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+              searchTimeoutRef.current = setTimeout(() => searchCity(q), 400);
+            }}
+            onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+            onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+            placeholder="Rechercher une ville…"
+            className="w-full bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl shadow-md pl-8 pr-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow"
+          />
+        </div>
         {searchOpen && searchResults.length > 0 && (
           <ul className="absolute top-full mt-1 w-full bg-white border border-slate-100 rounded-xl shadow-lg overflow-hidden">
             {searchResults.map((r, i) => {
