@@ -240,6 +240,24 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 - Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
 - Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
 
+## Pages preview homepage (`/preview`)
+
+3 directions de design alternatives pour la homepage — non indexées (`noindex, nofollow`). À montrer à David pour qu'il choisisse une direction visuelle.
+
+| Route | Direction | Description |
+|-------|-----------|-------------|
+| `/preview/homepage-poster` | Poster | Hero typographique, pas de carte |
+| `/preview/homepage-annuaire` | Annuaire | Compteur géant + tableau pays/villes |
+| `/preview/homepage-storytelling` | Storytelling | Témoignages en plein écran défilants |
+
+**Utilitaire partagé** : `lib/preview-utils.ts` — `getCountdown()` et `daysSince()`. Les 3 pages importent depuis ce fichier.
+
+**États gérés** : `liveInProgress` (badge Radio pulsing), `nextEvent` (countdown), `!nextEvent && lastEvent` (message "Dernier live il y a X jours").
+
+**Navigation** : `app/preview/layout.tsx` — barre de navigation sticky entre les 3 directions.
+
+**Tester avec le DevOverlay** : bouton `DEV 🔧` bas-droite sur `localhost:3000` — cycler les 7 états (live, live-zero, soon, upcoming, past, closed, blank) puis naviguer vers `/preview/homepage-*`.
+
 ## Règles importantes
 
 - `lib/supabase/server.ts` (service_role) : JAMAIS importé depuis un Client Component
