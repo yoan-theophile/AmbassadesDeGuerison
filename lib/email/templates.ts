@@ -20,6 +20,7 @@ import SignalApproved from '@/emails/signal-approved';
 import NouvelleActivationAdmin from '@/emails/nouvelle-activation-admin';
 import EnrichissementRecu from '@/emails/enrichissement-recu';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
+import AmbassadeurModificationAdmin from '@/emails/ambassadeur-modification-admin';
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -250,6 +251,25 @@ export async function sendEnrichissementRecu(adminEmail: string, ambassadeurFirs
     subject: `Questionnaire soumis — ${ambassadeurFirstName} attend sa validation finale`,
     react: React.createElement(EnrichissementRecu, {
       ambassadeurFirstName,
+      adminUrl: `${APP_URL()}/admin/ambassadeurs`,
+    }),
+  });
+}
+
+export async function sendAmbassadeurModificationAdmin(
+  adminEmail: string,
+  ambassadeurFirstName: string,
+  ancienneVille: string,
+  nouvelleVille: string,
+) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: adminEmail,
+    subject: `${ambassadeurFirstName} a modifié sa ville — ${ancienneVille} → ${nouvelleVille}`,
+    react: React.createElement(AmbassadeurModificationAdmin, {
+      ambassadeurFirstName,
+      ancienneVille,
+      nouvelleVille,
       adminUrl: `${APP_URL()}/admin/ambassadeurs`,
     }),
   });

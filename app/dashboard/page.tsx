@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Dropzone from '@/components/ui/Dropzone';
 import StatusTimeline from '@/components/dashboard/StatusTimeline';
+import MesInfosSection from '@/app/dashboard/MesInfosSection';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
@@ -24,6 +25,9 @@ interface HostProfile {
   email: string;
   profile_photo_url: string | null;
   room_photo_urls: string[] | null;
+  address_private: string | null;
+  consignes: string | null;
+  phone: string | null;
 }
 
 interface Activation {
@@ -96,7 +100,7 @@ export default function DashboardPage() {
 
     const { data: prof } = await supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls')
+      .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls, address_private, consignes, phone')
       .eq('user_id', user.id)
       .single();
 
@@ -742,6 +746,11 @@ export default function DashboardPage() {
               {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
             </button>
           </section>
+        )}
+
+        {/* Mes informations — édition autonome (validés uniquement) */}
+        {profile.status === 'validated' && (
+          <MesInfosSection profile={profile} />
         )}
 
         {/* Mes demandes */}
