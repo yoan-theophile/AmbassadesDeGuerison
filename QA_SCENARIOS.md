@@ -297,12 +297,21 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 9 — Onboarding `/onboarding` *(flux legacy — non utilisé dans le pipeline actuel)*
+## Module 9 — Onboarding self-service inline (`/dashboard` pour `pending_review`)
 
-> ⚠️ Le flux principal est désormais admin-driven (`pending_review → pre_approved → questionnaire → enrichment_pending → validated`). La page `/onboarding` reste accessible mais n'est plus le chemin critique. Le statut `pending_onboarding` n'existe pas en DB.
+> Pipeline self-service jusqu'au questionnaire : `/inscription → pending_review → pre_approved → enrichment_pending → validated`. La transition `pending_review → pre_approved` est déclenchée par le candidat lui-même depuis son dashboard (pas d'admin). La route `/onboarding` autonome a été supprimée.
 
-- [ ] La page `/onboarding` charge sans erreur 500
-- [ ] Un profil `validated` accédant à `/onboarding` est redirigé vers `/dashboard`
+- [ ] `GET /onboarding` retourne 404 (route legacy supprimée)
+- [ ] Connecté en tant que Sophie (`pending_review`) → `/dashboard` affiche l'encart "Bienvenue, Sophie !" avec invite à regarder la vidéo
+- [ ] Vidéo de formation YouTube visible (iframe `enablejsapi=1`)
+- [ ] Bouton "Télécharger" le guide PDF visible et fonctionnel
+- [ ] Checkbox "J'ai regardé la vidéo et accepté les conditions" **désactivée** par défaut
+- [ ] Cliquer dans l'iframe vidéo → la checkbox devient activable (détection blur)
+- [ ] Cocher la checkbox → le bouton "Activer mon onboarding" devient cliquable
+- [ ] Cliquer "Activer mon onboarding" → `PATCH /api/onboarding/complete` retourne 200 → dashboard recharge → encart "Conditions acceptées" visible avec CTA "Compléter mon profil →"
+- [ ] Second appel à `PATCH /api/onboarding/complete` (idempotent) → 200 noop, status reste `pre_approved`
+- [ ] `PATCH /api/onboarding/complete` sans session → 401
+- [ ] `PATCH /api/onboarding/complete` depuis statut `suspended` → 400
 
 ---
 
@@ -390,8 +399,8 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Actions par statut
 
-- [ ] Sophie (`pending_review`) → boutons "Pré-approuver" + "Refuser"
-- [ ] Sophie (`pre_approved`) → bouton "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard)
+- [ ] Sophie (`pending_review`) → bouton "Refuser" uniquement (la transition vers `pre_approved` est désormais self-service côté candidat — l'admin ne peut pas pré-approuver)
+- [ ] Sophie (`pre_approved`) → boutons "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis)
 - [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
 - [ ] Marie (`validated`) → bouton "Suspendre"
 - [ ] Marie (`suspended`) → bouton "Réactiver"
@@ -485,8 +494,8 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 23 — Admin : settings onboarding `/admin/settings`
 
 - [ ] La page charge avec l'URL vidéo actuelle (vide → fallback `config/onboarding.ts`)
-- [ ] Modifier l'URL YouTube → sauvegarder → la page `/onboarding` affiche la nouvelle vidéo
-- [ ] Modifier le chemin PDF → sauvegarder → répercuté dans `/onboarding`
+- [ ] Modifier l'URL YouTube → sauvegarder → l'encart pending_review du `/dashboard` affiche la nouvelle vidéo
+- [ ] Modifier le chemin PDF → sauvegarder → lien "Télécharger" dans le `/dashboard` pointe vers le nouveau chemin
 
 ---
 
@@ -575,20 +584,21 @@ npm run test:e2e
 
 ---
 
-## Module 30 — Cycle de statut ambassadeur (admin)
+## Module 30 — Cycle de statut ambassadeur
 
-> Tester depuis `/admin/ambassadeurs`. Utiliser Sophie (`pending_review`) et Marie (`validated`).
+> Pipeline self-service jusqu'au questionnaire. L'admin n'intervient qu'à la fin (validation finale ou refus). Utiliser Sophie (`pending_review`) et Marie (`validated`).
 
-| Transition | Action admin | Résultat attendu |
+| Transition | Déclencheur | Résultat attendu |
 |---|---|---|
-| `pending_review → pre_approved` | Bouton "Pré-approuver" | Statut `pre_approved`, email avec CTA questionnaire envoyé |
-| `pre_approved → enrichment_pending` | Sophie ouvre `/dashboard/questionnaire` et soumet | Statut `enrichment_pending`, notif admin reçue |
-| `enrichment_pending → validated` | Bouton "Valider" (standard) | Statut `validated`, email bienvenue envoyé |
-| `pre_approved → validated` (bypass) | Bouton "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
-| `validated → suspended` | Bouton "Suspendre" | Statut `suspended`, pin disparaît de la carte |
-| `suspended → validated` | Bouton "Réactiver" | Statut `validated`, pin réapparaît |
-| `pending_review → rejected` | Bouton "Refuser" | Statut `rejected` |
-| ~~`pre_approved → validated` (API directe)~~ | POST action=`validated` sur un `pre_approved` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire" |
+| `pending_review → pre_approved` | Sophie clique "Activer mon onboarding" sur `/dashboard` | Statut `pre_approved`, **aucun email envoyé**, dashboard recharge avec encart "Conditions acceptées" |
+| `pre_approved → enrichment_pending` | Sophie soumet `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin reçue |
+| `enrichment_pending → validated` | Admin clique "Valider" depuis `/admin/ambassadeurs` | Statut `validated`, email bienvenue envoyé |
+| `* → validated` (bypass) | Admin clique "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
+| `validated → suspended` | Admin clique "Suspendre" | Statut `suspended`, pin disparaît de la carte |
+| `suspended → validated` | Admin clique "Réactiver" | Statut `validated`, pin réapparaît |
+| `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected` |
+| ~~admin action `pre_approved`~~ | POST `action: 'pre_approved'` | **400 JSON** — "Action invalide" (transition désormais self-service) |
+| ~~admin valider depuis `pending_review`~~ | POST `action: 'validated'` sur `pending_review` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire. Utilisez validated_bypass si nécessaire." |
 
 ---
 
@@ -895,7 +905,7 @@ npm run dev
 |---|---|---|---|
 | 1 | `magic-link` | Magic link (connexion standard) | [ ] |
 | ~~2~~ | ~~`magic-link-bienvenue`~~ | ~~Magic link — bienvenue nouvel inscrit~~ | 🗑 Supprimé — redondant avec `registration-confirmation` |
-| 3 | `pre-validation-accordee` | Pré-validation accordée | [ ] |
+| ~~3~~ | ~~`pre-validation-accordee`~~ | ~~Pré-validation accordée~~ | 🗑 Supprimé — la transition `pending_review → pre_approved` est désormais self-service (pas d'email intermédiaire) |
 | 4 | `bienvenue-ambassadeur` | Bienvenue ambassadeur (validation finale) | [ ] |
 | 5 | `validation-finale` | Validation finale — ambassade active | [ ] |
 | 6 | `registration-confirmation` | Confirmation inscription | [ ] |
@@ -924,7 +934,7 @@ npm run dev
 | **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? | Garder "ambassadeur" dans les emails internes. Dans `campagne-visiteurs`, ajouter une ligne de contextualisation ("chez des particuliers ou des petites églises") pour les non-initiés. C'est déjà en partie là. |
 | **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? | Prénom seul est le bon registre pastoral. Ajouter le nom = ton administratif. Pas de changement. |
 | **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. `magic-link-bienvenue` a été supprimé (redondant). Le magic link standard reste fonctionnel. |
-| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? | Bon ton. "Bonne nouvelle !" est du vocabulaire pastoral naturel. Option d'enrichissement : "Vous faites partie de ceux qui étendent le réseau de guérison dans le monde." — pas bloquant. |
+| ~~Pré-validation~~ | Question retirée. Le template `pre-validation-accordee` a été supprimé : la transition `pending_review → pre_approved` est désormais déclenchée par le candidat lui-même sur le dashboard (vidéo + PDF + checkbox CGU). Pas d'email à ce stade — le candidat est connecté et voit immédiatement le questionnaire débloqué. | — |
 | **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? | **OUI, recommandé.** `validation-finale` se termine par "Merci d'ouvrir votre maison. C'est là que tout se passe." — ajouter "— David Théry" transforme l'email système en lettre personnelle. Idem pour `bienvenue-ambassadeur`. |
 | **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? | Utilisé à chaque live. Ajouter un placeholder dans le champ admin : "Décris le live en 1-2 phrases. Ex : Ce soir, David priera pour les malades." |
 | **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? | Formulaire interne (`/feedback?token=...`). La page n'existe pas encore — à construire. Google Form = perte de données et coupure de marque. |

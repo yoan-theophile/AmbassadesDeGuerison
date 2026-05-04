@@ -56,13 +56,14 @@ Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API R
 
 ### Preview emails (React Email)
 
-19 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
+18 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
 `lib/email/templates.ts` contient les fonctions `sendXxx` qui utilisent `react:` au lieu de `html:`.
 
 Templates **supprimés** (orphelins — jamais appelés depuis une route) :
 - `magic-link-bienvenue.tsx` — variante bienvenue du magic link, redondante avec `registration-confirmation`
 - `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
 - `contact-reserved.tsx` — "place réservée" envoyée au visiteur avant acceptation de l'hôte ; supprimée quand le flux a été corrigé (seul `acceptation-visite` est envoyé, après acceptation explicite de l'hôte)
+- `pre-validation-accordee.tsx` — déclenchée par l'admin pre_approve. Supprimée quand la transition `pending_review → pre_approved` est passée en self-service (le candidat est sur le dashboard, le questionnaire s'affiche immédiatement, pas besoin d'email)
 
 **Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
 Ajouter dans `.env.local` :
@@ -126,20 +127,34 @@ Toutes les routes cron exigent le header `x-cron-secret: $CRON_SECRET`.
 
 ## Pipeline d'activation ambassadeur
 
-Flux admin-driven (self-service supprimé) :
+Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 
 ```
-/inscription → pending_review → (admin) → pre_approved → enrichment_pending → validated
-                                                                              ↕
-                                                                          suspended
+/inscription → pending_review
+                  │
+                  │ candidat regarde vidéo + télécharge PDF + clique "J'accepte"
+                  │ POST /api/onboarding/complete  (auth, plus aucune action admin)
+                  ▼
+              pre_approved (CGU acceptées, questionnaire débloqué)
+                  │
+                  │ candidat remplit le questionnaire
+                  │ PATCH /api/ambassadeur/enrichissement
+                  ▼
+              enrichment_pending (admin queue)
+                  │
+                  │ admin valide ou refuse depuis /admin/ambassadeurs
+                  ▼
+              validated  OR  rejected
+                  ↕
+              suspended (admin)
 ```
 
-- L'inscription crée le profil avec `status = 'pending_review'`. L'admin valide via `/admin/ambassadeurs`.
-- `PATCH /api/admin/ambassadeurs/[id]` : transitions `validated ↔ suspended`.
-- `PATCH /api/onboarding/complete` : transition `pending_review → validated` via la page `/onboarding`. Utilisable si on veut réactiver un flux self-service partiel — déclenche `sendNouvelleActivationAdmin` + `sendBienvenueAmbassadeur`.
-- Le dashboard (`app/dashboard/page.tsx`) gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
-- **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
-- Statuts valides (contrainte CHECK DB) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
+- L'inscription crée le profil avec `status = 'pending_review'`.
+- **Gate inline dans `/dashboard`** : pour `pending_review`, l'encart contextuel intègre vidéo + lien PDF + checkbox "J'accepte" + bouton "Activer mon onboarding". Cliquer le bouton appelle `PATCH /api/onboarding/complete` qui fait passer `pending_review → pre_approved`. **Pas d'email** — le candidat est sur le dashboard, le questionnaire est immédiatement visible. Idempotent : déjà ≥ pre_approved → 200 noop ; statuts terminaux (suspended/rejected) → 400. La route `/onboarding` autonome n'existe plus.
+- **Video gate** : la checkbox d'engagement reste désactivée jusqu'au premier clic dans la vidéo YouTube (le candidat doit avoir interagi avec). Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement`. Helper `buildVideoUrl` exporté depuis `lib/youtube.ts`.
+- **Admin** (`PATCH /api/admin/ambassadeurs/[id]/status`) : actions valides = `validated`, `validated_bypass`, `rejected`, `suspended`, `reactiver`. L'action `pre_approved` n'existe **plus** (transition self-service). `validated` n'est autorisé que depuis `enrichment_pending` ; `validated_bypass` permet l'escape hatch depuis n'importe quel statut. La validation finale envoie `sendNouvelleActivationAdmin` + `sendValidationFinale` (bienvenue).
+- Le dashboard gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
+- Statuts valides (contrainte CHECK DB inchangée) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
 - `enrichment_pending` requiert `profile_photo_url` non NULL — la route `PATCH /api/ambassadeur/enrichissement` refuse la soumission si la photo de profil n'a pas été uploadée.
 - Ambassadeur validé : `PATCH /api/ambassadeur/profile` permet d'éditer ville (+ re-géocodage), adresse privée, consignes et téléphone. Si la ville change, un email `ambassadeur-modification-admin` est envoyé à l'admin. Si `lat`/`lng` sont absents (ville tapée sans sélection dropdown), retourne 400.
 
@@ -254,12 +269,11 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieurs Client Components.
 
 - **Encarts contextuels selon le statut** (dans le bloc `isOnboarding`) :
-  - `pending_review` → encart ambre "Ta candidature a bien été reçue !" + attente email + invite à regarder la vidéo
-  - `pre_approved` → encart indigo "Félicitations, tu as été pré-approuvé !" + CTA `/dashboard/questionnaire`
+  - `pending_review` → encart ambre "Bienvenue, {prénom} !" + gate self-service inline : vidéo de formation, bouton "Télécharger le guide pratique" (PDF), checkbox "J'ai regardé la vidéo et accepté les conditions" (désactivée tant que la vidéo n'a pas été cliquée), bouton "Activer mon onboarding" qui appelle `PATCH /api/onboarding/complete` → transition `pending_review → pre_approved`. Helper `buildVideoUrl` importé depuis `lib/youtube.ts` ajoute `enablejsapi=1` à l'URL YouTube. Détection iframe via `window.addEventListener('blur', ...)` scopé à `profile?.status === 'pending_review'`.
+  - `pre_approved` → encart indigo "Conditions acceptées" + CTA `/dashboard/questionnaire`
   - `enrichment_pending` → encart violet "Ton dossier est en cours d'examen"
-  - Document PDF et bouton "j'accepte les conditions" : **intentionnellement absents** — ils appartenaient à l'ancien flux self-service (`/onboarding`), supprimé quand le pipeline est passé admin-driven.
 - **`MissionDuMoment`** (`components/dashboard/MissionDuMoment.tsx`) : carte contextuelle prioritaire en haut du dashboard pour les ambassadeurs `validated`. 5 états selon la priorité décroissante : (1) signal approuvé → invite à rejoindre le live (emerald) ; (2) signal envoyé → "en attente de David" (indigo atténué) ; (3) live en cours sans signal → formulaire de signal (indigo) ; (4) demandes en attente → nudge amber ; (5) live dans ≤ 3 jours non confirmé → nudge bleu discret. Retourne `null` si aucune condition active.
-- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes **affiché uniquement pour les ambassadeurs non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Étapes : Inscription → Pré-approbation → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`. Absent du dashboard pour les `validated` (ils ont terminé leur parcours).
+- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes **affiché uniquement pour les ambassadeurs non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Étapes : Inscription → Conditions acceptées → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`. Absent du dashboard pour les `validated` (ils ont terminé leur parcours).
 - **Ordre des sections pour `validated`** : MissionDuMoment → Mes lives → **Mes demandes** (remonté — urgences prioritaires) → Témoignage live (si live en cours) → Mon ambassade → Photos → MesInfosSection → **Formation (collapsée par défaut)**.
 - **Formation collapsée par défaut** : bouton toggle "Formation ambassadeur" toujours visible ; l'iframe YouTube ne se monte qu'après le clic (`showFormation` state). Pour `enrichment_pending` et autres non-validés, la formation est affichée immédiatement (onboarding).
 - **Section "Mes lives"** : pour chaque `host_activation`, affiche une carte CTA :

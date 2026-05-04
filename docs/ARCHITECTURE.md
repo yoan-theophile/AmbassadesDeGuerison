@@ -115,34 +115,44 @@ MapWrapper (Client Component, SSR:false pour Leaflet)
 
 ## Cycle de vie d'un ambassadeur
 
+Pipeline self-service jusqu'au questionnaire — l'admin n'intervient qu'à la fin, sur un dossier complet.
+
 ```
 /inscription
   │  POST /api/inscriptions
   │  → status = 'pending_review'
   │  → email sendRegistrationConfirmation
   ▼
-Dashboard admin /admin/ambassadeurs
-  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'pre_approve' }
-  │  → status = 'pre_approved'
-  │  → email sendPreValidationAccordee (lien questionnaire + vidéo)
+/dashboard (encart pending_review : vidéo + PDF + checkbox CGU + bouton)
+  │  candidat regarde la vidéo, télécharge le guide, accepte les conditions
+  │  PATCH /api/onboarding/complete  (auth, plus aucune action admin)
+  │  → status = 'pre_approved' (idempotent : 200 noop si déjà ≥ pre_approved)
+  │  → log structuré, aucun email envoyé
   ▼
-/dashboard/questionnaire (ambassadeur)
+/dashboard/questionnaire (ambassadeur, accessible dès pre_approved)
   │  PATCH /api/ambassadeur/enrichissement
   │  → status = 'enrichment_pending'
   │  → photos requises : profile_photo_url (chemin bucket privé) doit être non NULL
+  │  → email sendEnrichissementRecu (notification admin)
   ▼
-Dashboard admin (revue du questionnaire)
-  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'validate' }
+/admin/ambassadeurs (revue du dossier complet)
+  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'validated' }
   │  → status = 'validated'
-  │  → email sendBienvenueAmbassadeur + sendNouvelleActivationAdmin
+  │  → email sendValidationFinale (bienvenue ambassadeur)
   │  → trigger DB crée host_activations (is_active=false) pour tous les events futurs
   ▼
 Hôte visible sur la carte au prochain live
   (après réception de la campagne email et clic sur le lien d'activation)
 ```
 
-Transitions inverses : `validated ↔ suspended` via
-`PATCH /api/admin/ambassadeurs/[id]/status`.
+Transitions admin valides (`PATCH /api/admin/ambassadeurs/[id]/status`) :
+- `validated` (depuis enrichment_pending uniquement)
+- `validated_bypass` (escape hatch, depuis n'importe quel statut)
+- `rejected` (depuis n'importe quel statut)
+- `suspended` (depuis validated)
+- `reactiver` (depuis suspended ou rejected, → validated)
+
+L'action `pre_approve` n'existe **plus** côté admin — la transition `pending_review → pre_approved` est exclusivement self-service.
 
 ---
 
@@ -199,7 +209,8 @@ Après le live
 | `/api/testimonials` | Lecture/modération témoignages | Admin |
 | `/api/live-signals` | Signaux live depuis dashboard hôte | Session hôte |
 | `/api/inscriptions` | Création profil ambassadeur | Non |
-| `/api/onboarding/*` | Questionnaire + config onboarding | Session hôte / Admin |
+| `/api/onboarding/complete` | Self-service : pending_review → pre_approved (CGU acceptées) | Session candidat |
+| `/api/onboarding/config` | Config vidéo + PDF onboarding | Public (lecture) / Admin (écriture) |
 | `/api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire) | Session hôte |
 | `/api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, téléphone) | Session hôte |
 | `/api/admin/*` | Toutes les actions admin | Admin uniquement |
@@ -299,7 +310,8 @@ Mis à jour manuellement à chaque PR significative.
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. |
-| Pipeline candidat (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | |
+| Onboarding self-service | ✅ | `PATCH /api/onboarding/complete` | Gate inline dans `/dashboard` pour `pending_review` : vidéo + PDF + CGU + bouton. Idempotent. Aucune action admin requise. |
+| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse, consignes, téléphone. Email admin si ville change. |
@@ -402,10 +414,11 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/live-signals` | Signal live depuis dashboard hôte | Session hôte | ✅ |
 | `GET /api/live-signals` | Feed signaux (admin/live) | Admin | ✅ |
 | `POST /api/inscriptions` | Création profil ambassadeur | Non | ✅ |
-| `GET/PATCH /api/onboarding/*` | Questionnaire + config | Session hôte / Admin | ✅ |
+| `PATCH /api/onboarding/complete` | Self-service : pending_review → pre_approved | Session candidat | ✅ |
+| `GET /api/onboarding/config` | Config vidéo + PDF onboarding (lecture publique) | Public | ✅ |
 | `PATCH /api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire, photos) | Session hôte | ✅ |
 | `PATCH /api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, tél.) | Session hôte | ✅ |
-| `PATCH /api/admin/ambassadeurs/[id]/status` | Pipeline candidat | Admin | ✅ |
+| `PATCH /api/admin/ambassadeurs/[id]/status` | Validation finale + suspension/réintégration | Admin | ✅ |
 | `POST/DELETE /api/admin/team` | Gestion équipe admin | Super admin | ✅ |
 | `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
 | `GET/PATCH /api/admin/settings/onboarding` | Config vidéo/PDF onboarding | Admin | ✅ |
