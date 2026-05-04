@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
@@ -20,6 +20,7 @@ export default function InscriptionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showWhatsAppHelp, setShowWhatsAppHelp] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -206,9 +207,37 @@ export default function InscriptionPage() {
 
           {step === 3 && (
             <>
-              <Field label="Lien groupe WhatsApp (optionnel)">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Lien groupe WhatsApp <span className="font-normal text-slate-400">(optionnel)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppHelp((v) => !v)}
+                    className="text-slate-400 hover:text-indigo-600 transition-colors"
+                    aria-label="En savoir plus sur le lien WhatsApp"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                </div>
                 <input type="url" value={form.whatsapp_group_url} onChange={(e) => set('whatsapp_group_url', e.target.value)} className={inputCls} placeholder="https://chat.whatsapp.com/..." />
-              </Field>
+                {showWhatsAppHelp && (
+                  <div className="mt-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-2">
+                    <p><span className="font-medium text-slate-700">À quoi ça sert ?</span> Ce lien apparaît sur votre page ambassade publique. Les visiteurs peuvent rejoindre votre groupe directement — avant même de vous contacter personnellement.</p>
+                    <p><span className="font-medium text-slate-700">Particulièrement utile pour une église.</span> Votre groupe devient un canal de mobilisation : les fidèles partagent le lien, coordonnent l'arrivée et restent en contact après le live.</p>
+                    <div>
+                      <p className="font-medium text-slate-700 mb-1">Comment créer le lien ?</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-slate-500">
+                        <li>Ouvrez votre groupe WhatsApp</li>
+                        <li>Appuyez sur le nom du groupe → <strong>Infos du groupe</strong></li>
+                        <li>→ <strong>Lien d'invitation</strong> → <strong>Copier le lien</strong></li>
+                      </ol>
+                    </div>
+                    <p className="text-amber-600 font-medium">⚠️ Ce lien est public — tout visiteur qui consulte votre fiche peut rejoindre le groupe. Ne l'utilisez que si votre groupe est ouvert.</p>
+                  </div>
+                )}
+              </div>
 
               <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 border border-slate-100">
                 <p className="font-medium text-slate-800 mb-1">Récapitulatif</p>
