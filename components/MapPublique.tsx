@@ -36,6 +36,16 @@ interface HostPin {
   host_type: string;
 }
 
+function makeClusterIcon(L: any, count: number) {
+  return L.divIcon({
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:#4f46e5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;line-height:1;">${count}</div>`,
+    className: '',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -22],
+  });
+}
+
 function makeIcon(L: any, hostType: string, isFull: boolean) {
   const isChurch = hostType === 'eglise' || hostType === 'church';
   const bg = isFull ? '#ef4444' : isChurch ? '#7c3aed' : '#4f46e5';
@@ -268,10 +278,20 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         if (layer instanceof L.Marker) mapRef.current!.removeLayer(layer);
       });
 
-      // Ajoute les nouveaux
-      hosts
-        .filter((h) => h.lat && h.lng)
-        .forEach((host) => {
+      // Regroupe les hôtes par coordonnées exactes pour éviter la superposition
+      const grouped = new Map<string, HostPin[]>();
+      hosts.filter((h) => h.lat && h.lng).forEach((host) => {
+        const key = `${host.lat},${host.lng}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(host);
+      });
+
+      grouped.forEach((group, key) => {
+        const [lat, lng] = key.split(',').map(Number);
+
+        if (group.length === 1) {
+          // Pin individuel — comportement existant
+          const host = group[0];
           const fullBadge = host.is_full
             ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
             : '';
@@ -285,10 +305,39 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             </div>
           `;
-          L.marker([host.lat, host.lng], { icon: makeIcon(L, host.host_type, host.is_full) })
+          L.marker([lat, lng], { icon: makeIcon(L, host.host_type, host.is_full) })
             .addTo(mapRef.current!)
             .bindPopup(popup, { maxWidth: 280 });
-        });
+        } else {
+          // Pin groupé — plusieurs ambassades à la même localisation
+          const city = group[0].city;
+          const rows = group.map((host) => {
+            const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
+            const fullBadge = host.is_full
+              ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">Complet</span>'
+              : '';
+            const cta = !host.is_full
+              ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
+              : '';
+            return `
+              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
+                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}</p>
+                <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+                ${cta}
+              </div>
+            `;
+          }).join('');
+          const popup = `
+            <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
+              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${city}</p>
+              ${rows}
+            </div>
+          `;
+          L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
+            .addTo(mapRef.current!)
+            .bindPopup(popup, { maxWidth: 300 });
+        }
+      });
     }
 
     updatePins();
