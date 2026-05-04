@@ -79,6 +79,8 @@ export default function DashboardPage() {
   const [photoError, setPhotoError] = useState('');
   // Signed URLs pour l'affichage des photos (path → signedUrl)
   const [photoSignedUrls, setPhotoSignedUrls] = useState<Record<string, string>>({});
+  // Révèle la section photos pour les ambassadeurs validés (hors enrichissement)
+  const [showPhotosEdit, setShowPhotosEdit] = useState(false);
 
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
@@ -483,7 +485,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Photos */}
+        {/* Photos — visible pendant l'enrichissement ou si l'ambassadeur veut modifier */}
+        {(profile.status === 'enrichment_pending' || showPhotosEdit) && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-5">
           <div className="flex items-center gap-2">
             <Camera className="w-4 h-4 text-indigo-500" />
@@ -547,6 +550,18 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        )}
+
+        {/* Modifier mes photos — bouton discret pour les ambassadeurs validés */}
+        {profile.status === 'validated' && !showPhotosEdit && (
+          <button
+            onClick={() => setShowPhotosEdit(true)}
+            className="flex items-center gap-2 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
+          >
+            <Camera className="w-3 h-3" />
+            Modifier mes photos
+          </button>
+        )}
 
         {/* Signal live — visible uniquement pendant la fenêtre du live */}
         {profile.status === 'validated' && currentEvent && (
