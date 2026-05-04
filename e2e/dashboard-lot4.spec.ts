@@ -2,13 +2,14 @@ import { test, expect } from '@playwright/test';
 import { AMBASSADOR_STATE } from './auth-state';
 
 /**
- * E2E Lot 4 — Dashboard refondu
+ * E2E Lot 4 — Dashboard refondu (layout contextuel)
  *
  * Vérifie que :
- * - Le stepper StatusTimeline s'affiche sur le dashboard
+ * - Le stepper StatusTimeline est absent pour un ambassadeur validé
  * - La section "Mes lives" affiche un CTA "Je participe" au lieu d'un toggle
  * - La section "Mes demandes" n'utilise pas line-clamp-2 sur les messages
  * - Les boutons Accepter / Refuser sont bien présents pour les demandes en attente
+ * - La formation est collapsée par défaut (bouton toggle visible)
  * - Le dashboard redirige non-authentifié vers /auth
  */
 
@@ -32,14 +33,22 @@ test.describe('Dashboard Lot 4 — structure (authentifié)', () => {
     );
   });
 
-  test('stepper parcours affiché', async ({ page }) => {
+  test('stepper parcours absent pour un ambassadeur validé', async ({ page }) => {
     await page.goto('/dashboard');
-    // networkidle ne fonctionne pas avec le serveur dev Next.js (WebSocket HMR).
-    // Les textes du stepper sont dans le HTML SSR — on attend leur apparition directement.
-    await expect(page.getByText('Inscription')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Pré-approbation')).toBeVisible();
-    await expect(page.getByText('Profil enrichi')).toBeVisible();
-    await expect(page.getByText('Validation finale')).toBeVisible();
+    // Pour un ambassadeur validé, le stepper (StatusTimeline) est retiré — il a terminé son parcours.
+    // On attend d'abord que la page soit chargée (le greeting apparaît), puis on vérifie l'absence.
+    await expect(page.getByText('Bonjour')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Pré-approbation')).not.toBeVisible();
+    await expect(page.getByText('Profil enrichi')).not.toBeVisible();
+  });
+
+  test('formation collapsée par défaut, toggle visible', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByText('Bonjour')).toBeVisible({ timeout: 10_000 });
+    // Le bouton de toggle formation doit être visible
+    await expect(page.getByRole('button', { name: /Formation ambassadeur/ })).toBeVisible();
+    // La vidéo (iframe) ne doit pas être présente avant le clic
+    await expect(page.locator('iframe')).not.toBeVisible();
   });
 
   test('section Mes lives — CTA "Je participe" ou badge "Vous participez" visibles', async ({ page }) => {

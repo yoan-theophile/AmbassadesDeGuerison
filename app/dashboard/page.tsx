@@ -4,12 +4,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import {
-  CheckCircle2, Copy, Home, LogOut, Radio, Share2,
+  CheckCircle2, Copy, Home, LogOut, Share2,
   MessageSquare, Send, ExternalLink, Play, UserCheck, UserX, Camera,
-  Calendar, Loader2,
+  Calendar, Loader2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import Dropzone from '@/components/ui/Dropzone';
 import StatusTimeline from '@/components/dashboard/StatusTimeline';
+import MissionDuMoment from '@/components/dashboard/MissionDuMoment';
 import MesInfosSection from '@/app/dashboard/MesInfosSection';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
@@ -84,10 +85,11 @@ export default function DashboardPage() {
   // Photos upload
   const [photoUploading, setPhotoUploading] = useState<'profile' | 'room' | null>(null);
   const [photoError, setPhotoError] = useState('');
-  // Signed URLs pour l'affichage des photos (path → signedUrl)
   const [photoSignedUrls, setPhotoSignedUrls] = useState<Record<string, string>>({});
-  // Révèle la section photos pour les ambassadeurs validés (hors enrichissement)
   const [showPhotosEdit, setShowPhotosEdit] = useState(false);
+
+  // Formation (masquée par défaut pour les validés)
+  const [showFormation, setShowFormation] = useState(false);
 
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
@@ -136,7 +138,6 @@ export default function DashboardPage() {
 
     const event = activeEvent ? { id: activeEvent.id, live_link: activeEvent.live_link ?? null } : null;
 
-    // Vérifie si un signal de cet ambassadeur a déjà été approuvé pour ce live
     if (event) {
       const { data: approved } = await supabase
         .from('live_signals')
@@ -154,7 +155,6 @@ export default function DashboardPage() {
     setContactRequests(reqs ?? []);
     setCurrentEvent(event);
 
-    // Génère les signed URLs pour les photos (bucket privé)
     const paths = [prof.profile_photo_url, ...(prof.room_photo_urls ?? [])].filter(Boolean) as string[];
     if (paths.length > 0) {
       const entries = await Promise.all(
@@ -284,7 +284,6 @@ export default function DashboardPage() {
     if (!res.ok) {
       setPhotoError(data.error ?? 'Erreur lors de l\'upload.');
     } else {
-      // data.path = chemin stocké en DB, data.url = signed URL pour affichage immédiat
       const { path, url } = data;
       setProfile((prev) => {
         if (!prev) return prev;
@@ -303,7 +302,6 @@ export default function DashboardPage() {
       if (!prev) return prev;
       return { ...prev, room_photo_urls: (prev.room_photo_urls ?? []).filter((u) => u !== url) };
     });
-    // Note : suppression du Storage non implémentée côté client (cleanup géré côté serveur si besoin)
   }
 
   async function handleContactAction(token: string, action: 'accept' | 'decline') {
@@ -336,6 +334,9 @@ export default function DashboardPage() {
 
   if (!profile) return null;
 
+  const isValidated = profile.status === 'validated';
+  const isOnboarding = ['pending_review', 'pre_approved', 'enrichment_pending'].includes(profile.status);
+
   const statusLabels: Record<string, string> = {
     pending_review:     'Candidature en cours',
     pre_approved:       'Pré-approuvé',
@@ -356,10 +357,10 @@ export default function DashboardPage() {
   };
 
   const REQUEST_STATUS: Record<string, { label: string; cls: string }> = {
-    pending:                  { label: 'En attente',  cls: 'bg-amber-50 text-amber-700'    },
-    accepted:                 { label: 'Acceptée',    cls: 'bg-emerald-50 text-emerald-700' },
-    declined:                 { label: 'Refusée',     cls: 'bg-red-50 text-red-700'         },
-    cancelled_no_response:    { label: 'Expirée',     cls: 'bg-slate-100 text-slate-500'    },
+    pending:               { label: 'En attente',  cls: 'bg-amber-50 text-amber-700'    },
+    accepted:              { label: 'Acceptée',    cls: 'bg-emerald-50 text-emerald-700' },
+    declined:              { label: 'Refusée',     cls: 'bg-red-50 text-red-700'         },
+    cancelled_no_response: { label: 'Expirée',     cls: 'bg-slate-100 text-slate-500'    },
   };
 
   const ambassadeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/ambassade/${profile.id}`;
@@ -392,437 +393,423 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* Parcours ambassadeur — stepper */}
-        <StatusTimeline status={profile.status} />
+        {/* ─── PARCOURS EN COURS D'ONBOARDING ─── */}
+        {isOnboarding && (
+          <>
+            {/* Stepper parcours — uniquement pour les non-validés */}
+            <StatusTimeline status={profile.status} />
 
-        {/* Encart pré-approuvé — CTA questionnaire */}
-        {profile.status === 'pre_approved' && (
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                <UserCheck className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800 text-sm">Félicitations, tu as été pré-approuvé !</p>
-                <p className="text-sm text-slate-600 mt-0.5">
-                  Il reste une dernière étape avant de rejoindre la carte des ambassadeurs :
-                  compléter ton profil enrichi pour que David puisse mieux te connaître.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/dashboard/questionnaire"
-              className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
-            >
-              Compléter mon profil →
-            </Link>
-          </div>
-        )}
-
-        {/* Encart enrichissement en attente */}
-        {profile.status === 'enrichment_pending' && (
-          <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle2 className="w-4 h-4 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800 text-sm">Ton dossier est en cours d'examen</p>
-                <p className="text-sm text-slate-600 mt-0.5">
-                  Merci d'avoir complété ton profil. L'équipe te contactera prochainement pour la validation finale.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Formation */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 pt-5 pb-3">
-            <Play className="w-4 h-4 text-indigo-500" />
-            <h2 className="font-semibold text-slate-800 text-sm">Formation ambassadeur</h2>
-          </div>
-          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-            <iframe
-              src={onboardingConfig.video_url}
-              title="Formation ambassadeur — David Théry"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full"
-            />
-          </div>
-        </div>
-
-        {/* Partager mon ambassade */}
-        {profile.status === 'validated' && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
-            <div className="flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-indigo-500" />
-              <h2 className="font-semibold text-slate-800 text-sm">Votre ambassade</h2>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-              <p className="text-xs text-slate-400 mb-0.5">Lien public</p>
-              <p className="text-xs text-indigo-600 font-mono break-all">{ambassadeUrl}</p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={copyAmbassadeLink}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-100 transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-                {linkCopied ? 'Copié !' : 'Copier le lien'}
-              </button>
-              <button
-                onClick={shareOnWhatsApp}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                WhatsApp
-              </button>
-            </div>
-
-            <a
-              href={`/ambassade/${profile.id}/badge`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Voir mon badge ambassade
-            </a>
-          </div>
-        )}
-
-        {/* Photos — visible pendant l'enrichissement ou si l'ambassadeur veut modifier */}
-        {(profile.status === 'enrichment_pending' || showPhotosEdit) && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-5">
-          <div className="flex items-center gap-2">
-            <Camera className="w-4 h-4 text-indigo-500" />
-            <h2 className="font-semibold text-slate-800 text-sm">Photos de votre ambassade</h2>
-          </div>
-
-          {photoError && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{photoError}</p>
-          )}
-
-          {/* Photo de profil */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Photo de profil</p>
-            {photoUploading === 'profile' ? (
-              <div className="flex items-center justify-center h-32 rounded-xl border border-slate-200 bg-slate-50">
-                <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
-              </div>
-            ) : (
-              <Dropzone
-                onFile={(f) => uploadPhoto(f, 'profile')}
-                preview={profile.profile_photo_url ? (photoSignedUrls[profile.profile_photo_url] ?? null) : null}
-                onRemove={profile.profile_photo_url ? () => setProfile((p) => p ? { ...p, profile_photo_url: null } : p) : undefined}
-                label="Photo de votre visage — privée, vue uniquement par David pour valider votre ambassade"
-              />
-            )}
-          </div>
-
-          {/* Photos de la salle */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-              Photos de la salle
-              <span className="font-normal text-slate-400 normal-case ml-1">({(profile.room_photo_urls ?? []).length}/5)</span>
-            </p>
-            {(profile.room_photo_urls ?? []).length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {(profile.room_photo_urls ?? []).map((path) => (
-                  <div key={path} className="relative group rounded-lg overflow-hidden border border-slate-100">
-                    <img src={photoSignedUrls[path] ?? ''} alt="Salle" className="w-full h-24 object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeRoomPhoto(path)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 shadow text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
+            {/* Encart pré-approuvé — CTA questionnaire */}
+            {profile.status === 'pre_approved' && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <UserCheck className="w-4 h-4 text-indigo-600" />
                   </div>
-                ))}
-              </div>
-            )}
-            {(profile.room_photo_urls ?? []).length < 5 && (
-              photoUploading === 'room' ? (
-                <div className="flex items-center justify-center h-24 rounded-xl border border-slate-200 bg-slate-50">
-                  <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm">Félicitations, tu as été pré-approuvé !</p>
+                    <p className="text-sm text-slate-600 mt-0.5">
+                      Il reste une dernière étape avant de rejoindre la carte des ambassadeurs :
+                      compléter ton profil enrichi pour que David puisse mieux te connaître.
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <Dropzone
-                  onFile={(f) => uploadPhoto(f, 'room')}
-                  label="Ajouter une photo de la salle de réunion"
-                />
-              )
-            )}
-          </div>
-        </div>
-        )}
-
-        {/* Modifier mes photos — bouton discret pour les ambassadeurs validés */}
-        {profile.status === 'validated' && !showPhotosEdit && (
-          <button
-            onClick={() => setShowPhotosEdit(true)}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
-          >
-            <Camera className="w-3 h-3" />
-            Modifier mes photos
-          </button>
-        )}
-
-        {/* Signal live — visible uniquement pendant la fenêtre du live */}
-        {profile.status === 'validated' && currentEvent && (
-          approvedLiveLink ? (
-            <div className="bg-emerald-600 text-white rounded-2xl p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-emerald-200 animate-pulse" />
-                <p className="font-semibold">David vous invite à témoigner !</p>
+                <Link
+                  href="/dashboard/questionnaire"
+                  className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+                >
+                  Compléter mon profil →
+                </Link>
               </div>
-              <p className="text-emerald-100 text-sm">
-                Rejoignez le live maintenant et partagez ce que Dieu a fait dans votre ambassade.
-              </p>
+            )}
+
+            {/* Encart enrichissement en attente */}
+            {profile.status === 'enrichment_pending' && (
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm">Ton dossier est en cours d&apos;examen</p>
+                    <p className="text-sm text-slate-600 mt-0.5">
+                      Merci d&apos;avoir complété ton profil. L&apos;équipe te contactera prochainement pour la validation finale.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Formation — visible en onboarding */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-5 pt-5 pb-3">
+                <Play className="w-4 h-4 text-indigo-500" />
+                <h2 className="font-semibold text-slate-800 text-sm">Formation ambassadeur</h2>
+              </div>
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <iframe
+                  src={onboardingConfig.video_url}
+                  title="Formation ambassadeur — David Théry"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ─── AMBASSADEUR VALIDÉ ─── */}
+        {isValidated && (
+          <>
+            {/* Mission du moment — carte contextuelle (priorité décroissante) */}
+            <MissionDuMoment
+              currentEvent={currentEvent}
+              approvedLiveLink={approvedLiveLink}
+              signalSent={signalSent}
+              signalDescription={signalDescription}
+              signalLoading={signalLoading}
+              onDescriptionChange={setSignalDescription}
+              onSendSignal={sendLiveSignal}
+              contactRequests={contactRequests}
+              activations={activations}
+            />
+
+            {/* Mes lives */}
+            {activations.length > 0 && (
+              <section>
+                <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes lives</h2>
+                <div className="space-y-3">
+                  {activations.map((a) => {
+                    const ev = a.events;
+                    const dateLabel = ev?.event_date
+                      ? new Date(ev.event_date).toLocaleDateString('fr-FR', {
+                          weekday: 'long', day: 'numeric', month: 'long',
+                        })
+                      : null;
+                    const timeLabel = ev?.event_date
+                      ? new Date(ev.event_date).toLocaleTimeString('fr-FR', {
+                          hour: '2-digit', minute: '2-digit',
+                        })
+                      : null;
+
+                    return (
+                      <div key={a.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 text-sm">
+                              {ev?.title ?? `Live ${a.event_id.slice(0, 8)}`}
+                            </p>
+                            {dateLabel && (
+                              <p className="text-slate-400 text-xs mt-0.5 capitalize">
+                                {dateLabel}{timeLabel ? ` à ${timeLabel}` : ''}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {a.is_full ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400 px-3 py-1.5 bg-slate-100 rounded-lg">
+                              Votre ambassade est complète
+                            </span>
+                          </div>
+                        ) : a.is_active ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Vous participez à ce live
+                            </span>
+                            <button
+                              onClick={() => toggleActivation(a.id, a.is_active)}
+                              className="text-xs text-slate-400 hover:text-red-500 transition-colors underline-offset-2 hover:underline"
+                            >
+                              Annuler ma participation
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => toggleActivation(a.id, a.is_active)}
+                            className="w-full bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+                          >
+                            Je participe à ce live
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Mes demandes — remonté */}
+            <section>
+              <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes demandes</h2>
+              {contactRequests.length === 0 ? (
+                <p className="text-slate-400 text-sm">Aucune demande pour l&apos;instant.</p>
+              ) : (
+                <div className="space-y-3">
+                  {contactRequests.map((r) => {
+                    const s = REQUEST_STATUS[r.status] ?? { label: r.status, cls: 'bg-slate-100 text-slate-500' };
+                    const isPending = r.status === 'pending';
+                    const isActioning = requestActionLoading === r.action_token;
+                    const liveTitle = r.host_activation_id
+                      ? activations.find((a) => a.id === r.host_activation_id)?.events?.title
+                      : null;
+                    return (
+                      <div key={r.id} className={`bg-white rounded-xl border p-4 shadow-sm ${r.status === 'declined' ? 'opacity-60' : 'border-slate-100'}`}>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
+                            {liveTitle && (
+                              <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
+                            )}
+                          </div>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${s.cls}`}>
+                            {s.label}
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5 mb-2">
+                          <p className="text-slate-500 text-xs">{r.visitor_email}</p>
+                          {r.visitor_phone && (
+                            <p className="text-slate-500 text-xs">Tél : {r.visitor_phone}</p>
+                          )}
+                          {r.nb_personnes && (
+                            <p className="text-slate-500 text-xs">{r.nb_personnes} personne{r.nb_personnes > 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+
+                        {r.visitor_message && (
+                          <p className="text-slate-600 text-sm italic mb-2">&quot;{r.visitor_message}&quot;</p>
+                        )}
+
+                        <p className="text-slate-400 text-xs mb-3">{relativeTime(r.created_at)}</p>
+
+                        {isPending && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleContactAction(r.action_token, 'accept')}
+                              disabled={isActioning}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition-colors font-medium"
+                            >
+                              {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                              Accepter
+                            </button>
+                            <button
+                              onClick={() => handleContactAction(r.action_token, 'decline')}
+                              disabled={isActioning}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 disabled:opacity-50 transition-colors font-medium"
+                            >
+                              {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                              Refuser
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Témoignage — visible pendant un live */}
+            {currentEvent && (
+              <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  <h2 className="font-semibold text-slate-800 text-sm">Partager un témoignage</h2>
+                </div>
+
+                {testimonialsSentCount > 0 && (
+                  <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-sm">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    {testimonialsSentCount} témoignage{testimonialsSentCount > 1 ? 's' : ''} envoyé{testimonialsSentCount > 1 ? 's' : ''} — merci !
+                  </div>
+                )}
+
+                <p className="text-slate-500 text-xs">
+                  Chaque personne de votre ambassade peut partager son témoignage. Soumissions multiples acceptées.
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Comment s&apos;est passé le live chez vous ?
+                  </label>
+                  <textarea
+                    value={testimonialContent}
+                    onChange={(e) => setTestimonialContent(e.target.value)}
+                    rows={4}
+                    placeholder="Partagez ce que vous avez vécu pendant ce live…"
+                    className={inputCls}
+                  />
+                </div>
+
+                {testimonialError && (
+                  <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
+                )}
+
+                <button
+                  onClick={submitTestimonial}
+                  disabled={testimonialSubmitting || !testimonialContent.trim()}
+                  className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
+                </button>
+              </section>
+            )}
+
+            {/* Mon ambassade — partage */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-indigo-500" />
+                <h2 className="font-semibold text-slate-800 text-sm">Votre ambassade</h2>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl px-3 py-2.5">
+                <p className="text-xs text-slate-400 mb-0.5">Lien public</p>
+                <p className="text-xs text-indigo-600 font-mono break-all">{ambassadeUrl}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={copyAmbassadeLink}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-100 transition-colors"
+                >
+                  <Copy className="w-4 h-4" />
+                  {linkCopied ? 'Copié !' : 'Copier le lien'}
+                </button>
+                <button
+                  onClick={shareOnWhatsApp}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  WhatsApp
+                </button>
+              </div>
+
               <a
-                href={approvedLiveLink}
+                href={`/ambassade/${profile.id}/badge`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-white text-emerald-700 px-5 py-3 rounded-xl font-semibold hover:bg-emerald-50 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
               >
-                <ExternalLink className="w-4 h-4" />
-                Rejoindre le live
+                <ExternalLink className="w-3 h-3" />
+                Voir mon badge ambassade
               </a>
             </div>
-          ) : signalSent ? (
-            <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse" />
-                <p className="font-semibold text-sm">Signal envoyé — en attente de David…</p>
-              </div>
-              <p className="text-indigo-200 text-sm">
-                Si David vous accepte, le lien pour rejoindre le live apparaîtra ici automatiquement.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-indigo-300" />
-                <p className="font-semibold">Témoigner en live</p>
-              </div>
-              <p className="text-indigo-200 text-sm">
-                Décrivez ce qui s'est passé dans votre ambassade — guérison, transformation, moment fort.
-                David lira votre message et pourra vous inviter à partager en direct.
-              </p>
-              <textarea
-                value={signalDescription}
-                onChange={(e) => setSignalDescription(e.target.value)}
-                rows={3}
-                placeholder="Ex : Marie a été guérie d'une douleur chronique pendant la prière…"
-                className="w-full bg-indigo-700 text-white placeholder-indigo-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-              />
-              <button
-                onClick={sendLiveSignal}
-                disabled={signalLoading || !signalDescription.trim()}
-                className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-indigo-50 transition-colors"
-              >
-                <Send className="w-4 h-4" />
-                {signalLoading ? 'Envoi…' : 'Lever la main pour témoigner'}
-              </button>
-            </div>
-          )
-        )}
 
-        {/* Mes lives */}
-        {activations.length > 0 && (
-          <section>
-            <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes lives</h2>
-            <div className="space-y-3">
-              {activations.map((a) => {
-                const ev = a.events;
-                const dateLabel = ev?.event_date
-                  ? new Date(ev.event_date).toLocaleDateString('fr-FR', {
-                      weekday: 'long', day: 'numeric', month: 'long',
-                    })
-                  : null;
-                const timeLabel = ev?.event_date
-                  ? new Date(ev.event_date).toLocaleTimeString('fr-FR', {
-                      hour: '2-digit', minute: '2-digit',
-                    })
-                  : null;
+            {/* Photos — pendant enrichissement ou si l'ambassadeur veut modifier */}
+            {(profile.status === 'enrichment_pending' || showPhotosEdit) && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-5">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-indigo-500" />
+                  <h2 className="font-semibold text-slate-800 text-sm">Photos de votre ambassade</h2>
+                </div>
 
-                return (
-                  <div key={a.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900 text-sm">
-                          {ev?.title ?? `Live ${a.event_id.slice(0, 8)}`}
-                        </p>
-                        {dateLabel && (
-                          <p className="text-slate-400 text-xs mt-0.5 capitalize">
-                            {dateLabel}{timeLabel ? ` à ${timeLabel}` : ''}
-                          </p>
-                        )}
-                      </div>
+                {photoError && (
+                  <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{photoError}</p>
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Photo de profil</p>
+                  {photoUploading === 'profile' ? (
+                    <div className="flex items-center justify-center h-32 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
                     </div>
+                  ) : (
+                    <Dropzone
+                      onFile={(f) => uploadPhoto(f, 'profile')}
+                      preview={profile.profile_photo_url ? (photoSignedUrls[profile.profile_photo_url] ?? null) : null}
+                      onRemove={profile.profile_photo_url ? () => setProfile((p) => p ? { ...p, profile_photo_url: null } : p) : undefined}
+                      label="Photo de votre visage — privée, vue uniquement par David pour valider votre ambassade"
+                    />
+                  )}
+                </div>
 
-                    {a.is_full ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 px-3 py-1.5 bg-slate-100 rounded-lg">
-                          Votre ambassade est complète
-                        </span>
-                      </div>
-                    ) : a.is_active ? (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Vous participez à ce live
-                        </span>
-                        <button
-                          onClick={() => toggleActivation(a.id, a.is_active)}
-                          className="text-xs text-slate-400 hover:text-red-500 transition-colors underline-offset-2 hover:underline"
-                        >
-                          Annuler ma participation
-                        </button>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                    Photos de la salle
+                    <span className="font-normal text-slate-400 normal-case ml-1">({(profile.room_photo_urls ?? []).length}/5)</span>
+                  </p>
+                  {(profile.room_photo_urls ?? []).length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(profile.room_photo_urls ?? []).map((path) => (
+                        <div key={path} className="relative group rounded-lg overflow-hidden border border-slate-100">
+                          <img src={photoSignedUrls[path] ?? ''} alt="Salle" className="w-full h-24 object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeRoomPhoto(path)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 shadow text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(profile.room_photo_urls ?? []).length < 5 && (
+                    photoUploading === 'room' ? (
+                      <div className="flex items-center justify-center h-24 rounded-xl border border-slate-200 bg-slate-50">
+                        <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
                       </div>
                     ) : (
-                      <button
-                        onClick={() => toggleActivation(a.id, a.is_active)}
-                        className="w-full bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
-                      >
-                        Je participe à ce live
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Formulaire témoignage */}
-        {currentEvent && (
-          <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-emerald-600" />
-              <h2 className="font-semibold text-slate-800 text-sm">Partager un témoignage</h2>
-            </div>
-
-            {testimonialsSentCount > 0 && (
-              <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-sm">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                {testimonialsSentCount} témoignage{testimonialsSentCount > 1 ? 's' : ''} envoyé{testimonialsSentCount > 1 ? 's' : ''} — merci !
+                      <Dropzone
+                        onFile={(f) => uploadPhoto(f, 'room')}
+                        label="Ajouter une photo de la salle de réunion"
+                      />
+                    )
+                  )}
+                </div>
               </div>
             )}
 
-            <p className="text-slate-500 text-xs">
-              Chaque personne de votre ambassade peut partager son témoignage. Soumissions multiples acceptées.
-            </p>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Comment s'est passé le live chez vous ?
-              </label>
-              <textarea
-                value={testimonialContent}
-                onChange={(e) => setTestimonialContent(e.target.value)}
-                rows={4}
-                placeholder="Partagez ce que vous avez vécu pendant ce live…"
-                className={inputCls}
-              />
-            </div>
-
-            {testimonialError && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
+            {/* Modifier mes photos — bouton discret pour les ambassadeurs validés */}
+            {!showPhotosEdit && (
+              <button
+                onClick={() => setShowPhotosEdit(true)}
+                className="flex items-center gap-2 text-xs text-slate-400 hover:text-indigo-600 transition-colors"
+              >
+                <Camera className="w-3 h-3" />
+                Modifier mes photos
+              </button>
             )}
 
-            <button
-              onClick={submitTestimonial}
-              disabled={testimonialSubmitting || !testimonialContent.trim()}
-              className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
-            </button>
-          </section>
-        )}
+            {/* Mes informations */}
+            <MesInfosSection profile={profile} />
 
-        {/* Mes informations — édition autonome (validés uniquement) */}
-        {profile.status === 'validated' && (
-          <MesInfosSection profile={profile} />
-        )}
-
-        {/* Mes demandes */}
-        <section>
-          <h2 className="font-semibold text-slate-800 mb-3 text-sm uppercase tracking-wide">Mes demandes</h2>
-          {contactRequests.length === 0 ? (
-            <p className="text-slate-400 text-sm">Aucune demande pour l'instant.</p>
-          ) : (
-            <div className="space-y-3">
-              {contactRequests.map((r) => {
-                const s = REQUEST_STATUS[r.status] ?? { label: r.status, cls: 'bg-slate-100 text-slate-500' };
-                const isPending = r.status === 'pending';
-                const isActioning = requestActionLoading === r.action_token;
-                const liveTitle = r.host_activation_id
-                  ? activations.find((a) => a.id === r.host_activation_id)?.events?.title
-                  : null;
-                return (
-                  <div key={r.id} className={`bg-white rounded-xl border p-4 shadow-sm ${r.status === 'declined' ? 'opacity-60' : 'border-slate-100'}`}>
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
-                        {liveTitle && (
-                          <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
-                        )}
-                      </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${s.cls}`}>
-                        {s.label}
-                      </span>
-                    </div>
-
-                    <div className="space-y-0.5 mb-2">
-                      <p className="text-slate-500 text-xs">{r.visitor_email}</p>
-                      {r.visitor_phone && (
-                        <p className="text-slate-500 text-xs">Tél : {r.visitor_phone}</p>
-                      )}
-                      {r.nb_personnes && (
-                        <p className="text-slate-500 text-xs">{r.nb_personnes} personne{r.nb_personnes > 1 ? 's' : ''}</p>
-                      )}
-                    </div>
-
-                    {r.visitor_message && (
-                      <p className="text-slate-600 text-sm italic mb-2">"{r.visitor_message}"</p>
-                    )}
-
-                    <p className="text-slate-400 text-xs mb-3">{relativeTime(r.created_at)}</p>
-
-                    {isPending && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleContactAction(r.action_token, 'accept')}
-                          disabled={isActioning}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition-colors font-medium"
-                        >
-                          {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-                          Accepter
-                        </button>
-                        <button
-                          onClick={() => handleContactAction(r.action_token, 'decline')}
-                          disabled={isActioning}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 disabled:opacity-50 transition-colors font-medium"
-                        >
-                          {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
-                          Refuser
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* Formation — en bas, collapsée par défaut */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setShowFormation((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-5 py-4 text-left hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Play className="w-4 h-4 text-indigo-500" />
+                  <span className="font-semibold text-slate-800 text-sm">Formation ambassadeur</span>
+                </div>
+                {showFormation
+                  ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                  : <ChevronDown className="w-4 h-4 text-slate-400" />
+                }
+              </button>
+              {showFormation && (
+                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    src={onboardingConfig.video_url}
+                    title="Formation ambassadeur — David Théry"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </section>
+          </>
+        )}
+
       </div>
     </main>
   );
@@ -837,18 +824,6 @@ function relativeTime(iso: string): string {
   if (hours < 24) return rtf.format(-hours, 'hour');
   const days = Math.round(diff / 86_400_000);
   return rtf.format(-days, 'day');
-}
-
-function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${value ? 'bg-indigo-600' : 'bg-slate-200'}`}
-    >
-      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${value ? 'translate-x-4' : 'translate-x-0.5'}`} />
-    </button>
-  );
 }
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white';
