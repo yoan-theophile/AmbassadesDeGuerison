@@ -246,6 +246,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       new LocateControl({ position: 'bottomright' }).addTo(map);
       map.on('locationerror', () => { /* permission refusée — silencieux */ });
 
+      // Géolocalisation automatique au premier chargement : zoome sur la zone
+      // du visiteur s'il accepte la permission. Si refus → vue monde conservée.
+      map.locate({ setView: true, maxZoom: 9 });
+
       function updateViewport() {
         const bounds = map.getBounds();
         const zoom = map.getZoom();
