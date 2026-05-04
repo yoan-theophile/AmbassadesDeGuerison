@@ -95,13 +95,20 @@ node scripts/seed.js                                      # insère les données
 
 ### Comptes de démo créés par le seed
 
-| E-mail | Rôle | Statut |
-|--------|------|--------|
-| `david.thery@demo.fr` | admin | — |
-| `theo.nelson.ia@gmail.com` | admin | — |
-| `marie.dubois@demo.fr` | ambassadeur | `validated` |
-| `jp.martin@demo.fr` | ambassadeur | `validated` (complet) |
-| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` (utile pour tester le dashboard candidature) |
+| E-mail | Rôle | Statut | Note |
+|--------|------|--------|------|
+| `david.thery@demo.fr` | admin | — | super_admin |
+| `theo.nelson.ia@gmail.com` | admin | — | super_admin |
+| `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+| `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet |
+| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature |
+| `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+| `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+| `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) |
+| `julie.fontaine@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+| `theo.garnier@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+
+**Cluster Paris** : 6 ambassadeurs à Paris (Marie + 5 nouveaux) pour tester le rendu Leaflet avec beaucoup de pins dans la même ville. Pour le live J+10, 4 d'entre eux sont activés (Marie, Lucas, Camille, Antoine).
 
 ## Crons email
 

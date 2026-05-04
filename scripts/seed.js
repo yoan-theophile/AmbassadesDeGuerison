@@ -111,7 +111,7 @@ async function run() {
   // ── 2. Ambassadeurs ───────────────────────────────────────────────────────
   // Insérés AVANT les events → trigger trg_auto_activate_hosts crée les
   // host_activations (is_active=FALSE) dès qu'un event est inséré.
-  console.log('→ Ambassadeurs (7 validés + 1 pending_review)...');
+  console.log('→ Ambassadeurs (12 validés + 1 pending_review dont 5 cluster Paris)...');
 
   const hostsData = [
     {
@@ -188,6 +188,58 @@ async function run() {
       church_subtype: 'occasional', denomination: 'protestant',
       viewing_setup: 'Vidéoprojecteur + écran de projection 3m',
       lat: 14.7645, lng: -17.3660, status: 'validated',
+    },
+    // ── Cluster Paris (5 ambassadeurs supplémentaires pour tester le rendu dense) ──
+    {
+      first_name: 'Lucas', last_name: 'Dupont', email: 'lucas.dupont@demo.fr',
+      phone: '+33 6 11 22 33 44',
+      city: 'Paris', country: 'France',
+      host_type: 'individual', contact_mode: 'whatsapp', capacity: 10,
+      address_private: '34 rue de Rivoli, 75004 Paris',
+      consignes: 'Code immeuble : B312. 2ème étage gauche.',
+      viewing_setup: 'TV 50 pouces', healing_challenge_done: true,
+      lat: 48.8553, lng: 2.3476, status: 'validated',
+    },
+    {
+      first_name: 'Camille', last_name: 'Petit', email: 'camille.petit@demo.fr',
+      phone: '+33 6 22 33 44 55',
+      city: 'Paris', country: 'France',
+      host_type: 'individual', contact_mode: 'email', capacity: 8,
+      address_private: '7 rue du Temple, 75003 Paris',
+      consignes: 'Interphone "Petit". Pas d\'ascenseur, 3ème étage.',
+      viewing_setup: 'Ordinateur + grand écran externe',
+      lat: 48.8610, lng: 2.3530, status: 'validated',
+    },
+    {
+      first_name: 'Antoine', last_name: 'Moreau', email: 'antoine.moreau@demo.fr',
+      phone: '+33 6 33 44 55 66',
+      city: 'Paris', country: 'France',
+      host_type: 'church', contact_mode: 'telephone', capacity: 50,
+      address_private: '22 boulevard Voltaire, 75011 Paris',
+      consignes: 'Salle du bas, entrée latérale côté rue Roquette.',
+      church_subtype: 'occasional', denomination: 'évangélique',
+      viewing_setup: 'Vidéoprojecteur + sono', healing_challenge_done: true,
+      lat: 48.8630, lng: 2.3780, status: 'validated',
+    },
+    {
+      first_name: 'Julie', last_name: 'Fontaine', email: 'julie.fontaine@demo.fr',
+      phone: '+33 6 44 55 66 77',
+      city: 'Paris', country: 'France',
+      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
+      address_private: '58 avenue de la République, 75011 Paris',
+      consignes: 'Digicode 1453. Appartement 6, bâtiment B.',
+      viewing_setup: 'Smart TV 55 pouces',
+      lat: 48.8651, lng: 2.3699, status: 'validated',
+    },
+    {
+      first_name: 'Théo', last_name: 'Garnier', email: 'theo.garnier@demo.fr',
+      phone: '+33 6 55 66 77 88',
+      city: 'Paris', country: 'France',
+      host_type: 'individual', contact_mode: 'email', capacity: 6,
+      address_private: '15 rue de la Roquette, 75011 Paris',
+      consignes: 'Sonnette "Garnier". 1er étage, porte verte.',
+      viewing_setup: 'TV + barre de son',
+      lat: 48.8534, lng: 2.3712, status: 'validated',
     },
     // Sophie : candidate en attente de validation (pour tester /inscription → /onboarding)
     {
@@ -284,8 +336,8 @@ async function run() {
   // ont cliqué "J'accueille" pour les 3 events passés.
   console.log('\n→ Activation hôtes (events passés)...');
 
-  const countsOld    = { Marie: 12, 'Jean-Pierre': 65, Fatou: 30, Samuel: 8,  Claire: 6, Kofi: 90,  Aminata: 45 };
-  const countsMid    = { Marie: 14, 'Jean-Pierre': 78, Fatou: 35, Samuel: 11, Claire: 7, Kofi: 110, Aminata: 52 };
+  const countsOld    = { Marie: 12, 'Jean-Pierre': 65, Fatou: 30, Samuel: 8,  Claire: 6, Kofi: 90,  Aminata: 45, Lucas: 9, Camille: 7, Antoine: 38, Julie: 11, Théo: 5 };
+  const countsMid    = { Marie: 14, 'Jean-Pierre': 78, Fatou: 35, Samuel: 11, Claire: 7, Kofi: 110, Aminata: 52, Lucas: 10, Camille: 8, Antoine: 42, Julie: 12, Théo: 6 };
 
   for (const [evtId, counts, label] of [
     [evtOld.id, countsOld, 'J-60'],
@@ -321,10 +373,13 @@ async function run() {
       console.log(`  ERR [J-7] ${h.first_name}: ${e.message.slice(0, 80)}`);
     }
   }
-  console.log(`  OK [J-7]  7 hôtes activés (is_active=TRUE)`);
+  console.log(`  OK [J-7]  12 hôtes activés (is_active=TRUE)`);
 
-  // Event J+10 : 3 ambassadeurs ont cliqué "J'accueille", 4 n'ont pas encore répondu
-  const activatedForFutur = ['marie.dubois@demo.fr', 'jp.martin@demo.fr', 'kofi.asante@demo.fr'];
+  // Event J+10 : 5 ambassadeurs ont cliqué "J'accueille" dont 3 parisiens pour le cluster
+  const activatedForFutur = [
+    'marie.dubois@demo.fr', 'jp.martin@demo.fr', 'kofi.asante@demo.fr',
+    'lucas.dupont@demo.fr', 'camille.petit@demo.fr', 'antoine.moreau@demo.fr',
+  ];
   for (const email of activatedForFutur) {
     const hid = hostIds[email];
     if (!hid) continue;
@@ -337,7 +392,7 @@ async function run() {
       console.log(`  ERR [J+10] ${email}: ${e.message.slice(0, 80)}`);
     }
   }
-  console.log(`  OK [J+10] 3/7 hôtes activés (4 en attente de réponse)`);
+  console.log(`  OK [J+10] 6/12 hôtes activés dont 3 parisiens (6 en attente de réponse)`);
 
   // ── 5. Demandes de contact (event J-7, hôtes actifs) ──────────────────────
   console.log('\n→ Demandes de contact...');
@@ -694,7 +749,7 @@ async function run() {
   console.log('   → /admin/temoignages   : 2 témoignages en attente de modération');
   console.log('   → /admin/feedback      : 1 signalement pending (Thomas B / Fatou)');
   console.log('   → /temoignages         : 10 publiés, filtre 3 events');
-  console.log('   → J+10 live            : 3/7 ambassades activées (Marie, JP, Kofi)');
+  console.log('   → J+10 live            : 6/12 ambassades activées (Marie, JP, Kofi + 3 cluster Paris)');
 }
 
 run().catch(e => {
