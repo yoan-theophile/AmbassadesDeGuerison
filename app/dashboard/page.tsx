@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, Copy, Home, LogOut, Radio, Share2,
   MessageSquare, Send, ExternalLink, Play, UserCheck, UserX, Camera,
+  Calendar, Loader2,
 } from 'lucide-react';
 import Dropzone from '@/components/ui/Dropzone';
+import StatusTimeline from '@/components/dashboard/StatusTimeline';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
@@ -42,6 +44,7 @@ interface ContactRequest {
   status: string;
   created_at: string;
   action_token: string;
+  host_activation_id: string | null;
 }
 
 export default function DashboardPage() {
@@ -110,7 +113,7 @@ export default function DashboardPage() {
     const { data: reqs } = activationIds.length > 0
       ? await supabase
           .from('contact_requests')
-          .select('id, visitor_first_name, visitor_email, visitor_phone, visitor_message, nb_personnes, status, created_at, action_token')
+          .select('id, visitor_first_name, visitor_email, visitor_phone, visitor_message, nb_personnes, status, created_at, action_token, host_activation_id')
           .in('host_activation_id', activationIds)
           .order('created_at', { ascending: false })
           .limit(20)
@@ -385,6 +388,9 @@ export default function DashboardPage() {
           </span>
         </div>
 
+        {/* Parcours ambassadeur — stepper */}
+        <StatusTimeline status={profile.status} />
+
         {/* Encart pré-approuvé — CTA questionnaire */}
         {profile.status === 'pre_approved' && (
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
@@ -630,31 +636,60 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {activations.map((a) => {
                 const ev = a.events;
+                const dateLabel = ev?.event_date
+                  ? new Date(ev.event_date).toLocaleDateString('fr-FR', {
+                      weekday: 'long', day: 'numeric', month: 'long',
+                    })
+                  : null;
+                const timeLabel = ev?.event_date
+                  ? new Date(ev.event_date).toLocaleTimeString('fr-FR', {
+                      hour: '2-digit', minute: '2-digit',
+                    })
+                  : null;
+
                 return (
                   <div key={a.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div className="min-w-0">
                         <p className="font-medium text-slate-900 text-sm">
                           {ev?.title ?? `Live ${a.event_id.slice(0, 8)}`}
                         </p>
-                        {ev?.event_date && (
-                          <p className="text-slate-400 text-xs mt-0.5">
-                            {new Date(ev.event_date).toLocaleDateString('fr-FR', {
-                              day: 'numeric', month: 'long', year: 'numeric',
-                            })}
+                        {dateLabel && (
+                          <p className="text-slate-400 text-xs mt-0.5 capitalize">
+                            {dateLabel}{timeLabel ? ` à ${timeLabel}` : ''}
                           </p>
                         )}
                       </div>
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                          <Toggle value={a.is_active} onChange={() => toggleActivation(a.id, a.is_active)} />
-                          {a.is_active ? "J'accueille" : 'Inactif'}
-                        </label>
-                        {a.is_full && (
-                          <span className="text-xs text-slate-400 px-2 py-0.5 bg-slate-100 rounded-full">Complet</span>
-                        )}
-                      </div>
                     </div>
+
+                    {a.is_full ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 px-3 py-1.5 bg-slate-100 rounded-lg">
+                          Votre ambassade est complète
+                        </span>
+                      </div>
+                    ) : a.is_active ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Vous participez à ce live
+                        </span>
+                        <button
+                          onClick={() => toggleActivation(a.id, a.is_active)}
+                          className="text-xs text-slate-400 hover:text-red-500 transition-colors underline-offset-2 hover:underline"
+                        >
+                          Annuler ma participation
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => toggleActivation(a.id, a.is_active)}
+                        className="w-full bg-indigo-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
+                      >
+                        Je participe à ce live
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -720,51 +755,59 @@ export default function DashboardPage() {
                 const s = REQUEST_STATUS[r.status] ?? { label: r.status, cls: 'bg-slate-100 text-slate-500' };
                 const isPending = r.status === 'pending';
                 const isActioning = requestActionLoading === r.action_token;
+                const liveTitle = r.host_activation_id
+                  ? activations.find((a) => a.id === r.host_activation_id)?.events?.title
+                  : null;
                 return (
-                  <div key={r.id} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={r.id} className={`bg-white rounded-xl border p-4 shadow-sm ${r.status === 'declined' ? 'opacity-60' : 'border-slate-100'}`}>
+                    <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0">
                         <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
-                        <p className="text-slate-500 text-xs">{r.visitor_email}</p>
-                        {r.visitor_phone && (
-                          <p className="text-slate-500 text-xs">Tél : {r.visitor_phone}</p>
-                        )}
-                        {r.nb_personnes && (
-                          <p className="text-slate-500 text-xs">{r.nb_personnes} personne{r.nb_personnes > 1 ? 's' : ''}</p>
-                        )}
-                        {r.visitor_message && (
-                          <p className="text-slate-600 text-sm mt-1 italic line-clamp-2">"{r.visitor_message}"</p>
-                        )}
-                        <p className="text-slate-400 text-xs mt-1">
-                          {new Date(r.created_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                      <div className="shrink-0 flex flex-col items-end gap-2">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${s.cls}`}>
-                          {s.label}
-                        </span>
-                        {isPending && (
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => handleContactAction(r.action_token, 'accept')}
-                              disabled={isActioning}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 disabled:opacity-50 transition-colors"
-                            >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              Accepter
-                            </button>
-                            <button
-                              onClick={() => handleContactAction(r.action_token, 'decline')}
-                              disabled={isActioning}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-colors"
-                            >
-                              <UserX className="w-3.5 h-3.5" />
-                              Refuser
-                            </button>
-                          </div>
+                        {liveTitle && (
+                          <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
                         )}
                       </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${s.cls}`}>
+                        {s.label}
+                      </span>
                     </div>
+
+                    <div className="space-y-0.5 mb-2">
+                      <p className="text-slate-500 text-xs">{r.visitor_email}</p>
+                      {r.visitor_phone && (
+                        <p className="text-slate-500 text-xs">Tél : {r.visitor_phone}</p>
+                      )}
+                      {r.nb_personnes && (
+                        <p className="text-slate-500 text-xs">{r.nb_personnes} personne{r.nb_personnes > 1 ? 's' : ''}</p>
+                      )}
+                    </div>
+
+                    {r.visitor_message && (
+                      <p className="text-slate-600 text-sm italic mb-2">"{r.visitor_message}"</p>
+                    )}
+
+                    <p className="text-slate-400 text-xs mb-3">{relativeTime(r.created_at)}</p>
+
+                    {isPending && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleContactAction(r.action_token, 'accept')}
+                          disabled={isActioning}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition-colors font-medium"
+                        >
+                          {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                          Accepter
+                        </button>
+                        <button
+                          onClick={() => handleContactAction(r.action_token, 'decline')}
+                          disabled={isActioning}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 disabled:opacity-50 transition-colors font-medium"
+                        >
+                          {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                          Refuser
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -774,6 +817,17 @@ export default function DashboardPage() {
       </div>
     </main>
   );
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const rtf = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
+  const mins = Math.round(diff / 60_000);
+  if (mins < 60) return rtf.format(-mins, 'minute');
+  const hours = Math.round(diff / 3_600_000);
+  if (hours < 24) return rtf.format(-hours, 'hour');
+  const days = Math.round(diff / 86_400_000);
+  return rtf.format(-days, 'day');
 }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
