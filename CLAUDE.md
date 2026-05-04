@@ -96,18 +96,18 @@ node scripts/seed.js                                      # insère les données
 
 ### Comptes de démo créés par le seed
 
-| E-mail | Rôle | Statut | Note |
-|--------|------|--------|------|
-| `david.thery@demo.fr` | admin | — | super_admin |
-| `theo.nelson.ia@gmail.com` | admin | — | super_admin |
-| `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster |
-| `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet |
-| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature |
-| `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster |
-| `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster |
-| `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) |
-| `julie.fontaine@demo.fr` | ambassadeur | `validated` | Paris — cluster |
-| `theo.garnier@demo.fr` | ambassadeur | `validated` | Paris — cluster |
+| E-mail | Rôle | Statut | Note | `quartier` |
+|--------|------|--------|------|------------|
+| `david.thery@demo.fr` | admin | — | super_admin | — |
+| `theo.nelson.ia@gmail.com` | admin | — | super_admin | — |
+| `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 15e |
+| `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet | Lyon Presqu'île |
+| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature | Bordeaux Chartrons |
+| `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 10e |
+| `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 11e |
+| `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) | Paris 3e |
+| `julie.fontaine@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 7e |
+| `theo.garnier@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 20e |
 
 **Cluster Paris** : 6 ambassadeurs à Paris (Marie + 5 nouveaux) pour tester le rendu Leaflet avec beaucoup de pins dans la même ville. Pour le live J+10, 4 d'entre eux sont activés (Marie, Lucas, Camille, Antoine).
 
@@ -166,6 +166,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 - **Validation géocodage** : double couche — (1) frontend : bouton "Continuer" désactivé tant que `form.lat == null`, hint ambre si texte tapé sans sélection ; (2) API : `POST /api/inscriptions` retourne 400 si `lat` ou `lng` absents. Évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`). Le check utilise `== null` (et non `!lat`) pour ne pas bloquer les villes à latitude 0 (équateur).
 - **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
 - **`CountrySelect`** (`components/ui/CountrySelect.tsx`) : expose le nom du pays (`"Cameroun"`), pas le code ISO. Pays épinglés : FR, BE, CH, CA, LU, MA, SN, CI, CM.
+- **Champ `quartier`** (optionnel, étape 1) : texte libre pour préciser le quartier ou l'arrondissement (ex : "Paris 15e", "Abidjan Cocody"). Stocké dans `host_profiles.quartier`. Affiché sous le type/places dans les popups de la carte (cluster et pin individuel) en `text-slate-400`. Vide → aucune ligne affichée. Modifiable depuis `MesInfosSection` dans le dashboard.
 - **Types de lieux** (`TYPES` dans `inscription/page.tsx`) : `individual` → "Domicile — lieu de prière", `church` → "Église — lieu de prière". Labels publics orientés ministère. En admin (`AmbassadeursTable`) : "Domicile" / "Église" (court). Sur la carte (popup) : "Lieu de prière à domicile" / "Lieu de prière en église".
 
 ## Pages admin
@@ -201,8 +202,8 @@ Carte Leaflet plein écran avec :
   3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
   4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
 - **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
-- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Couleurs des pins : domicile = indigo `#4f46e5`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
-- **Cluster de pins co-localisés** (`MapPublique` — `updatePins`) : les hôtes sont groupés par clé `"${lat},${lng}"` avant création des markers. Le géocodage Nominatim étant au niveau ville, plusieurs ambassadeurs dans la même ville partagent les mêmes coordonnées. 1 hôte → pin individuel teardrop existant. ≥ 2 hôtes → pin cercle indigo avec badge `N` (`makeClusterIcon`) + popup scrollable listant chaque ambassadeur (nom, type, places, lien Contacter). Pas de dépendance externe (`leaflet.markercluster` non utilisé — alternative documentée au cas où le besoin "spiderfy" apparaîtrait).
+- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Si `quartier` renseigné : affiché en dessous du type en `text-slate-400`. Couleurs des pins : domicile = indigo `#4f46e5`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
+- **Cluster de pins co-localisés** (`MapPublique` — `updatePins`) : les hôtes sont groupés par clé `"${lat},${lng}"` avant création des markers. Le géocodage Nominatim étant au niveau ville, plusieurs ambassadeurs dans la même ville partagent les mêmes coordonnées. 1 hôte → pin individuel teardrop existant. ≥ 2 hôtes → pin cercle indigo avec badge `N` (`makeClusterIcon`) + popup scrollable listant chaque ambassadeur (nom, type, places, quartier si renseigné, lien Contacter). Pas de dépendance externe (`leaflet.markercluster` non utilisé — alternative documentée au cas où le besoin "spiderfy" apparaîtrait).
 - **Géolocalisation auto au premier chargement** (`MapPublique` — `initMap`) : `map.locate({ setView: true, maxZoom: 9 })` est appelé après l'init. Si le visiteur accepte la permission navigateur → zoom direct sur sa zone (zoom 9 = vue métropole). Si refus → vue monde par défaut (`setView([20, 10], 3)`) conservée via `locationerror` handler silencieux. Le bouton GPS bas-droit reste disponible pour relancer manuellement.
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.

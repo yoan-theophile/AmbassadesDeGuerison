@@ -143,9 +143,12 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] Le pin cluster est rond (pas teardrop) et plus large (36×36 px) que les pins individuels
 - [ ] Cliquer sur le cluster → popup s'ouvre avec un titre "N ambassades · Paris"
 - [ ] Le popup liste chaque ambassadeur : prénom, type (Domicile / Église), places (`accepted_count/capacity`), lien "Contacter →"
+- [ ] **Quartier** : les ambassadeurs avec `quartier` renseigné (ex : Marie → "Paris 15e", Lucas → "Paris 10e") affichent leur quartier en gris clair sous le type/places dans le popup cluster
+- [ ] Ambassadeur sans `quartier` (aucun ambassadeur Paris du seed n'est dans ce cas) → pas de ligne grise vide
 - [ ] Si le popup dépasse 280px de hauteur → scroll vertical activé (`overflow-y:auto`)
 - [ ] Cliquer sur "Contacter →" pour un ambassadeur → ouvre `/ambassade/[id]` correspondant
 - [ ] Hôte avec `is_full = true` dans le cluster → badge "Complet" inline, pas de lien "Contacter →"
+- [ ] Pin individuel (ex : Lyon JP Martin) → popup affiche le quartier "Lyon Presqu'île" sous la ligne ville/pays
 - [ ] Hors Paris : pins individuels classiques (Lyon, Bruxelles, etc.) — comportement teardrop conservé
 
 ---
@@ -270,6 +273,20 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
+## Module 7b — Édition profil ambassadeur (`/dashboard` — section MesInfosSection)
+
+> Se connecter avec `node scripts/magic-link.js marie.dubois@demo.fr` (statut `validated`).
+
+- [ ] La section "Mes informations" est visible pour un ambassadeur `validated`
+- [ ] Les champs ville, pays, adresse privée, consignes, téléphone sont pré-remplis avec les données existantes
+- [ ] **Champ quartier** visible entre le sélecteur pays et l'adresse privée, pré-rempli avec "Paris 15e" (valeur seed Marie)
+- [ ] Modifier le quartier → sauvegarder → rafraîchir la page → valeur conservée en DB
+- [ ] Vider le quartier (champ vide) → sauvegarder → `host_profiles.quartier = null` en DB
+- [ ] Modifier uniquement le quartier (sans changer la ville) → pas d'email admin envoyé
+- [ ] Modifier la ville → email admin `ambassadeur-modification-admin` envoyé même si quartier inchangé
+
+---
+
 ## Module 8 — Inscription ambassadeur `/inscription`
 
 ### Étape 1 — Informations personnelles
@@ -281,6 +298,10 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] Bouton "Continuer" désactivé si `lat == null` (ville tapée sans sélection dropdown)
 - [ ] Sélectionner une ville étrangère (ex: "Yaoundé") → pays bascule automatiquement sur "Cameroun"
 - [ ] `CountrySelect` : pays épinglés (FR, BE, CH, CA, LU, MA, SN, CI, CM) visibles en premier
+- [ ] **Champ quartier** (optionnel) : visible après le sélecteur de pays, placeholder "ex : Paris 15e, Abidjan Cocody, Lyon Presqu'île", note explicite "Aide les visiteurs à te retrouver s'ils sont dans le même quartier."
+- [ ] Laisser le champ quartier vide → soumission réussie (`quartier = null` en DB)
+- [ ] Remplir le champ quartier → `host_profiles.quartier` sauvegardé en DB
+- [ ] Bouton "Continuer" **non bloqué** si quartier vide (champ optionnel)
 - [ ] Soumettre → `host_profiles.phone`, `host_profiles.last_name` sauvegardés en DB
 
 ### Étape 2 — Type d'ambassade

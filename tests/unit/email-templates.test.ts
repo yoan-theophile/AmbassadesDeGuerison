@@ -65,7 +65,7 @@ describe('sendMagicLink', () => {
   it('passe magicLinkUrl comme prop', async () => {
     await sendMagicLink('user@test.fr', 'https://magic.link/abc');
     const { react } = lastCallPayload();
-    expect((react as React.ReactElement).props.magicLinkUrl).toBe('https://magic.link/abc');
+    expect((react as React.ReactElement<Record<string, unknown>>).props.magicLinkUrl).toBe('https://magic.link/abc');
   });
 });
 
@@ -73,7 +73,7 @@ describe('sendBienvenueAmbassadeur', () => {
   it('construit dashboardUrl et carteUrl depuis APP_URL', async () => {
     await sendBienvenueAmbassadeur('marie@test.fr', 'Marie');
     const { react } = lastCallPayload();
-    const props = (react as React.ReactElement).props;
+    const props = (react as React.ReactElement<Record<string, unknown>>).props;
     expect(props.dashboardUrl).toBe('https://test.app/dashboard');
     expect(props.carteUrl).toBe('https://test.app');
     expect(props.firstName).toBe('Marie');
@@ -88,7 +88,7 @@ describe('sendAcceptationVisite', () => {
       'Nuit de Prière', '2026-06-14', 'https://test.app/contact',
     );
     const { to, react } = lastCallPayload();
-    const props = (react as React.ReactElement).props;
+    const props = (react as React.ReactElement<Record<string, unknown>>).props;
     expect(to).toBe('visitor@test.fr');
     expect(props.visitorFirstName).toBe('Sophie');
     expect(props.hostFirstName).toBe('Marie');
@@ -102,14 +102,14 @@ describe('sendCampagneAmbassadeurs', () => {
   it('passe customMessage quand fourni', async () => {
     await sendCampagneAmbassadeurs('amb@test.fr', 'Jean', 'Live Guérison', '2026-06-14', 'https://activate.url', 'Message perso');
     const { react } = lastCallPayload();
-    expect((react as React.ReactElement).props.customMessage).toBe('Message perso');
+    expect((react as React.ReactElement<Record<string, unknown>>).props.customMessage).toBe('Message perso');
     expect((react as React.ReactElement).type).toBe(CampagneAmbassadeurs);
   });
 
   it('customMessage optionnel — undefined si non fourni', async () => {
     await sendCampagneAmbassadeurs('amb@test.fr', 'Jean', 'Live Guérison', '2026-06-14', 'https://activate.url');
     const { react } = lastCallPayload();
-    expect((react as React.ReactElement).props.customMessage).toBeUndefined();
+    expect((react as React.ReactElement<Record<string, unknown>>).props.customMessage).toBeUndefined();
   });
 });
 
@@ -119,8 +119,8 @@ describe('sendAdminAlertNoActivations', () => {
     const { to, react } = lastCallPayload();
     expect(to).toBe('admin@test.fr');
     expect((react as React.ReactElement).type).toBe(AdminAlerteNoActivations);
-    expect((react as React.ReactElement).props.eventTitle).toBe('Live Guérison');
-    expect((react as React.ReactElement).props.adminUrl).toBe('https://test.app/admin/stats');
+    expect((react as React.ReactElement<Record<string, unknown>>).props.eventTitle).toBe('Live Guérison');
+    expect((react as React.ReactElement<Record<string, unknown>>).props.adminUrl).toBe('https://test.app/admin/stats');
   });
 });
 
@@ -132,7 +132,7 @@ describe('sendContactRequestReserved', () => {
       'marie@test.fr', null, 'https://test.app/accueil', availableAt,
     );
     const { react } = lastCallPayload();
-    expect((react as React.ReactElement).props.hostWhatsappGroupUrl).toBeNull();
+    expect((react as React.ReactElement<Record<string, unknown>>).props.hostWhatsappGroupUrl).toBeNull();
     expect((react as React.ReactElement).type).toBe(ContactReserved);
   });
 });
