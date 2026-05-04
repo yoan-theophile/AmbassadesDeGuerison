@@ -17,7 +17,7 @@ test.describe('Inscription — labels et copy', () => {
   });
 
   test('Step 1 — téléphone mentionne WhatsApp', async ({ page }) => {
-    await expect(page.getByLabel(/Téléphone.*WhatsApp/)).toBeVisible();
+    await expect(page.getByText(/Téléphone.*WhatsApp de préférence/)).toBeVisible();
     await expect(page.getByText('WhatsApp facilite les échanges')).toBeVisible();
   });
 
