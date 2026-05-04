@@ -243,7 +243,10 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 
 Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieurs Client Components.
 
-- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes affiché en haut du dashboard quel que soit le statut. Étapes : Inscription → Pré-approbation → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`.
+- **`MissionDuMoment`** (`components/dashboard/MissionDuMoment.tsx`) : carte contextuelle prioritaire en haut du dashboard pour les ambassadeurs `validated`. 5 états selon la priorité décroissante : (1) signal approuvé → invite à rejoindre le live (emerald) ; (2) signal envoyé → "en attente de David" (indigo atténué) ; (3) live en cours sans signal → formulaire de signal (indigo) ; (4) demandes en attente → nudge amber ; (5) live dans ≤ 3 jours non confirmé → nudge bleu discret. Retourne `null` si aucune condition active.
+- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes **affiché uniquement pour les ambassadeurs non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Étapes : Inscription → Pré-approbation → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`. Absent du dashboard pour les `validated` (ils ont terminé leur parcours).
+- **Ordre des sections pour `validated`** : MissionDuMoment → Mes lives → **Mes demandes** (remonté — urgences prioritaires) → Témoignage live (si live en cours) → Mon ambassade → Photos → MesInfosSection → **Formation (collapsée par défaut)**.
+- **Formation collapsée par défaut** : bouton toggle "Formation ambassadeur" toujours visible ; l'iframe YouTube ne se monte qu'après le clic (`showFormation` state). Pour `enrichment_pending` et autres non-validés, la formation est affichée immédiatement (onboarding).
 - **Section "Mes lives"** : pour chaque `host_activation`, affiche une carte CTA :
   - Inactif → bouton plein indigo "Je participe à ce live" (`PATCH /api/host-activations/[id]`)
   - Actif → badge vert "Vous participez à ce live" + bouton secondaire "Annuler ma participation"

@@ -251,7 +251,8 @@ en JS — le guard utilise `=== 'true'`).
 | `DevOverlay` | Client Component | État local + mutations via `fetch` |
 | `app/admin/*` | Server Components + Client Components mixtes | Données init en SSR, interactions en client |
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
-| `StatusTimeline` | Client Component | Stepper 4-étapes du parcours ambassadeur (présentationnel) |
+| `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
+| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
 | `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse + consignes + tel) |
 
 **Polling** : `MapPublique` et `AdminFeed` refetchent toutes les 5 secondes.
