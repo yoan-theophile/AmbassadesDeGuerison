@@ -1,7 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { AMBASSADOR_STATE } from './auth-state';
+import { AMBASSADOR_STATE, SOPHIE_STATE } from './auth-state';
 
 /**
  * Playwright global auth setup
@@ -66,4 +66,15 @@ setup('authenticate — marie.dubois@demo.fr (validated ambassador)', async ({ p
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
   await page.context().storageState({ path: AMBASSADOR_STATE });
+});
+
+setup('authenticate — sophie.leroux@demo.fr (pending_review candidate)', async ({ page }) => {
+  fs.mkdirSync('playwright/.auth', { recursive: true });
+
+  const magicLink = await generateMagicLink('sophie.leroux@demo.fr');
+  await page.goto(magicLink);
+
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+
+  await page.context().storageState({ path: SOPHIE_STATE });
 });

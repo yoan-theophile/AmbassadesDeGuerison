@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   CheckCircle2, Copy, Home, LogOut, Share2,
   MessageSquare, Send, ExternalLink, Play, UserCheck, UserX, Camera,
-  Calendar, Loader2, ChevronDown, ChevronUp,
+  Calendar, Loader2, ChevronDown, ChevronUp, Download,
 } from 'lucide-react';
 import Dropzone from '@/components/ui/Dropzone';
 import StatusTimeline from '@/components/dashboard/StatusTimeline';
@@ -16,6 +16,7 @@ import MesInfosSection from '@/app/dashboard/MesInfosSection';
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
 import { ONBOARDING } from '@/config/onboarding';
+import { buildVideoUrl } from '@/lib/youtube';
 
 interface HostProfile {
   id: string;
@@ -90,6 +91,12 @@ export default function DashboardPage() {
 
   // Formation (masquée par défaut pour les validés)
   const [showFormation, setShowFormation] = useState(false);
+
+  // Gate onboarding (vidéo + PDF + accept) — uniquement pour pending_review
+  const [videoStarted, setVideoStarted] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
+  const [onboardingError, setOnboardingError] = useState('');
 
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
@@ -198,6 +205,39 @@ export default function DashboardPage() {
       .then((d) => setOnboardingConfig({ video_url: d.video_url, pdf_url: d.pdf_url }))
       .catch(() => {});
   }, []);
+
+  // Détection du clic dans l'iframe YouTube — débloque la checkbox d'engagement
+  useEffect(() => {
+    if (profile?.status !== 'pending_review') return;
+    function onBlur() {
+      if (document.activeElement instanceof HTMLIFrameElement) {
+        setVideoStarted(true);
+      }
+    }
+    window.addEventListener('blur', onBlur);
+    return () => window.removeEventListener('blur', onBlur);
+  }, [profile?.status]);
+
+  async function handleOnboardingComplete() {
+    if (!onboardingChecked || onboardingSubmitting) return;
+    setOnboardingSubmitting(true);
+    setOnboardingError('');
+
+    const res = await fetch('/api/onboarding/complete', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOnboardingError(data.error ?? 'Une erreur est survenue. Réessayez.');
+      setOnboardingSubmitting(false);
+      return;
+    }
+
+    await load();
+    setOnboardingSubmitting(false);
+  }
 
   async function toggleActivation(id: string, currentValue: boolean) {
     await fetch(`/api/host-activations/${id}`, {
@@ -339,7 +379,7 @@ export default function DashboardPage() {
 
   const statusLabels: Record<string, string> = {
     pending_review:     'Candidature en cours',
-    pre_approved:       'Pré-approuvé',
+    pre_approved:       'Conditions acceptées',
     enrichment_pending: 'En attente de validation',
     validated:          'Actif',
     suspended:          'Suspendu',
@@ -399,7 +439,7 @@ export default function DashboardPage() {
             {/* Stepper parcours — uniquement pour les non-validés */}
             <StatusTimeline status={profile.status} />
 
-            {/* Encart candidature reçue — message d'attente */}
+            {/* Encart candidature reçue — gate self-service vidéo + PDF + CGU */}
             {profile.status === 'pending_review' && (
               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
                 <div className="flex items-start gap-3">
@@ -407,17 +447,17 @@ export default function DashboardPage() {
                     <CheckCircle2 className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-sm">Ta candidature a bien été reçue !</p>
+                    <p className="font-semibold text-slate-800 text-sm">Bienvenue, {profile.first_name} !</p>
                     <p className="text-sm text-slate-600 mt-0.5">
-                      L&apos;équipe de David va examiner ton dossier. Tu recevras un e-mail dès que ta candidature sera traitée.
-                      En attendant, prends le temps de regarder la vidéo de formation ci-dessous.
+                      Pour rejoindre les Ambassades de Guérison, regarde la vidéo de formation ci-dessous,
+                      télécharge le guide pratique, puis valide ton engagement pour débloquer le questionnaire.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Encart pré-approuvé — CTA questionnaire */}
+            {/* Encart conditions acceptées — CTA questionnaire */}
             {profile.status === 'pre_approved' && (
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
                 <div className="flex items-start gap-3">
@@ -425,7 +465,7 @@ export default function DashboardPage() {
                     <UserCheck className="w-4 h-4 text-indigo-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-sm">Félicitations, tu as été pré-approuvé !</p>
+                    <p className="font-semibold text-slate-800 text-sm">Conditions acceptées</p>
                     <p className="text-sm text-slate-600 mt-0.5">
                       Il reste une dernière étape avant de rejoindre la carte des ambassadeurs :
                       compléter ton profil enrichi pour que David puisse mieux te connaître.
@@ -466,7 +506,7 @@ export default function DashboardPage() {
               </div>
               <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                 <iframe
-                  src={onboardingConfig.video_url}
+                  src={buildVideoUrl(onboardingConfig.video_url)}
                   title="Formation ambassadeur — David Théry"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -474,6 +514,73 @@ export default function DashboardPage() {
                 />
               </div>
             </div>
+
+            {/* Gate onboarding — PDF + checkbox + bouton, uniquement pending_review */}
+            {profile.status === 'pending_review' && (
+              <>
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">Guide pratique de l&apos;ambassade</p>
+                      <p className="text-slate-500 text-xs mt-0.5">Informations pratiques pour accueillir lors des lives</p>
+                    </div>
+                    <a
+                      href={onboardingConfig.pdf_url}
+                      download
+                      className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-indigo-100 transition-colors shrink-0"
+                    >
+                      <Download className="w-4 h-4" />
+                      Télécharger
+                    </a>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+                  {!videoStarted && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+                      Regardez la vidéo ci-dessus pour débloquer cette étape.
+                    </p>
+                  )}
+                  <label className={`flex items-start gap-3 ${videoStarted ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                    <div className="mt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={onboardingChecked}
+                        onChange={(e) => setOnboardingChecked(e.target.checked)}
+                        disabled={!videoStarted}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <span className="text-sm text-slate-700">
+                      J&apos;ai regardé la vidéo de formation et je m&apos;engage à accueillir les participants
+                      dans l&apos;esprit de la charte des Ambassades de Guérison.
+                    </span>
+                  </label>
+
+                  {onboardingError && (
+                    <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{onboardingError}</p>
+                  )}
+
+                  <button
+                    onClick={handleOnboardingComplete}
+                    disabled={!onboardingChecked || onboardingSubmitting}
+                    className="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {onboardingSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Activation…
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Activer mon onboarding
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -816,7 +923,7 @@ export default function DashboardPage() {
               {showFormation && (
                 <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                   <iframe
-                    src={onboardingConfig.video_url}
+                    src={buildVideoUrl(onboardingConfig.video_url)}
                     title="Formation ambassadeur — David Théry"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen

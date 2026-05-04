@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { sendPreValidationAccordee, sendValidationFinale } from '@/lib/email/templates';
+import { sendValidationFinale } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-const VALID_ACTIONS = ['pre_approved', 'validated', 'validated_bypass', 'rejected', 'suspended', 'reactiver'] as const;
+const VALID_ACTIONS = ['validated', 'validated_bypass', 'rejected', 'suspended', 'reactiver'] as const;
 type Action = typeof VALID_ACTIONS[number];
 
 const ACTION_STATUS: Record<Action, string> = {
-  pre_approved: 'pre_approved',
   validated: 'validated',
   validated_bypass: 'validated',
   rejected: 'rejected',
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   }
 
   // L'action standard 'validated' n'est permise que depuis enrichment_pending
-  if (action === 'validated' && profile.status === 'pre_approved') {
+  if (action === 'validated' && profile.status !== 'enrichment_pending') {
     return NextResponse.json(
       { error: 'Le candidat doit d\'abord remplir le questionnaire. Utilisez validated_bypass si nécessaire.' },
       { status: 400 }
@@ -74,16 +73,8 @@ export async function POST(req: NextRequest, { params }: Props) {
   if (FEATURES.EMAIL_NOTIFICATIONS && profile.user_id) {
     const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
     const email = authUser?.user?.email;
-    if (email) {
-      if (action === 'pre_approved') {
-        const videoUrl = process.env.NEXT_PUBLIC_ONBOARDING_VIDEO_URL || '';
-        const pdfUrl = process.env.NEXT_PUBLIC_ONBOARDING_PDF_URL || '';
-        Promise.allSettled([
-          sendPreValidationAccordee(email, profile.first_name, videoUrl, pdfUrl),
-        ]);
-      } else if (action === 'validated' || action === 'validated_bypass') {
-        Promise.allSettled([sendValidationFinale(email, profile.first_name)]);
-      }
+    if (email && (action === 'validated' || action === 'validated_bypass')) {
+      Promise.allSettled([sendValidationFinale(email, profile.first_name)]);
     }
   }
 

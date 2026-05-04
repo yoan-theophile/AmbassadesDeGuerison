@@ -4,7 +4,6 @@ import * as React from 'react';
 import MagicLink from '@/emails/magic-link';
 import NouvelleInscriptionAdmin from '@/emails/nouvelle-inscription-admin';
 import AideVisiteurAdmin from '@/emails/aide-visiteur-admin';
-import PreValidationAccordee from '@/emails/pre-validation-accordee';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
@@ -34,19 +33,6 @@ export async function sendMagicLink(to: string, magicLinkUrl: string) {
     from: FROM(), to,
     subject: 'Votre lien de connexion — Ambassades de Guérison',
     react: React.createElement(MagicLink, { magicLinkUrl }),
-  });
-}
-
-export async function sendPreValidationAccordee(to: string, firstName: string, videoUrl: string, pdfUrl: string) {
-  return getResend().emails.send({
-    from: FROM(), to,
-    subject: 'Bonne nouvelle — votre candidature ambassadeur est pré-approuvée !',
-    react: React.createElement(PreValidationAccordee, {
-      firstName,
-      questionnaireUrl: `${APP_URL()}/dashboard/questionnaire`,
-      videoUrl,
-      pdfUrl,
-    }),
   });
 }
 

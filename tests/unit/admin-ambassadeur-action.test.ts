@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest';
 
 // Logique métier extraite de /api/admin/ambassadeurs/[id]/status
-// Nouveau cycle v2 : pending_review → pre_approved → enrichment_pending → validated → suspended/rejected
-// L'action 'reactiver' remet à validated depuis suspended ou rejected.
+// Refonte self-service onboarding : l'action 'pre_approved' n'existe plus côté admin —
+// la transition pending_review → pre_approved est désormais self-service (candidat).
 
-type Action = 'pre_approved' | 'validated' | 'rejected' | 'suspended' | 'reactiver';
+type Action = 'validated' | 'validated_bypass' | 'rejected' | 'suspended' | 'reactiver';
 
-const VALID_ACTIONS: Action[] = ['pre_approved', 'validated', 'rejected', 'suspended', 'reactiver'];
+const VALID_ACTIONS: Action[] = ['validated', 'validated_bypass', 'rejected', 'suspended', 'reactiver'];
 
 const ACTION_STATUS: Record<Action, string> = {
-  pre_approved: 'pre_approved',
-  validated:    'validated',
-  rejected:     'rejected',
-  suspended:    'suspended',
-  reactiver:    'validated',
+  validated:        'validated',
+  validated_bypass: 'validated',
+  rejected:         'rejected',
+  suspended:        'suspended',
+  reactiver:        'validated',
 };
 
 function validateAction(
@@ -28,15 +28,15 @@ function validateAction(
   return { ok: true, status: 200, newStatus: ACTION_STATUS[action as Action] };
 }
 
-describe('Admin — validation des actions sur un ambassadeur (cycle v2)', () => {
-  it('accepte pré-approuver depuis pending_review', () => {
-    const r = validateAction('admin', 'pre_approved');
+describe('Admin — validation des actions sur un ambassadeur (self-service onboarding)', () => {
+  it('accepte valider depuis enrichment_pending', () => {
+    const r = validateAction('admin', 'validated');
     expect(r.ok).toBe(true);
-    expect(r.newStatus).toBe('pre_approved');
+    expect(r.newStatus).toBe('validated');
   });
 
-  it('accepte valider définitivement', () => {
-    const r = validateAction('admin', 'validated');
+  it('accepte validated_bypass (escape hatch)', () => {
+    const r = validateAction('admin', 'validated_bypass');
     expect(r.ok).toBe(true);
     expect(r.newStatus).toBe('validated');
   });
@@ -71,11 +71,17 @@ describe('Admin — validation des actions sur un ambassadeur (cycle v2)', () =>
     expect(r.status).toBe(403);
   });
 
-  it('rejette une action inconnue — 400', () => {
-    const r = validateAction('admin', 'active');
+  it("rejette l'ancienne action 'pre_approved' (devenue self-service) — 400", () => {
+    const r = validateAction('admin', 'pre_approved');
     expect(r.ok).toBe(false);
     expect(r.status).toBe(400);
-    expect(r.error).toContain('pre_approved');
+    expect(r.error).toContain('validated_bypass');
+  });
+
+  it('rejette une action inconnue — 400', () => {
+    const r = validateAction('admin', 'hack');
+    expect(r.ok).toBe(false);
+    expect(r.status).toBe(400);
   });
 
   it('rejette "active" (ancien statut supprimé) — 400', () => {
@@ -83,25 +89,23 @@ describe('Admin — validation des actions sur un ambassadeur (cycle v2)', () =>
     expect(r.ok).toBe(false);
     expect(r.status).toBe(400);
   });
-
-  it('rejette un statut arbitraire — 400', () => {
-    const r = validateAction('admin', 'hack');
-    expect(r.ok).toBe(false);
-    expect(r.status).toBe(400);
-  });
 });
 
-describe('Admin — toutes les actions du cycle v2 sont reconnues', () => {
-  it('5 actions valides', () => {
+describe('Admin — toutes les actions du nouveau cycle sont reconnues', () => {
+  it('5 actions admin valides (sans pre_approved)', () => {
     expect(VALID_ACTIONS).toHaveLength(5);
+    expect(VALID_ACTIONS).not.toContain('pre_approved' as Action);
   });
 
-  it('active n\'est plus une action valide', () => {
-    expect(VALID_ACTIONS).not.toContain('active');
+  it("active n'est plus une action valide", () => {
+    expect(VALID_ACTIONS).not.toContain('active' as Action);
   });
 
   it('reactiver mappe vers validated (pas vers active)', () => {
     expect(ACTION_STATUS['reactiver']).toBe('validated');
-    expect(ACTION_STATUS['reactiver']).not.toBe('active');
+  });
+
+  it('validated_bypass mappe aussi vers validated', () => {
+    expect(ACTION_STATUS['validated_bypass']).toBe('validated');
   });
 });

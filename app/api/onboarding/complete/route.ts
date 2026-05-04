@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createServiceClient } from '@/lib/supabase/server';
-import { sendNouvelleActivationAdmin, sendBienvenueAmbassadeur } from '@/lib/email/templates';
-import { FEATURES } from '@/config/features';
+
+const ADVANCED_STATUSES = ['pre_approved', 'enrichment_pending', 'validated'];
 
 export async function PATCH(req: NextRequest) {
   const anonClient = createServerClient(
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: profile, error: fetchError } = await supabase
     .from('host_profiles')
-    .select('id, status, first_name, email, city, country')
+    .select('id, status')
     .eq('user_id', user.id)
     .single();
 
@@ -33,27 +33,34 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Profil introuvable.' }, { status: 404 });
   }
 
-  if (profile.status === 'validated') {
-    return NextResponse.json({ success: true });
+  if (ADVANCED_STATUSES.includes(profile.status)) {
+    return NextResponse.json({ success: true, status: profile.status });
   }
 
   if (profile.status !== 'pending_review') {
-    return NextResponse.json({ error: 'Statut incompatible avec cette action.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Statut incompatible avec cette action.' },
+      { status: 400 }
+    );
   }
 
   const { error: updateError } = await supabase
     .from('host_profiles')
-    .update({ status: 'validated' })
+    .update({ status: 'pre_approved' })
     .eq('id', profile.id);
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  if (FEATURES.EMAIL_NOTIFICATIONS) {
-    sendNouvelleActivationAdmin(profile.first_name, profile.city, profile.country).catch(() => {});
-    sendBienvenueAmbassadeur(profile.email, profile.first_name).catch(() => {});
-  }
+  console.log(JSON.stringify({
+    event: 'onboarding_complete',
+    user_id: user.id,
+    profile_id: profile.id,
+    from: 'pending_review',
+    to: 'pre_approved',
+    ts: new Date().toISOString(),
+  }));
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, status: 'pre_approved' });
 }

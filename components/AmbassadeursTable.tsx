@@ -35,17 +35,18 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  validated:          { label: 'Validé',          className: 'bg-emerald-50 text-emerald-700' },
-  pending_review:     { label: 'En examen',       className: 'bg-amber-50 text-amber-700'    },
-  pre_approved:       { label: 'Pré-approuvé',    className: 'bg-blue-50 text-blue-700'      },
-  enrichment_pending: { label: 'Questionnaire',   className: 'bg-purple-50 text-purple-700'  },
-  suspended:          { label: 'Suspendu',        className: 'bg-red-50 text-red-700'        },
-  rejected:           { label: 'Refusé',          className: 'bg-slate-100 text-slate-500'   },
+  validated:          { label: 'Validé',                className: 'bg-emerald-50 text-emerald-700' },
+  pending_review:     { label: 'En examen',             className: 'bg-amber-50 text-amber-700'    },
+  pre_approved:       { label: 'Conditions acceptées',  className: 'bg-blue-50 text-blue-700'      },
+  enrichment_pending: { label: 'Questionnaire',         className: 'bg-purple-50 text-purple-700'  },
+  suspended:          { label: 'Suspendu',              className: 'bg-red-50 text-red-700'        },
+  rejected:           { label: 'Refusé',                className: 'bg-slate-100 text-slate-500'   },
 };
 
-// pre_approved → validated est bloqué côté API ; seul validated_bypass est permis
+// La transition pending_review → pre_approved est désormais self-service (le candidat l'effectue depuis /dashboard).
+// L'admin ne peut plus pré-approuver. Seul validated_bypass autorise un raccourci vers validated.
 const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
-  pending_review:     [{ action: 'pre_approved',    label: 'Pré-approuver',      className: 'bg-blue-50 text-blue-700 hover:bg-blue-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  pending_review:     [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   pre_approved:       [{ action: 'validated_bypass', label: 'Valider (bypass)',   className: 'bg-amber-50 text-amber-700 hover:bg-amber-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   enrichment_pending: [{ action: 'validated',       label: 'Valider',            className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   validated:          [{ action: 'suspended',       label: 'Suspendre',          className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
@@ -67,7 +68,7 @@ const CHURCH_ATTENDANCE_LABELS: Record<string, string> = {
 const FILTERS = [
   { value: 'all',              label: 'Tous'          },
   { value: 'pending_review',   label: 'En examen'     },
-  { value: 'pre_approved',     label: 'Pré-approuvés' },
+  { value: 'pre_approved',     label: 'Conditions acceptées' },
   { value: 'enrichment_pending', label: 'Questionnaire' },
   { value: 'validated',        label: 'Validés'       },
   { value: 'suspended',        label: 'Suspendus'     },

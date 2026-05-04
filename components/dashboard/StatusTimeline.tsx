@@ -10,15 +10,15 @@ type Step = {
 const STEPS: Step[] = [
   {
     label: 'Inscription',
-    description: 'Candidature reçue',
+    description: 'Regardez la vidéo et acceptez les conditions',
   },
   {
-    label: 'Pré-approbation',
-    description: 'David examine votre dossier…',
+    label: 'Conditions acceptées',
+    description: 'Complétez votre profil enrichi',
   },
   {
     label: 'Profil enrichi',
-    description: 'Compléter le questionnaire',
+    description: 'David examine votre dossier…',
   },
   {
     label: 'Validation finale',
