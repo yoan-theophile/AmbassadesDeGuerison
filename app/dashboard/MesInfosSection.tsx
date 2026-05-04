@@ -12,6 +12,7 @@ interface Profile {
   address_private?: string | null;
   consignes?: string | null;
   phone?: string | null;
+  quartier?: string | null;
 }
 
 export default function MesInfosSection({ profile }: { profile: Profile }) {
@@ -23,6 +24,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     address_private: profile.address_private ?? '',
     consignes: profile.consignes ?? '',
     phone: (profile.phone ?? '').replace(/\s+/g, ''),
+    quartier: profile.quartier ?? '',
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,6 +57,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
       address_private: form.address_private,
       consignes: form.consignes,
       phone: form.phone,
+      quartier: form.quartier,
     };
 
     if (form.city !== profile.city && cityConfirmed) {
@@ -105,6 +108,23 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           onChange={(c) => { setForm((f) => ({ ...f, country: c })); setSaved(false); }}
           label="Pays"
         />
+
+        <div>
+          <label className="block text-sm text-slate-700 mb-1.5">
+            Quartier ou arrondissement
+            <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel)</span>
+          </label>
+          <input
+            type="text"
+            value={form.quartier}
+            onChange={(e) => { setForm((f) => ({ ...f, quartier: e.target.value })); setSaved(false); }}
+            placeholder="ex : Paris 15e, Abidjan Cocody, Lyon Presqu'île"
+            className={inputCls}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Aide les visiteurs à te retrouver s'ils sont dans le même quartier.
+          </p>
+        </div>
 
         <div>
           <label className="block text-sm text-slate-700 mb-1.5">Adresse privée</label>

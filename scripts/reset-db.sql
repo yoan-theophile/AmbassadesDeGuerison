@@ -64,6 +64,7 @@ CREATE TABLE host_profiles (
   country                TEXT        NOT NULL,
   lat                    DOUBLE PRECISION,
   lng                    DOUBLE PRECISION,
+  quartier               TEXT        DEFAULT NULL,
   geocoding_failed       BOOLEAN     DEFAULT FALSE,
   address_private        TEXT,
   address_public         BOOLEAN     DEFAULT FALSE,

@@ -34,6 +34,7 @@ interface HostPin {
   capacity: number | null;
   whatsapp_group_url?: string;
   host_type: string;
+  quartier?: string | null;
 }
 
 function makeClusterIcon(L: any, count: number) {
@@ -303,6 +304,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
             <div style="min-width:190px;padding:2px 0">
               <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
+              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${host.quartier}</p>` : ''}
               <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
               ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
@@ -327,6 +329,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
                 <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}</p>
                 <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${host.quartier}</p>` : ''}
                 ${cta}
               </div>
             `;

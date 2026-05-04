@@ -122,7 +122,7 @@ async function run() {
       address_private: '12 rue de la Paix, 75001 Paris',
       consignes: 'Sonner à l\'interphone "Dubois". Ascenseur disponible. Parking Opéra à 200m.',
       viewing_setup: 'TV salon 55 pouces', healing_challenge_done: true,
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 15e', status: 'validated',
     },
     {
       first_name: 'Jean-Pierre', last_name: 'Martin', email: 'jp.martin@demo.fr',
@@ -134,7 +134,7 @@ async function run() {
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupLyon123',
       viewing_setup: 'Vidéoprojecteur 4K + sono', church_subtype: 'permanent_open',
       healing_challenge_done: true, denomination: 'évangélique',
-      lat: 45.7578, lng: 4.8320, status: 'validated',
+      lat: 45.7578, lng: 4.8320, quartier: "Lyon Presqu'île", status: 'validated',
     },
     {
       first_name: 'Fatou', last_name: 'Diallo', email: 'fatou.diallo@demo.fr',
@@ -176,7 +176,7 @@ async function run() {
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupAbidjan456',
       church_subtype: 'permanent_open', denomination: 'protestant',
       viewing_setup: 'Écran LED 80 pouces + sonorisation pro', healing_challenge_done: true,
-      lat: 5.3600, lng: -4.0083, status: 'validated',
+      lat: 5.3600, lng: -4.0083, quartier: 'Abidjan Cocody', status: 'validated',
     },
     {
       first_name: 'Aminata', last_name: 'Sow', email: 'aminata.sow@demo.fr',
@@ -198,7 +198,7 @@ async function run() {
       address_private: '34 rue de Rivoli, 75004 Paris',
       consignes: 'Code immeuble : B312. 2ème étage gauche.',
       viewing_setup: 'TV 50 pouces', healing_challenge_done: true,
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 10e', status: 'validated',
     },
     {
       first_name: 'Camille', last_name: 'Petit', email: 'camille.petit@demo.fr',
@@ -208,7 +208,7 @@ async function run() {
       address_private: '7 rue du Temple, 75003 Paris',
       consignes: 'Interphone "Petit". Pas d\'ascenseur, 3ème étage.',
       viewing_setup: 'Ordinateur + grand écran externe',
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 11e', status: 'validated',
     },
     {
       first_name: 'Antoine', last_name: 'Moreau', email: 'antoine.moreau@demo.fr',
@@ -219,7 +219,7 @@ async function run() {
       consignes: 'Salle du bas, entrée latérale côté rue Roquette.',
       church_subtype: 'occasional', denomination: 'évangélique',
       viewing_setup: 'Vidéoprojecteur + sono', healing_challenge_done: true,
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 3e', status: 'validated',
     },
     {
       first_name: 'Julie', last_name: 'Fontaine', email: 'julie.fontaine@demo.fr',
@@ -229,7 +229,7 @@ async function run() {
       address_private: '58 avenue de la République, 75011 Paris',
       consignes: 'Digicode 1453. Appartement 6, bâtiment B.',
       viewing_setup: 'Smart TV 55 pouces',
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 7e', status: 'validated',
     },
     {
       first_name: 'Théo', last_name: 'Garnier', email: 'theo.garnier@demo.fr',
@@ -239,9 +239,9 @@ async function run() {
       address_private: '15 rue de la Roquette, 75011 Paris',
       consignes: 'Sonnette "Garnier". 1er étage, porte verte.',
       viewing_setup: 'TV + barre de son',
-      lat: 48.8698, lng: 2.3315, status: 'validated',
+      lat: 48.8698, lng: 2.3315, quartier: 'Paris 20e', status: 'validated',
     },
-    // Sophie : candidate en attente de validation (pour tester /inscription → /onboarding)
+    // Sophie : candidate pending_review (pour tester le gate self-service onboarding sur /dashboard)
     {
       first_name: 'Sophie', last_name: 'Leroux', email: 'sophie.leroux@demo.fr',
       phone: '+33 6 55 44 33 22',
@@ -249,7 +249,7 @@ async function run() {
       host_type: 'individual', contact_mode: 'email', capacity: 10,
       address_private: "8 cours de l'Intendance, 33000 Bordeaux",
       consignes: null, viewing_setup: null,
-      lat: 44.8378, lng: -0.5792, status: 'pending_review',
+      lat: 44.8378, lng: -0.5792, quartier: 'Bordeaux Chartrons', status: 'pending_review',
     },
   ];
 

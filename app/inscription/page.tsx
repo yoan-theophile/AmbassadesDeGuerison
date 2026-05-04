@@ -36,6 +36,7 @@ export default function InscriptionPage() {
     address_private: '',
     whatsapp_group_url: '',
     consignes: '',
+    quartier: '',
   });
 
   function set(field: string, value: string) {
@@ -165,6 +166,22 @@ export default function InscriptionPage() {
                 value={form.country}
                 onChange={(country) => set('country', country)}
               />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Quartier ou arrondissement
+                  <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.quartier}
+                  onChange={(e) => set('quartier', e.target.value)}
+                  placeholder="ex : Paris 15e, Abidjan Cocody, Lyon Presqu'île"
+                  className={inputCls}
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Aide les visiteurs à te retrouver s'ils sont dans le même quartier.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setStep(2)}

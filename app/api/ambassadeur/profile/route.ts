@@ -18,20 +18,21 @@ export async function PATCH(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('host_profiles')
-    .select('id, first_name, city, address_private, consignes, phone')
+    .select('id, first_name, city, address_private, consignes, phone, quartier')
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (!profile) return NextResponse.json({ error: 'Profil introuvable' }, { status: 404 });
 
   const body = await req.json();
-  const { city, lat, lng, country, address_private, consignes, phone } = body;
+  const { city, lat, lng, country, address_private, consignes, phone, quartier } = body;
 
   const updates: Record<string, unknown> = {};
 
   if (address_private !== undefined) updates.address_private = address_private;
   if (consignes !== undefined) updates.consignes = consignes;
   if (phone !== undefined) updates.phone = phone;
+  if (quartier !== undefined) updates.quartier = quartier || null;
 
   const ancienneVille = profile.city;
   let villeChangee = false;

@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     consignes,
     lat,
     lng,
+    quartier,
   } = body;
 
   if (!email || !first_name || !last_name || !phone?.trim() || !city || !country || !address_private || lat == null || lng == null) {
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         phone: phone.trim(),
         lat: lat ?? null,
         lng: lng ?? null,
+        quartier: quartier || null,
         status: 'pending_review',
       }).select('id').single();
       if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
