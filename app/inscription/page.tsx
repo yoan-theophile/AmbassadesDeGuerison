@@ -133,9 +133,9 @@ export default function InscriptionPage() {
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
               </Field>
-              <Field label="Téléphone" required>
+              <Field label="Téléphone (WhatsApp de préférence)" required>
                 <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} required maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
-                <p className="text-xs text-slate-400 mt-1">Uniquement visible par l'équipe — jamais transmis aux visiteurs.</p>
+                <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
               </Field>
               <CityInput
                 label="Ville"
@@ -179,11 +179,13 @@ export default function InscriptionPage() {
               <Field label="Capacité d'accueil (personnes)" required>
                 <input type="number" min="1" max="500" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} required className={inputCls} />
               </Field>
-              <Field label="Adresse complète (privée)" required>
+              <Field label="Adresse complète — privée, partagée uniquement avec un visiteur que vous avez accepté" required>
                 <textarea value={form.address_private} onChange={(e) => set('address_private', e.target.value)} required rows={3} className={inputCls} placeholder="12 rue des Lilas, 69001 Lyon" />
+                <p className="text-xs text-slate-400 mt-1">Vous validez chaque demande avant que l'adresse soit dévoilée.</p>
               </Field>
-              <Field label="Consignes d'accès (optionnel)">
-                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={2} className={inputCls} placeholder="Sonner à l'interphone B. Parking gratuit en face." />
+              <Field label="Détails utiles pour vos visiteurs (optionnel)">
+                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder="Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30." />
+                <p className="text-xs text-slate-400 mt-1">Sera transmis aux visiteurs acceptés. Tout détail qui facilite leur arrivée.</p>
               </Field>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)} className={btnSecondary}>
