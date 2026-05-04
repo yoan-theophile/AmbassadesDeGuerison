@@ -121,11 +121,11 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom *</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
         <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail *</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
         <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
       </div>
       <PhoneInput
