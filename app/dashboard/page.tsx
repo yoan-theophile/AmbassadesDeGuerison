@@ -399,6 +399,24 @@ export default function DashboardPage() {
             {/* Stepper parcours — uniquement pour les non-validés */}
             <StatusTimeline status={profile.status} />
 
+            {/* Encart candidature reçue — message d'attente */}
+            {profile.status === 'pending_review' && (
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm">Ta candidature a bien été reçue !</p>
+                    <p className="text-sm text-slate-600 mt-0.5">
+                      L&apos;équipe de David va examiner ton dossier. Tu recevras un e-mail dès que ta candidature sera traitée.
+                      En attendant, prends le temps de regarder la vidéo de formation ci-dessous.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Encart pré-approuvé — CTA questionnaire */}
             {profile.status === 'pre_approved' && (
               <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
