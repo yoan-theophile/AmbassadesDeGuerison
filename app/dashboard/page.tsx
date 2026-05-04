@@ -77,6 +77,8 @@ export default function DashboardPage() {
   // Photos upload
   const [photoUploading, setPhotoUploading] = useState<'profile' | 'room' | null>(null);
   const [photoError, setPhotoError] = useState('');
+  // Signed URLs pour l'affichage des photos (path → signedUrl)
+  const [photoSignedUrls, setPhotoSignedUrls] = useState<Record<string, string>>({});
 
   // Event courant — uniquement dans la fenêtre live (±LIVE_WINDOW_HOURS autour de event_date)
   const [currentEvent, setCurrentEvent] = useState<{ id: string; live_link: string | null } | null>(null);
@@ -142,6 +144,20 @@ export default function DashboardPage() {
     setActivations((acts as unknown as Activation[]) ?? []);
     setContactRequests(reqs ?? []);
     setCurrentEvent(event);
+
+    // Génère les signed URLs pour les photos (bucket privé)
+    const paths = [prof.profile_photo_url, ...(prof.room_photo_urls ?? [])].filter(Boolean) as string[];
+    if (paths.length > 0) {
+      const entries = await Promise.all(
+        paths.map(async (p) => {
+          if (p.startsWith('http')) return [p, p] as const;
+          const { data } = await supabase.storage.from('ambassador-photos').createSignedUrl(p, 900);
+          return [p, data?.signedUrl ?? ''] as const;
+        })
+      );
+      setPhotoSignedUrls(Object.fromEntries(entries.filter(([, url]) => url)));
+    }
+
     setLoading(false);
   }, [router, supabase]);
 
@@ -259,11 +275,16 @@ export default function DashboardPage() {
     if (!res.ok) {
       setPhotoError(data.error ?? 'Erreur lors de l\'upload.');
     } else {
+      // data.path = chemin stocké en DB, data.url = signed URL pour affichage immédiat
+      const { path, url } = data;
       setProfile((prev) => {
         if (!prev) return prev;
-        if (type === 'profile') return { ...prev, profile_photo_url: data.url };
-        return { ...prev, room_photo_urls: [...(prev.room_photo_urls ?? []), data.url] };
+        if (type === 'profile') return { ...prev, profile_photo_url: path };
+        return { ...prev, room_photo_urls: [...(prev.room_photo_urls ?? []), path] };
       });
+      if (path && url) {
+        setPhotoSignedUrls((prev) => ({ ...prev, [path]: url }));
+      }
     }
     setPhotoUploading(null);
   }
@@ -483,9 +504,9 @@ export default function DashboardPage() {
             ) : (
               <Dropzone
                 onFile={(f) => uploadPhoto(f, 'profile')}
-                preview={profile.profile_photo_url}
+                preview={profile.profile_photo_url ? (photoSignedUrls[profile.profile_photo_url] ?? null) : null}
                 onRemove={profile.profile_photo_url ? () => setProfile((p) => p ? { ...p, profile_photo_url: null } : p) : undefined}
-                label="Photo de votre visage (visible publiquement)"
+                label="Photo de votre visage — privée, vue uniquement par David pour valider votre ambassade"
               />
             )}
           </div>
@@ -498,12 +519,12 @@ export default function DashboardPage() {
             </p>
             {(profile.room_photo_urls ?? []).length > 0 && (
               <div className="grid grid-cols-3 gap-2">
-                {(profile.room_photo_urls ?? []).map((url) => (
-                  <div key={url} className="relative group rounded-lg overflow-hidden border border-slate-100">
-                    <img src={url} alt="Salle" className="w-full h-24 object-cover" />
+                {(profile.room_photo_urls ?? []).map((path) => (
+                  <div key={path} className="relative group rounded-lg overflow-hidden border border-slate-100">
+                    <img src={photoSignedUrls[path] ?? ''} alt="Salle" className="w-full h-24 object-cover" />
                     <button
                       type="button"
-                      onClick={() => removeRoomPhoto(url)}
+                      onClick={() => removeRoomPhoto(path)}
                       className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 shadow text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       ×

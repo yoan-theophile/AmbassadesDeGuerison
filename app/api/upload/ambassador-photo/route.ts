@@ -70,13 +70,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  // Générer une signed URL (15 min) pour l'aperçu immédiat — le chemin est stocké en DB
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 900);
 
-  // Mettre à jour la colonne correspondante
+  if (signedError) {
+    return NextResponse.json({ error: signedError.message }, { status: 500 });
+  }
+
+  const signedUrl = signedData.signedUrl;
+
+  // Mettre à jour la colonne avec le CHEMIN (pas l'URL publique)
   if (type === 'profile') {
     const { error } = await supabase
       .from('host_profiles')
-      .update({ profile_photo_url: publicUrl })
+      .update({ profile_photo_url: path })
       .eq('id', profile.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else {
@@ -94,10 +103,11 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase
       .from('host_profiles')
-      .update({ room_photo_urls: [...existing, publicUrl] })
+      .update({ room_photo_urls: [...existing, path] })
       .eq('id', profile.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ url: publicUrl });
+  // url = signed URL pour aperçu immédiat dans le dashboard, path = chemin stocké en DB
+  return NextResponse.json({ url: signedUrl, path });
 }

@@ -1,18 +1,13 @@
--- Migration : création du bucket Supabase Storage ambassador-photos (privé)
--- Usage : supabase db query --linked --file scripts/migration-storage-bucket.sql
--- Idempotent : ON CONFLICT DO NOTHING + DROP POLICY IF EXISTS
--- Photos privées : seul l'ambassadeur (signed URL) et David (service_role) peuvent y accéder.
+-- Migration : passer le bucket ambassador-photos en mode privé
+-- Usage : supabase db query --linked --file scripts/migration-photos-private.sql
+-- Idempotent : UPDATE + DROP/CREATE
 
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'ambassador-photos',
-  'ambassador-photos',
-  false,
-  5242880,
-  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-)
-ON CONFLICT (id) DO NOTHING;
+-- 1. Rendre le bucket privé
+UPDATE storage.buckets
+SET public = false
+WHERE id = 'ambassador-photos';
 
+-- 2. Supprimer les anciennes policies trop permissives
 DROP POLICY IF EXISTS "ambassador_photos_public_read"    ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_service_insert" ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_owner_select"   ON storage.objects;
@@ -20,7 +15,7 @@ DROP POLICY IF EXISTS "ambassador_photos_owner_insert"   ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_owner_update"   ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_owner_delete"   ON storage.objects;
 
--- SELECT : l'ambassadeur peut lire ses propres fichiers (pour createSignedUrl côté client)
+-- 3. Policy SELECT : l'ambassadeur peut lire ses propres fichiers (pour createSignedUrl côté client)
 CREATE POLICY "ambassador_photos_owner_select"
 ON storage.objects FOR SELECT
 USING (
@@ -31,7 +26,7 @@ USING (
   )
 );
 
--- INSERT : authentifié (l'ownership est vérifié dans la route API)
+-- 4. Policy INSERT : l'ambassadeur peut uploader (le contrôle d'ownership est dans la route API)
 CREATE POLICY "ambassador_photos_owner_insert"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -39,7 +34,7 @@ WITH CHECK (
   AND auth.role() = 'authenticated'
 );
 
--- UPDATE : l'ambassadeur peut écraser ses propres fichiers (upsert)
+-- 5. Policy UPDATE : l'ambassadeur peut écraser ses propres fichiers (upsert)
 CREATE POLICY "ambassador_photos_owner_update"
 ON storage.objects FOR UPDATE
 USING (
@@ -50,7 +45,7 @@ USING (
   )
 );
 
--- DELETE : l'ambassadeur peut supprimer ses propres fichiers
+-- 6. Policy DELETE : l'ambassadeur peut supprimer ses propres fichiers
 CREATE POLICY "ambassador_photos_owner_delete"
 ON storage.objects FOR DELETE
 USING (
