@@ -106,7 +106,7 @@ export default function DashboardPage() {
       .eq('user_id', user.id)
       .single();
 
-    if (!prof) { router.replace('/inscription'); return; }
+    if (!prof) { router.replace('/auth'); return; }
 
     const { data: acts } = await supabase
       .from('host_activations')
@@ -134,7 +134,7 @@ export default function DashboardPage() {
       .lte('event_date', new Date(now.getTime() + windowMs).toISOString())
       .order('event_date', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const event = activeEvent ? { id: activeEvent.id, live_link: activeEvent.live_link ?? null } : null;
 
@@ -146,7 +146,7 @@ export default function DashboardPage() {
         .eq('event_id', event.id)
         .eq('status', 'approved')
         .limit(1)
-        .single();
+        .maybeSingle();
       if (approved) setApprovedLiveLink(event.live_link);
     }
 
@@ -183,7 +183,7 @@ export default function DashboardPage() {
         .eq('event_id', currentEvent.id)
         .eq('status', 'approved')
         .limit(1)
-        .single();
+        .maybeSingle();
       if (data) {
         setApprovedLiveLink(currentEvent.live_link);
         setSignalSent(false);

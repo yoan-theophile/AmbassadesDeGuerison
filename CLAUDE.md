@@ -145,7 +145,8 @@ Flux admin-driven (self-service supprimé) :
 
 ## Formulaire d'inscription (`/inscription`)
 
-- **Champs obligatoires étape 1** : Prénom (`first_name`), Nom (`last_name`), E-mail, Téléphone (`phone`), Ville (avec géocodage confirmé), Pays. Le bouton "Continuer" est désactivé tant que l'un de ces champs est vide ou que `form.lat == null`.
+- **Champs obligatoires étape 1** : Prénom (`first_name`), Nom (`last_name`), E-mail, Téléphone (`phone`), Ville (avec géocodage confirmé), Pays. Le bouton "Continuer" est désactivé tant que l'un de ces champs est vide, que `form.lat == null`, ou que le numéro de téléphone n'est pas valide (`isValidPhoneNumber` de `react-phone-number-input`).
+- **`PhoneInput`** (`components/ui/PhoneInput.tsx`) : remplace `<input type="tel">` sur `/inscription` et `MesInfosSection`. Utilise `react-phone-number-input` v3 — sélecteur d'indicatif pays avec drapeau (défaut France), formatage automatique, validation E.164. La valeur stockée en DB et transmise à l'API est en format E.164 (ex : `+33612345678`). Lors du chargement depuis la DB dans `MesInfosSection`, normaliser les espaces : `.replace(/\s+/g, '')` (données legacy peuvent être au format `+33 6 12 34 56 78`).
 - **`CityInput`** (`components/ui/CityInput.tsx`) : autocomplétion Nominatim via `/api/geocode`. Le `onChange` expose `(city, lat?, lng?, country?)`. `country` est transmis uniquement lors d'une sélection dans le dropdown (pas lors d'une saisie libre).
 - **Validation géocodage** : double couche — (1) frontend : bouton "Continuer" désactivé tant que `form.lat == null`, hint ambre si texte tapé sans sélection ; (2) API : `POST /api/inscriptions` retourne 400 si `lat` ou `lng` absents. Évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`). Le check utilise `== null` (et non `!lat`) pour ne pas bloquer les villes à latitude 0 (équateur).
 - **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
@@ -259,7 +260,7 @@ Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieu
   - Actif → badge vert "Vous participez à ce live" + bouton secondaire "Annuler ma participation"
 - **Section "Mes demandes"** : carte enrichie par demande — nom visiteur, live concerné, horodatage relatif (`Intl.RelativeTimeFormat`), message déplié (pas de `line-clamp`), boutons Accepter/Refuser.
 - **Section "Modifier mes photos"** : affichée uniquement si `status === 'enrichment_pending'` OU si l'ambassadeur clique sur le bouton toggle. Section cachée par défaut pour un ambassadeur validé.
-- **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse privée + consignes + téléphone. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit.
+- **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse privée + consignes + téléphone. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit. `PhoneInput` : valeur initialisée avec `.replace(/\s+/g, '')` pour normaliser les données legacy vers E.164.
 
 ## Page planning admin (`/admin/planning`)
 
