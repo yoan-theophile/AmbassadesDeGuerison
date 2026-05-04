@@ -22,7 +22,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     country: profile.country,
     address_private: profile.address_private ?? '',
     consignes: profile.consignes ?? '',
-    phone: profile.phone ?? '',
+    phone: (profile.phone ?? '').replace(/\s+/g, ''),
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
   const [saving, setSaving] = useState(false);
