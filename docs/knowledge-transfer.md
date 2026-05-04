@@ -207,7 +207,7 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+20 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 | Template | Déclenché quand |
 |----------|----------------|
@@ -229,6 +229,7 @@ ORDER BY ls.created_at DESC;
 | Alerte 0 hôtes actifs (admin) | Aucun hôte actif 48h avant un live |
 | Nouvelle candidature (admin) | Ambassadeur s'inscrit → notification admin (action requise : valider) |
 | Demande d'aide visiteur (admin) | Visiteur soumet une demande d'aide → notification admin avec le message |
+| Modification profil ambassadeur (admin) | Ambassadeur modifie sa ville via `PATCH /api/ambassadeur/profile` → email admin avec ancienne ville → nouvelle ville |
 
 ### Voir les emails envoyés
 
@@ -388,11 +389,14 @@ AND hp.id NOT IN (
 | `live_signals` | Admin + l'hôte qui a créé le signal | L'hôte lui-même |
 | `events` | Public | Admin uniquement |
 
+**Storage bucket `ambassador-photos`** : bucket Supabase **privé** (public = false). Les colonnes `profile_photo_url` / `room_photo_urls` de `host_profiles` contiennent un chemin Storage, pas une URL. Accès via signed URL (`lib/storage/photo-url.ts`). L'admin lit via `getAdminPhotoUrl()` (service_role, 1h), l'ambassadeur via `getOwnerPhotoUrl()` (anon, 15 min). Aucun composant public ne lit ces chemins.
+
 ### Ne jamais faire
 
 - Exposer `SUPABASE_SERVICE_ROLE_KEY` côté client
 - Bypasser RLS dans une route API publique
 - Stocker `action_token` (liens accept/decline) en clair dans les logs
+- Exposer `profile_photo_url` / `room_photo_urls` dans une réponse API publique ou sur la carte
 
 ---
 

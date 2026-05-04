@@ -133,6 +133,8 @@ Flux admin-driven (self-service supprimé) :
 - Le dashboard (`app/dashboard/page.tsx`) gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
 - **Video gate sur `/onboarding`** : la case d'engagement et le bouton de validation restent désactivés jusqu'au premier clic dans la vidéo YouTube. Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement` (plus fiable que l'API postMessage YouTube cross-origin).
 - Statuts valides (contrainte CHECK DB) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
+- `enrichment_pending` requiert `profile_photo_url` non NULL — la route `PATCH /api/ambassadeur/enrichissement` refuse la soumission si la photo de profil n'a pas été uploadée.
+- Ambassadeur validé : `PATCH /api/ambassadeur/profile` permet d'éditer ville (+ re-géocodage), adresse privée, consignes et téléphone. Si la ville change, un email `ambassadeur-modification-admin` est envoyé à l'admin. Si `lat`/`lng` sont absents (ville tapée sans sélection dropdown), retourne 400.
 
 ## Formulaire d'inscription (`/inscription`)
 
@@ -237,6 +239,18 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
   - Ajoute colonne `submitter_city TEXT`
   - Ajoute policy RLS `testimonials_anon_insert` (INSERT public sans FK).
 
+## Dashboard ambassadeur (`/dashboard`)
+
+Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieurs Client Components.
+
+- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes affiché en haut du dashboard quel que soit le statut. Étapes : Inscription → Pré-approbation → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`.
+- **Section "Mes lives"** : pour chaque `host_activation`, affiche une carte CTA :
+  - Inactif → bouton plein indigo "Je participe à ce live" (`PATCH /api/host-activations/[id]`)
+  - Actif → badge vert "Vous participez à ce live" + bouton secondaire "Annuler ma participation"
+- **Section "Mes demandes"** : carte enrichie par demande — nom visiteur, live concerné, horodatage relatif (`Intl.RelativeTimeFormat`), message déplié (pas de `line-clamp`), boutons Accepter/Refuser.
+- **Section "Modifier mes photos"** : affichée uniquement si `status === 'enrichment_pending'` OU si l'ambassadeur clique sur le bouton toggle. Section cachée par défaut pour un ambassadeur validé.
+- **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse privée + consignes + téléphone. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit.
+
 ## Page planning admin (`/admin/planning`)
 
 - **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
@@ -250,6 +264,7 @@ Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en ta
 - Port 6543 obligatoire pour les connexions Supabase server-side (pooler)
 - Feature flags dans `config/features.ts`
 - `AdminLayout` contient un bouton "Se déconnecter" en bas de la sidebar (`supabase.auth.signOut()` + `router.replace('/auth')`)
+- `profile_photo_url` et `room_photo_urls` stockent un **chemin** Supabase Storage (ex : `ambassador-photos/uuid/photo.jpg`), pas une URL publique. Bucket privé. Toujours lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` (ambassadeur) ou `getAdminPhotoUrl(path)` (admin). Ne jamais exposer sur la carte publique.
 
 ## Skill routing
 

@@ -127,8 +127,9 @@ Dashboard admin /admin/ambassadeurs
   │  → email sendPreValidationAccordee (lien questionnaire + vidéo)
   ▼
 /dashboard/questionnaire (ambassadeur)
-  │  POST /api/ambassadeur/enrichissement
+  │  PATCH /api/ambassadeur/enrichissement
   │  → status = 'enrichment_pending'
+  │  → photos requises : profile_photo_url (chemin bucket privé) doit être non NULL
   ▼
 Dashboard admin (revue du questionnaire)
   │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'validate' }
@@ -199,7 +200,8 @@ Après le live
 | `/api/live-signals` | Signaux live depuis dashboard hôte | Session hôte |
 | `/api/inscriptions` | Création profil ambassadeur | Non |
 | `/api/onboarding/*` | Questionnaire + config onboarding | Session hôte / Admin |
-| `/api/ambassadeur/*` | Enrichissement profil | Session hôte |
+| `/api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire) | Session hôte |
+| `/api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, téléphone) | Session hôte |
 | `/api/admin/*` | Toutes les actions admin | Admin uniquement |
 | `/api/campaign-activations` | Activation hôte via lien email | Token signé |
 | `/api/cron/*` | Jobs planifiés Vercel Cron | `CRON_SECRET` header |
@@ -234,6 +236,8 @@ Toute action initiée par un utilisateur connecté (dashboard, formulaires) util
 variable d'environnement n'est pas exactement `"true"` (la chaîne `"false"` est truthy
 en JS — le guard utilise `=== 'true'`).
 
+**Photos hôtes — bucket privé.** Le bucket Supabase `ambassador-photos` est `public: false`. Les colonnes `profile_photo_url` et `room_photo_urls` dans `host_profiles` stockent un *chemin* Supabase Storage, pas une URL publique. Lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` pour l'ambassadeur lui-même (signed URL courte), `getAdminPhotoUrl(path)` pour la fiche admin. Jamais exposées sur la carte publique ni les pages `/ambassade/[id]`.
+
 ---
 
 ## Rendu — Server vs Client
@@ -247,6 +251,8 @@ en JS — le guard utilise `=== 'true'`).
 | `DevOverlay` | Client Component | État local + mutations via `fetch` |
 | `app/admin/*` | Server Components + Client Components mixtes | Données init en SSR, interactions en client |
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
+| `StatusTimeline` | Client Component | Stepper 4-étapes du parcours ambassadeur (présentationnel) |
+| `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse + consignes + tel) |
 
 **Polling** : `MapPublique` et `AdminFeed` refetchent toutes les 5 secondes.
 Pas de WebSocket — Supabase Realtime ajouterait de la complexité pour un usage
@@ -293,7 +299,8 @@ Mis à jour manuellement à chaque PR significative.
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. |
 | Pipeline candidat (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
-| Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | Toggle "J'accueille / Inactif" dans `/dashboard` |
+| Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
+| Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse, consignes, téléphone. Email admin si ville change. |
 | Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte) |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
@@ -305,7 +312,7 @@ Mis à jour manuellement à chaque PR significative.
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` créé par `reset-db.sql` section 9 |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts` |
 | Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
@@ -394,7 +401,8 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `GET /api/live-signals` | Feed signaux (admin/live) | Admin | ✅ |
 | `POST /api/inscriptions` | Création profil ambassadeur | Non | ✅ |
 | `GET/PATCH /api/onboarding/*` | Questionnaire + config | Session hôte / Admin | ✅ |
-| `PATCH /api/ambassadeur/*` | Enrichissement profil | Session hôte | ✅ |
+| `PATCH /api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire, photos) | Session hôte | ✅ |
+| `PATCH /api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, tél.) | Session hôte | ✅ |
 | `PATCH /api/admin/ambassadeurs/[id]/status` | Pipeline candidat | Admin | ✅ |
 | `POST/DELETE /api/admin/team` | Gestion équipe admin | Super admin | ✅ |
 | `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
