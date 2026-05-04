@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Settings, CheckCircle2, Loader2 } from 'lucide-react';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 interface Profile {
   city: string;
@@ -128,16 +129,12 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           />
         </div>
 
-        <div>
-          <label className="block text-sm text-slate-700 mb-1.5">Téléphone (WhatsApp de préférence)</label>
-          <input
-            type="tel"
-            value={form.phone}
-            onChange={(e) => { setForm((f) => ({ ...f, phone: e.target.value })); setSaved(false); }}
-            placeholder="+33 6 00 00 00 00"
-            className={inputCls}
-          />
-        </div>
+        <PhoneInput
+          label="Téléphone (WhatsApp de préférence)"
+          id="phone"
+          value={form.phone}
+          onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
+        />
 
         {error && (
           <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>

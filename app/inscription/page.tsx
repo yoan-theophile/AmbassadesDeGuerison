@@ -7,9 +7,11 @@ import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
+import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 const TYPES = [
-  { value: 'individual', label: 'Domicile — lieu de prière' },
-  { value: 'church', label: 'Église — lieu de prière' },
+  { value: 'individual', label: 'Domicile' },
+  { value: 'church', label: 'Église' },
 ];
 
 export default function InscriptionPage() {
@@ -134,7 +136,11 @@ export default function InscriptionPage() {
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
               </Field>
               <Field label="Téléphone (WhatsApp de préférence)" required>
-                <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} required maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
+                <PhoneInput
+                  id="phone"
+                  value={form.phone}
+                  onChange={(v) => set('phone', v)}
+                />
                 <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
               </Field>
               <CityInput
@@ -161,7 +167,7 @@ export default function InscriptionPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.first_name || !form.last_name || !form.email || !form.phone.trim() || !form.city || form.lat == null}
+                disabled={!form.first_name || !form.last_name || !form.email || !form.phone || !isValidPhoneNumber(form.phone) || !form.city || form.lat == null}
                 className={`${btnPrimary} flex items-center gap-2 justify-center`}
               >
                 Continuer <ArrowRight className="w-4 h-4" />
