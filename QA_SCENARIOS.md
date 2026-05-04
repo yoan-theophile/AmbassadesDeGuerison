@@ -125,6 +125,29 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] La barre de recherche ne chevauche pas le header sur mobile
 - [ ] L'overlay carte vide est centré et lisible sur mobile (max-w-xs avec padding)
 
+### Géolocalisation automatique au premier chargement
+
+> Vérifier que la carte zoome directement sur la zone du visiteur si la permission est accordée.
+
+- [ ] Au premier chargement, le navigateur affiche la pop-up de permission de géolocalisation
+- [ ] Permission acceptée → la carte zoome automatiquement sur la zone du visiteur (zoom ~9, vue métropole)
+- [ ] Permission refusée → la carte reste sur la vue monde (zoom 3, centre `[20, 10]`) — pas d'erreur visible
+- [ ] Le bouton GPS bas-droit reste cliquable pour relancer la localisation manuellement
+- [ ] Si HTTPS non disponible (autre que localhost) → permission refusée silencieusement, vue monde conservée
+
+### Cluster de pins co-localisés (état `live` recommandé)
+
+> Vérifie le regroupement des pins quand plusieurs ambassadeurs sont à la même coordonnée. Avec les seeds : 6 ambassadeurs à Paris (Marie + 5 cluster) au point `48.8698, 2.3315`.
+
+- [ ] En état `live`, zoomer sur Paris → un seul pin visible (cercle indigo) avec un badge `6` (ou le nombre actif selon l'état du live)
+- [ ] Le pin cluster est rond (pas teardrop) et plus large (36×36 px) que les pins individuels
+- [ ] Cliquer sur le cluster → popup s'ouvre avec un titre "N ambassades · Paris"
+- [ ] Le popup liste chaque ambassadeur : prénom, type (Domicile / Église), places (`accepted_count/capacity`), lien "Contacter →"
+- [ ] Si le popup dépasse 280px de hauteur → scroll vertical activé (`overflow-y:auto`)
+- [ ] Cliquer sur "Contacter →" pour un ambassadeur → ouvre `/ambassade/[id]` correspondant
+- [ ] Hôte avec `is_full = true` dans le cluster → badge "Complet" inline, pas de lien "Contacter →"
+- [ ] Hors Paris : pins individuels classiques (Lyon, Bruxelles, etc.) — comportement teardrop conservé
+
 ---
 
 ## Module 2 — Page ambassade publique `/ambassade/[id]`

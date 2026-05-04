@@ -294,7 +294,8 @@ Mis à jour manuellement à chaque PR significative.
 
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
-| Carte publique (pins) | ✅ | `GET /api/host-activations` | |
+| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto pour pins co-localisés (groupement par clé `lat,lng`). |
+| Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). |
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. |
