@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { AMBASSADOR_STATE } from './auth-state';
 
 /**
  * E2E Lot 3 — Questionnaire et photos dashboard
@@ -27,33 +28,32 @@ test.describe('Questionnaire — téléphone retiré + photos requises', () => {
 });
 
 test.describe('Dashboard — gating section photos', () => {
-  // Ces tests nécessitent une session authentifiée.
-  // Avec storageState Playwright, on pourrait les automatiser complètement.
-  // En l'état, ils vérifient le comportement observable depuis l'extérieur.
-
   test('dashboard redirige non-authentifié vers /auth', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/auth/);
   });
 });
 
-test.describe('Dashboard photos — comportement toggle', () => {
-  // Note : ces tests s'exécutent avec la session active du navigateur MCP.
-  // Pour les runs CI, prévoir un storageState avec session Marie.
+test.describe('Dashboard photos — comportement toggle (authentifié)', () => {
+  test.use({ storageState: AMBASSADOR_STATE });
 
-  test.skip('section photos masquée par défaut pour un validé', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('/api/geocode**', (route) =>
+      route.fulfill({ status: 200, body: '[]', contentType: 'application/json' })
+    );
+  });
+
+  test('section photos masquée par défaut pour un validé', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
-    // Section photos ne doit pas être visible par défaut
-    await expect(page.getByRole('heading', { name: /Photos de votre ambassade/ })).not.toBeVisible();
+    // Section photos ne doit pas être visible par défaut (validé → pas en enrichissement)
+    await expect(page.getByRole('heading', { name: /Photos de votre ambassade/ })).not.toBeVisible({ timeout: 8_000 });
     // Bouton "Modifier mes photos" doit être présent
     await expect(page.getByRole('button', { name: /Modifier mes photos/ })).toBeVisible();
   });
 
-  test.skip('clic "Modifier mes photos" révèle la section photos', async ({ page }) => {
+  test('clic "Modifier mes photos" révèle la section photos', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /Modifier mes photos/ }).click();
-    await expect(page.getByRole('heading', { name: /Photos de votre ambassade/ })).toBeVisible();
+    await expect(page.getByText('Photos de votre ambassade')).toBeVisible({ timeout: 8_000 });
   });
 });
