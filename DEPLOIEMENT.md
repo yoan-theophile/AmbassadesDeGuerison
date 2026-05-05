@@ -4,12 +4,12 @@
 
 | Clé | Valeur |
 |-----|--------|
-| Projet | `davidthery-app` |
+| Projet | `ambassades-guerison` (renommé depuis `davidthery-app` le 2026-05-05) |
 | Scope / org | `yoan-theophiles-projects` |
 | Project ID | `prj_gIbYS0DNecmCMG741VvEaTrKFyXj` |
 | Team ID | `team_jakT7s3dTPZG0fiZm2K4bQ8M` |
-| URL production | https://davidthery-app.vercel.app |
-| Dashboard | https://vercel.com/yoan-theophiles-projects/davidthery-app |
+| URL production | https://ambassades-guerison.vercel.app |
+| Dashboard | https://vercel.com/yoan-theophiles-projects/ambassades-guerison |
 | GitHub repo | `yoan-theophile/AmbassadesDeGuerison` |
 
 `.vercel/project.json` (ignoré par git) contient `projectId` et `orgId` — ne pas supprimer.
@@ -93,7 +93,7 @@ vercel env ls
 | Symptôme | Cause | Fix |
 |----------|-------|-----|
 | `"reason":"missing_scope"` | Scope manquant en mode non-interactif | Ajouter `--scope yoan-theophiles-projects` |
-| `"Project names… must be lowercase"` | Nom de projet auto-détecté depuis le dossier (`DavidTheryApp`) | Ajouter `--name davidthery-app` (flag déprécié mais fonctionnel) |
+| `"Project names… must be lowercase"` | Nom de projet auto-détecté depuis le dossier (`DavidTheryApp`) | Ajouter `--name ambassades-guerison` (flag déprécié mais fonctionnel) |
 | `"reason":"git_branch_required"` sur scope `preview` | CLI v53 exige une branche git pour les vars preview | Utiliser l'API REST (voir ci-dessus) |
 | Output `}` sur `tail -1` | CLI v53 retourne du JSON d'erreur sur stderr, `tail -1` coupe à `}` | Ne pas filtrer avec `tail` — lire la sortie complète |
 | `declare -A` silencieux | Le shell utilisé par Claude Code ne supporte pas les tableaux associatifs bash | Utiliser des variables séparées ou un script node |
@@ -107,6 +107,7 @@ Le projet n'existait pas sur Vercel. La commande suivante l'a créé et lié :
 
 ```bash
 git archive --format=tgz 5109a97 | vercel deploy --archive=tgz --yes --scope yoan-theophiles-projects --name davidthery-app --prod
+# (Note : le projet a été renommé en 2026-05-05 — utiliser `--name ambassades-guerison` pour les nouvelles créations)
 ```
 
 Ensuite les 13 variables ont été ajoutées en Production via `printf | vercel env add`,  

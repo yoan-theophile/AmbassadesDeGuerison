@@ -11,7 +11,7 @@ export function createServiceClient() {
       db: { schema: 'public' },
       auth: { persistSession: false },
       global: {
-        headers: { 'x-client-info': 'davidthery-app/server' },
+        headers: { 'x-client-info': 'ambassades-guerison/server' },
       },
     }
   );

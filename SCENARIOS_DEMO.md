@@ -275,7 +275,7 @@ Ces questions sont importantes. Certaines ont une réponse dans le code, d'autre
 
 ### Q6 — Domaine personnalisé
 
-**Situation actuelle :** l'app tourne sur `https://davidthery-app.vercel.app`.
+**Situation actuelle :** l'app tourne sur `https://ambassades-guerison.vercel.app`.
 
 **Question :** Est-ce que David a un domaine pour cette app ? `ambassades.davidthery.fr` ? `ambassades-guerison.com` ?
 

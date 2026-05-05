@@ -13,7 +13,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'https://davidthery-app.vercel.app';
+const BASE_URL = __ENV.BASE_URL || 'https://ambassades-guerison.vercel.app';
 const EVENT_ID = __ENV.EVENT_ID || '';
 
 export default function () {

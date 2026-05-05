@@ -26,9 +26,9 @@ Tests DB (triggers, RLS) : nécessite `supabase start` (Docker).
 
 ## Déploiement Vercel
 
-Projet : **`davidthery-app`** — compte `yoan-theophiles-projects`
-- **Production** : https://davidthery-app.vercel.app
-- **Dashboard** : https://vercel.com/yoan-theophiles-projects/davidthery-app
+Projet : **`ambassades-guerison`** — compte `yoan-theophiles-projects` (renommé depuis `davidthery-app` le 2026-05-05)
+- **Production** : https://ambassades-guerison.vercel.app
+- **Dashboard** : https://vercel.com/yoan-theophiles-projects/ambassades-guerison
 - **Lien local** : `.vercel/project.json` (ajouté au `.gitignore`)
 
 ### Déployer depuis un SHA git précis (sans les fichiers locaux non committés)
@@ -50,7 +50,7 @@ Toutes les variables sont configurées sur les deux scopes. Seule différence :
 | `NEXT_PUBLIC_DEV_OVERLAY` | **`true`** — DevOverlay rendu en prod (phase de conception) | non défini |
 | `DEV_OVERLAY_SECRET` | secret aléatoire 32 chars — exigé en header `x-dev-secret` par toutes les routes `/api/dev/*` | non défini |
 
-`NEXT_PUBLIC_APP_URL` est `https://davidthery-app.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
+`NEXT_PUBLIC_APP_URL` est `https://ambassades-guerison.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
 
 Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API REST (token dans `%APPDATA%\com.vercel.cli\Data\auth.json`).
 
