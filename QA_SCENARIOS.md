@@ -404,7 +404,7 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 15 — Admin : ambassadeurs `/admin/ambassadeurs`
 
 - [ ] La page charge avec la datatable (8 ambassadeurs dans le seed)
-- [ ] Colonne statut : badges `Validé`, `En examen`, `Pré-approuvé`, `Questionnaire`, `Suspendu`, `Refusé`
+- [ ] Colonne statut : badges `Validé`, `Inscrit`, `Conditions acceptées`, `Questionnaire`, `Suspendu`, `Refusé`
 - [ ] Filtre "Questionnaire" visible dans la barre de filtres (en plus des autres)
 - [ ] Champ de recherche : saisir "Marie" → seule Marie apparaît
 - [ ] Filtre par statut : "validated" → seuls les 7 validés

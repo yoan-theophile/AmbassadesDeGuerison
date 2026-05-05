@@ -161,7 +161,7 @@ Connexion : magic link `david.thery@demo.fr` (DevOverlay > Magic Link, ou termin
 
 ### 3b — Pipeline candidat (3 min)
 
-`/admin/ambassadeurs` — **Sophie Leroux (Bordeaux)** est en `En examen`.
+`/admin/ambassadeurs` — **Sophie Leroux (Bordeaux)** est en `Inscrit`.
 
 1. Cliquer *"Pré-approuver"* → statut passe à `pre_approved`
 2. *À dire :* Sophie reçoit un email avec un lien questionnaire + vidéo à regarder. Elle revient une fois son questionnaire rempli. Puis validation finale → elle apparaît dans tous les lives futurs, mais ne s'active que via la campagne email.

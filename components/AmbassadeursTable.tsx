@@ -36,7 +36,7 @@ interface Props {
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   validated:          { label: 'Validé',                className: 'bg-emerald-50 text-emerald-700' },
-  pending_review:     { label: 'En examen',             className: 'bg-amber-50 text-amber-700'    },
+  pending_review:     { label: 'Inscrit',             className: 'bg-amber-50 text-amber-700'    },
   pre_approved:       { label: 'Conditions acceptées',  className: 'bg-blue-50 text-blue-700'      },
   enrichment_pending: { label: 'Questionnaire',         className: 'bg-purple-50 text-purple-700'  },
   suspended:          { label: 'Suspendu',              className: 'bg-red-50 text-red-700'        },
@@ -68,7 +68,7 @@ const CHURCH_ATTENDANCE_LABELS: Record<string, string> = {
 
 const FILTERS = [
   { value: 'all',              label: 'Tous'          },
-  { value: 'pending_review',   label: 'En examen'     },
+  { value: 'pending_review',   label: 'Inscrit'     },
   { value: 'pre_approved',     label: 'Conditions acceptées' },
   { value: 'enrichment_pending', label: 'Questionnaire' },
   { value: 'validated',        label: 'Validés'       },
