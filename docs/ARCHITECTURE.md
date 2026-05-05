@@ -130,9 +130,14 @@ Pipeline self-service jusqu'au questionnaire — l'admin n'intervient qu'à la f
   │  → log structuré, aucun email envoyé
   ▼
 /dashboard/questionnaire (ambassadeur, accessible dès pre_approved)
+  │  Upload photos via POST /api/upload/ambassador-photo (type=profile|room)
+  │   - Photo de profil : requise (path stocké dans profile_photo_url)
+  │   - Photos du lieu : optionnel, max 5 (paths dans room_photo_urls[])
+  │  Suppression d'une photo : DELETE /api/upload/ambassador-photo
+  │   (ownership check par préfixe profile.id/)
   │  PATCH /api/ambassadeur/enrichissement
   │  → status = 'enrichment_pending'
-  │  → photos requises : profile_photo_url (chemin bucket privé) doit être non NULL
+  │  → garde : refuse si profile_photo_url null
   │  → email sendEnrichissementRecu (notification admin)
   ▼
 /admin/ambassadeurs (revue du dossier complet)
@@ -327,7 +332,8 @@ Mis à jour manuellement à chaque PR significative.
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts` |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
+| Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
 | Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
@@ -431,7 +437,8 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
 | `GET /api/unsubscribe/[token]` | Désabonnement email | Token | ✅ |
-| `POST /api/upload/ambassador-photo` | Upload photo | Session hôte | ✅ |
+| `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
+| `DELETE /api/upload/ambassador-photo` | Suppression photo (ownership check path) | Session hôte | ✅ |
 | `POST /api/visitor-help-request` | Email aide visiteur | Non | ✅ |
 | `GET /dev/emails` | Preview emails (dev) | `EMAIL_PREVIEW=true` | ✅ |
 | `POST /api/dev/state` | Simulation états DB | `NODE_ENV=development` | ✅ |

@@ -630,9 +630,17 @@ npm run test:e2e
 - [ ] Un profil `pending_review` accédant à `/dashboard/questionnaire` → message "Ce questionnaire n'est accessible que pour les candidats pré-approuvés" + lien retour
 - [ ] Un profil `validated` accédant → même message de blocage
 - [ ] Un profil `pre_approved` → le formulaire s'affiche complet
-- [ ] Champs présents : case "J'ai suivi le Défi Guérison", case "J'ai déjà assisté à une conférence de David Théry", select fréquentation église (3 options), champ dénomination (optionnel), textarea parcours spirituel (max 500 chars), textarea livres (max 300 chars), champ téléphone (optionnel)
+- [ ] Champs présents : case "J'ai suivi le Défi Guérison", case "J'ai déjà assisté à une conférence de David Théry", select fréquentation église (3 options), champ dénomination (optionnel), textarea parcours spirituel (max 500 chars), textarea livres (max 300 chars)
 - [ ] Compteur caractères visible sous le textarea parcours (ex : "42/500")
-- [ ] Soumettre → `PATCH /api/ambassadeur/enrichissement` → statut passe à `enrichment_pending`
+- [ ] **Section photos** : 2 blocs distincts
+  - Bloc "Photo de profil — requise" : dropzone unique, preview après upload, bouton supprimer (croix)
+  - Bloc "Photos du lieu d'accueil (optionnel — max 5, N/5)" : compteur dynamique, grid 3 colonnes après le 1er upload, croix de suppression sur chaque vignette, dropzone disparaît à 5/5
+- [ ] Bouton "Envoyer mon profil pour validation" reste désactivé tant que la photo de profil n'est pas uploadée + hint ambre "Une photo de profil est requise"
+- [ ] Upload room → `POST /api/upload/ambassador-photo` `type=room` → vignette apparaît + compteur passe à 1/5
+- [ ] Suppression room → `DELETE /api/upload/ambassador-photo` → vignette disparaît + DB `room_photo_urls` synchronisée (vérifier via SELECT)
+- [ ] Tentative d'upload d'une 6e photo room → 400 "Maximum 5 photos de salle atteint"
+- [ ] Soumettre sans photo de profil → erreur 400 "Une photo de profil est requise pour soumettre votre profil."
+- [ ] Soumettre avec photo de profil → `PATCH /api/ambassadeur/enrichissement` → statut passe à `enrichment_pending`
 - [ ] Après soumission → écran de confirmation "Profil envoyé !" + lien retour dashboard
 - [ ] Soumettre 2 fois → 403 (statut déjà `enrichment_pending`, plus `pre_approved`)
 - [ ] Champs enregistrés en DB : vérifier dans `/admin/ambassadeurs` → panneau détail
