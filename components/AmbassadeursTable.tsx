@@ -331,15 +331,15 @@ export default function AmbassadeursTable({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="block group"
-                                        title={`Photo du lieu ${idx + 1} — ouvrir en grand`}
+                                        title={`Vue ${idx + 1} du lieu d'accueil — ouvrir en grand`}
                                       >
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                           src={url}
-                                          alt={`Photo du lieu ${idx + 1}`}
+                                          alt={`Vue ${idx + 1} du lieu d'accueil`}
                                           className="w-24 h-24 rounded-lg object-cover bg-slate-100 ring-1 ring-slate-200 group-hover:ring-indigo-400 transition"
                                         />
-                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Lieu {idx + 1}</p>
+                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Vue {idx + 1}</p>
                                       </a>
                                     ))}
                                   </div>
