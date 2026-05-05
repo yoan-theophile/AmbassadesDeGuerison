@@ -403,18 +403,29 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ## Module 15 — Admin : ambassadeurs `/admin/ambassadeurs`
 
-- [ ] La page charge avec la datatable (8 ambassadeurs dans le seed)
+- [ ] La page charge avec la datatable (15 ambassadeurs dans le seed : 12 validés + 2 enrichment_pending + 1 pending_review)
 - [ ] Colonne statut : badges `Validé`, `Inscrit`, `Conditions acceptées`, `Questionnaire`, `Suspendu`, `Refusé`
 - [ ] Filtre "Questionnaire" visible dans la barre de filtres (en plus des autres)
 - [ ] Champ de recherche : saisir "Marie" → seule Marie apparaît
-- [ ] Filtre par statut : "validated" → seuls les 7 validés
+- [ ] Filtre par statut : "validated" → seuls les 12 validés
 - [ ] Filtre par statut : "pending_review" → seulement Sophie
+- [ ] Filtre par statut : "enrichment_pending" → Émilie + Pascal
 - [ ] Pagination fonctionnelle si > 20 ambassadeurs
+
+### Photos (avatar + galerie)
+
+- [ ] Colonne Nom : chaque ambassadeur affiche un avatar 32px à gauche du nom
+- [ ] Si `profile_photo_url` renseigné → photo s'affiche (signed URL 1h, bucket privé)
+- [ ] Si pas de photo → icône fallback `User` sur fond gris
+- [ ] Émilie/Pascal (seed avec chemins placeholder) → fallback icône (fichiers absents du bucket)
 
 ### Chevron expand/collapse
 
 - [ ] Chaque ligne a un chevron (▾/▴) en première colonne
-- [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau "Questionnaire ambassadeur" s'ouvre
+- [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau s'ouvre
+- [ ] Section "Photos" en haut du panneau : photo de profil (encadrée indigo) + photos du lieu (vue 1, vue 2…) si présentes
+- [ ] Cliquer une vignette → ouvre l'image pleine taille dans un nouvel onglet (signed URL valide 1h)
+- [ ] Section "Questionnaire ambassadeur" en dessous
 - [ ] Si questionnaire non rempli → message "Questionnaire non encore rempli"
 - [ ] Si questionnaire rempli → champs affichés : téléphone, fréquentation église, dénomination, Défi Guérison (Oui/Non), Conférence DT (Oui/Non), parcours spirituel, livres/formations
 

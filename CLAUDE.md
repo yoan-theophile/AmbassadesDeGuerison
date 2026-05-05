@@ -178,7 +178,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | Route | Description |
 |-------|-------------|
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
-| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver |
+| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/planning` | Gestion des événements (création, modification) |
 | `/admin/calendrier` | Campagnes email — liste des campagnes planifiées + formulaire pour programmer une campagne ambassadeurs ou visiteurs (`CalendrierCampaignSection`) |
