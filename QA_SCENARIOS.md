@@ -312,8 +312,8 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Soumission
 
-- [ ] Succès → profil créé avec statut `pending_review` → message inline "Demande envoyée !" (plus de redirect vers `/onboarding`)
-- [ ] Email déjà existant → message d'erreur "Email déjà utilisé"
+- [ ] Succès → profil créé avec statut `pending_review` → écran inline "Inscription confirmée !" + e-mail affiché + CTA "Accéder à mon espace ambassadeur" → `/auth`
+- [ ] Email déjà existant → message d'erreur "Un compte ambassadeur existe déjà avec cet e-mail. Connecte-toi depuis la page de connexion." (humanisé depuis l'erreur Postgres `duplicate key`)
 - [ ] Honeypot rempli → 200 silencieux
 
 ---
@@ -421,11 +421,10 @@ node scripts/magic-link.js david.thery@demo.fr
 ### Actions par statut
 
 - [ ] Sophie (`pending_review`) → bouton "Refuser" uniquement (la transition vers `pre_approved` est désormais self-service côté candidat — l'admin ne peut pas pré-approuver)
-- [ ] Sophie (`pre_approved`) → boutons "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis)
+- [ ] Sophie (`pre_approved`) → bouton "Refuser" uniquement (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis ; le bouton "Valider (bypass)" a été retiré du UI — escape hatch API uniquement)
 - [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
 - [ ] Marie (`validated`) → bouton "Suspendre"
 - [ ] Marie (`suspended`) → bouton "Réactiver"
-- [ ] Cliquer "Valider (bypass)" depuis `pre_approved` → statut `validated`, log `bypass_enrichment` créé dans `moderation_log`
 - [ ] Cliquer "Valider" depuis `enrichment_pending` → statut `validated`
 
 ---
@@ -614,7 +613,7 @@ npm run test:e2e
 | `pending_review → pre_approved` | Sophie clique "Activer mon onboarding" sur `/dashboard` | Statut `pre_approved`, **aucun email envoyé**, dashboard recharge avec encart "Conditions acceptées" |
 | `pre_approved → enrichment_pending` | Sophie soumet `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin reçue |
 | `enrichment_pending → validated` | Admin clique "Valider" depuis `/admin/ambassadeurs` | Statut `validated`, email bienvenue envoyé |
-| `* → validated` (bypass) | Admin clique "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
+| `* → validated` (bypass) | Appel API direct `PATCH /api/admin/ambassadeurs/[id]/status` avec `action: 'validated_bypass'` (escape hatch — plus de bouton UI) | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
 | `validated → suspended` | Admin clique "Suspendre" | Statut `suspended`, pin disparaît de la carte |
 | `suspended → validated` | Admin clique "Réactiver" | Statut `validated`, pin réapparaît |
 | `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected` |
