@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
@@ -15,7 +14,6 @@ const TYPES = [
 ];
 
 export default function InscriptionPage() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -75,13 +73,24 @@ export default function InscriptionPage() {
             <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 className="w-7 h-7 text-emerald-600" />
             </div>
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Demande envoyée !</h2>
-            <p className="text-slate-500 text-sm max-w-xs mx-auto">
-              Ta candidature est en cours d'examen. Tu recevras un e-mail dès qu'elle sera validée.
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">Inscription confirmée !</h2>
+            <p className="text-slate-500 text-sm max-w-sm mx-auto mb-1">
+              Un e-mail vient d'être envoyé à <span className="font-medium text-slate-700">{form.email}</span>.
             </p>
-            <Link href="/" className="mt-6 inline-flex items-center gap-1.5 text-indigo-600 text-sm hover:underline">
-              <ArrowLeft className="w-3.5 h-3.5" /> Retour à la carte
+            <p className="text-slate-500 text-sm max-w-sm mx-auto">
+              Connecte-toi à ton espace ambassadeur pour démarrer : vidéo de formation, conditions à accepter, puis ton questionnaire de profil.
+            </p>
+            <Link
+              href="/auth"
+              className="mt-6 inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Accéder à mon espace ambassadeur
             </Link>
+            <div className="mt-4">
+              <Link href="/" className="inline-flex items-center gap-1.5 text-slate-400 text-sm hover:text-slate-600 transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" /> Retour à la carte
+              </Link>
+            </div>
           </div>
         </main>
       </>
