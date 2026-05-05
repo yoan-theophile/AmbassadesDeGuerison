@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { isDevOverlayAuthorized, isDevOverlayEnabled } from '@/lib/dev-overlay-auth';
 
 export async function POST(req: NextRequest) {
-  if (process.env.NODE_ENV !== 'development') {
+  // En prod, masquer l'existence du endpoint si le DevOverlay n'est pas activé
+  if (!isDevOverlayEnabled()) {
     return new NextResponse(null, { status: 404 });
+  }
+  // Le secret est CRITIQUE ici : la route génère un magic link admin pour
+  // n'importe quel email. Sans cette garde, anyone-with-the-URL peut se
+  // connecter en tant que david.thery@demo.fr.
+  if (!isDevOverlayAuthorized(req)) {
+    return NextResponse.json({ error: 'Secret invalide.' }, { status: 403 });
   }
 
   const { email } = await req.json();

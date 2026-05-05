@@ -244,9 +244,12 @@ Toute action initiée par un utilisateur connecté (dashboard, formulaires) util
 
 **Routes cron protégées** via le header `Authorization: Bearer CRON_SECRET`.
 
-**DevOverlay — `NODE_ENV=development` uniquement.** `components/DevOverlay.tsx` et
-`app/api/dev/*` vérifient `process.env.NODE_ENV`. Ces routes mutent la DB (dates,
-`is_active`) et ne doivent jamais être accessibles en production.
+**DevOverlay — gated par flag + secret.** `components/DevOverlay.tsx` se rend si
+`NODE_ENV !== 'production'` OU `NEXT_PUBLIC_DEV_OVERLAY === 'true'`. En production,
+les routes `/api/dev/state` et `/api/dev/magic-link` exigent en plus un header
+`x-dev-secret` valide (comparé à `DEV_OVERLAY_SECRET`). Helper centralisé :
+`lib/dev-overlay-auth.ts:isDevOverlayAuthorized()`. La route magic-link est
+sensible (génère un lien admin pour n'importe quel email) — sans secret, 403.
 
 **`/dev/emails` — `EMAIL_PREVIEW=true` uniquement.** La route retourne 404 si la
 variable d'environnement n'est pas exactement `"true"` (la chaîne `"false"` est truthy

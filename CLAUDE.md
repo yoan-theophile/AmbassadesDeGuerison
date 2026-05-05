@@ -47,6 +47,8 @@ Toutes les variables sont configurées sur les deux scopes. Seule différence :
 | Variable | Production | Preview |
 |----------|-----------|---------|
 | `EMAIL_PREVIEW` | `false` — `/dev/emails` retourne 404 | **`true`** — route active |
+| `NEXT_PUBLIC_DEV_OVERLAY` | **`true`** — DevOverlay rendu en prod (phase de conception) | non défini |
+| `DEV_OVERLAY_SECRET` | secret aléatoire 32 chars — exigé en header `x-dev-secret` par toutes les routes `/api/dev/*` | non défini |
 
 `NEXT_PUBLIC_APP_URL` est `https://davidthery-app.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
 
@@ -217,9 +219,13 @@ Carte Leaflet plein écran avec :
   - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
   - `live_link` sur `events` : renseigné par David dans `/admin/planning` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
 
-## DevOverlay — simulation d'états (dev uniquement)
+## DevOverlay — simulation d'états (dev local + prod gated)
 
-`components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit, rendu uniquement si `process.env.NODE_ENV === 'development'`.
+`components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit. Rendu si `process.env.NODE_ENV !== 'production'` (dev local) **OU** `process.env.NEXT_PUBLIC_DEV_OVERLAY === 'true'` (flag prod, phase de conception). Helper `lib/dev-overlay-auth.ts:isDevOverlayEnabled()` centralise le check.
+
+**Sécurité prod** : les routes `/api/dev/state` et `/api/dev/magic-link` mutent la DB et peuvent générer un magic link admin. En prod elles exigent un secret partagé via header `x-dev-secret` (vérifié contre `process.env.DEV_OVERLAY_SECRET`). Sans secret valide → 403. En dev local le secret est bypassed (`NODE_ENV === 'development'`).
+
+L'utilisateur saisit le secret au premier usage dans le DevOverlay (input `password`), il est stocké en `localStorage['dev-overlay-secret']` et envoyé dans tous les calls `/api/dev/*`. Bouton `reset` dans le header du panel pour effacer le secret. 403 reçu → secret auto-effacé pour reprompt.
 
 Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 9 états disponibles :
 

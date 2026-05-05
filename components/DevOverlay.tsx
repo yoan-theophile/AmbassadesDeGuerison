@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 type DevState = 'live' | 'live-zero' | 'soon' | 'soon-confirmed' | 'upcoming' | 'upcoming-confirmed' | 'past' | 'closed' | 'blank';
+
+// En prod, le DevOverlay est protégé par un secret (vérifié côté server).
+// Le secret est saisi une fois par l'utilisateur et conservé en localStorage.
+const SECRET_STORAGE_KEY = 'dev-overlay-secret';
+const SECRET_REQUIRED = process.env.NEXT_PUBLIC_DEV_OVERLAY === 'true';
 
 const QUICK_EMAILS = [
   'david.thery@demo.fr',
@@ -34,6 +39,37 @@ export default function DevOverlay() {
   const [linkError, setLinkError] = useState('');
   const [stateError, setStateError] = useState('');
 
+  // Secret saisi par l'utilisateur en prod (en dev local, non requis)
+  const [secret, setSecret] = useState<string>('');
+  const [secretInput, setSecretInput] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(SECRET_STORAGE_KEY);
+    if (stored) setSecret(stored);
+  }, []);
+
+  const saveSecret = useCallback(() => {
+    const trimmed = secretInput.trim();
+    if (!trimmed) return;
+    window.localStorage.setItem(SECRET_STORAGE_KEY, trimmed);
+    setSecret(trimmed);
+    setSecretInput('');
+    setStateError('');
+    setLinkError('');
+  }, [secretInput]);
+
+  const clearSecret = useCallback(() => {
+    window.localStorage.removeItem(SECRET_STORAGE_KEY);
+    setSecret('');
+  }, []);
+
+  const headers = useCallback((): Record<string, string> => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (secret) h['x-dev-secret'] = secret;
+    return h;
+  }, [secret]);
+
   const applyState = useCallback(
     async (state: DevState) => {
       setStateLoading(true);
@@ -41,11 +77,13 @@ export default function DevOverlay() {
       try {
         const res = await fetch('/api/dev/state', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers(),
           body: JSON.stringify({ state }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
+          // 403 = secret incorrect → on l'efface pour reprompt
+          if (res.status === 403) clearSecret();
           setStateError(body.error ?? `Erreur ${res.status}`);
           return;
         }
@@ -57,7 +95,7 @@ export default function DevOverlay() {
         setStateLoading(false);
       }
     },
-    [router],
+    [router, headers, clearSecret],
   );
 
   const generateLink = useCallback(async () => {
@@ -68,11 +106,12 @@ export default function DevOverlay() {
     try {
       const res = await fetch('/api/dev/magic-link', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers(),
         body: JSON.stringify({ email }),
       });
       const body = await res.json();
       if (!res.ok) {
+        if (res.status === 403) clearSecret();
         setLinkError(body.error ?? `Erreur ${res.status}`);
         return;
       }
@@ -82,7 +121,10 @@ export default function DevOverlay() {
     } finally {
       setLinkLoading(false);
     }
-  }, [email]);
+  }, [email, headers, clearSecret]);
+
+  // En prod (SECRET_REQUIRED) sans secret saisi → bloquer l'usage
+  const needsSecret = SECRET_REQUIRED && !secret;
 
   return (
     <div className="fixed bottom-4 right-4 z-[9999] font-mono text-xs">
@@ -106,6 +148,15 @@ export default function DevOverlay() {
                 DEV
               </span>
               <span className="text-white/70">DevOverlay</span>
+              {SECRET_REQUIRED && secret && (
+                <button
+                  onClick={clearSecret}
+                  className="text-[9px] uppercase tracking-wider text-white/40 hover:text-white/70"
+                  title="Effacer le secret stocké"
+                >
+                  reset
+                </button>
+              )}
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -114,6 +165,32 @@ export default function DevOverlay() {
               ✕
             </button>
           </div>
+
+          {needsSecret ? (
+            <section className="space-y-2">
+              <p className="text-[10px] text-white/60 leading-relaxed">
+                Cet environnement de prod requiert le secret DevOverlay pour activer les actions.
+              </p>
+              <div className="flex gap-1">
+                <input
+                  type="password"
+                  value={secretInput}
+                  onChange={(e) => setSecretInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveSecret()}
+                  placeholder="Secret"
+                  className="min-w-0 flex-1 rounded bg-white/10 px-2 py-1.5 text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={saveSecret}
+                  disabled={!secretInput.trim()}
+                  className="rounded bg-indigo-600 px-2 py-1.5 text-white hover:bg-indigo-500 disabled:opacity-40"
+                >
+                  →
+                </button>
+              </div>
+            </section>
+          ) : (
+            <>
 
           {/* État */}
           <section className="mb-3">
@@ -224,6 +301,8 @@ export default function DevOverlay() {
               </div>
             )}
           </section>
+            </>
+          )}
         </div>
       )}
     </div>

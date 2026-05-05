@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/server';
 import { applyState, type DevState } from '@/lib/dev/state';
+import { isDevOverlayAuthorized, isDevOverlayEnabled } from '@/lib/dev-overlay-auth';
 
 const VALID_STATES: DevState[] = ['live', 'live-zero', 'soon', 'soon-confirmed', 'upcoming', 'upcoming-confirmed', 'past', 'closed', 'blank'];
 
 export async function POST(req: NextRequest) {
-  if (process.env.NODE_ENV !== 'development') {
+  // En prod, masquer l'existence du endpoint si le DevOverlay n'est pas activé
+  if (!isDevOverlayEnabled()) {
     return new NextResponse(null, { status: 404 });
+  }
+  // Si activé, exiger le secret en header (sauf en dev local)
+  if (!isDevOverlayAuthorized(req)) {
+    return NextResponse.json({ error: 'Secret invalide.' }, { status: 403 });
   }
 
   const { state } = await req.json();
