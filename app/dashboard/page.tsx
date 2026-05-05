@@ -849,7 +849,7 @@ export default function DashboardPage() {
                       onFile={(f) => uploadPhoto(f, 'profile')}
                       preview={profile.profile_photo_url ? (photoSignedUrls[profile.profile_photo_url] ?? null) : null}
                       onRemove={profile.profile_photo_url ? () => setProfile((p) => p ? { ...p, profile_photo_url: null } : p) : undefined}
-                      label="Photo de votre visage — privée, vue uniquement par David pour valider votre ambassade"
+                      label="Photo de profil — privée, vue uniquement par David pour valider votre ambassade"
                     />
                   )}
                 </div>

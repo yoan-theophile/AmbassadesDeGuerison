@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest) {
   // Vérifier qu'une photo de profil a bien été uploadée avant soumission
   if (!profile.profile_photo_url) {
     return NextResponse.json(
-      { error: 'Une photo de votre visage est requise pour soumettre votre profil.' },
+      { error: 'Une photo de profil est requise pour soumettre votre profil.' },
       { status: 400 }
     );
   }

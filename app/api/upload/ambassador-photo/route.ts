@@ -111,3 +111,75 @@ export async function POST(req: NextRequest) {
   // url = signed URL pour aperçu immédiat dans le dashboard, path = chemin stocké en DB
   return NextResponse.json({ url: signedUrl, path });
 }
+
+export async function DELETE(req: NextRequest) {
+  // Auth via session cookie
+  const anonClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll(); },
+        setAll() {},
+      },
+    }
+  );
+
+  const { data: { user } } = await anonClient.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const path = (body as { path?: string }).path;
+  const type = (body as { type?: string }).type;
+
+  if (!path || !type) {
+    return NextResponse.json({ error: 'path et type requis' }, { status: 400 });
+  }
+  if (!['profile', 'room'].includes(type)) {
+    return NextResponse.json({ error: 'Type invalide' }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+
+  // Vérifie que la photo appartient bien au profil de l'utilisateur (ownership check)
+  const { data: profile } = await supabase
+    .from('host_profiles')
+    .select('id, profile_photo_url, room_photo_urls')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    return NextResponse.json({ error: 'Profil ambassadeur introuvable' }, { status: 404 });
+  }
+  if (!path.startsWith(`${profile.id}/`)) {
+    return NextResponse.json({ error: 'Cette photo ne vous appartient pas' }, { status: 403 });
+  }
+
+  if (type === 'profile') {
+    if (profile.profile_photo_url !== path) {
+      return NextResponse.json({ error: 'Photo introuvable sur ce profil' }, { status: 404 });
+    }
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({ profile_photo_url: null })
+      .eq('id', profile.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  } else {
+    const existing: string[] = profile.room_photo_urls ?? [];
+    if (!existing.includes(path)) {
+      return NextResponse.json({ error: 'Photo introuvable sur ce profil' }, { status: 404 });
+    }
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({ room_photo_urls: existing.filter((p) => p !== path) })
+      .eq('id', profile.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Supprime le fichier du bucket (best-effort, on ne bloque pas si échec)
+  await supabase.storage.from(BUCKET).remove([path]).catch(() => {});
+
+  return NextResponse.json({ success: true });
+}
