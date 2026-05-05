@@ -3,6 +3,13 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sendRegistrationConfirmation, sendNouvelleInscriptionAdmin } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
+function humanizeDbError(msg: string): string {
+  if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+    return 'Un compte ambassadeur existe déjà avec cet e-mail. Connecte-toi depuis la page de connexion.';
+  }
+  return msg;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -83,7 +90,7 @@ export async function POST(req: NextRequest) {
         quartier: quartier || null,
         status: 'pending_review',
       }).select('id').single();
-      if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+      if (profileError) return NextResponse.json({ error: humanizeDbError(profileError.message) }, { status: 400 });
       profileId = profileData?.id;
     } else {
       return NextResponse.json({ error: authError.message }, { status: 400 });
@@ -110,7 +117,7 @@ export async function POST(req: NextRequest) {
       lng: lng ?? null,
       status: 'pending_review',
     }).select('id').single();
-    if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+    if (profileError) return NextResponse.json({ error: humanizeDbError(profileError.message) }, { status: 400 });
     profileId = profileData?.id;
   }
 
