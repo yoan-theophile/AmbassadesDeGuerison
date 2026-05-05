@@ -111,7 +111,7 @@ async function run() {
   // ── 2. Ambassadeurs ───────────────────────────────────────────────────────
   // Insérés AVANT les events → trigger trg_auto_activate_hosts crée les
   // host_activations (is_active=FALSE) dès qu'un event est inséré.
-  console.log('→ Ambassadeurs (12 validés + 1 pending_review dont 5 cluster Paris)...');
+  console.log('→ Ambassadeurs (12 validés + 2 enrichment_pending + 1 pending_review dont 5 cluster Paris)...');
 
   const hostsData = [
     {
@@ -250,6 +250,44 @@ async function run() {
       address_private: "8 cours de l'Intendance, 33000 Bordeaux",
       consignes: null, viewing_setup: null,
       lat: 44.8378, lng: -0.5792, quartier: 'Bordeaux Chartrons', status: 'pending_review',
+    },
+    // Émilie : enrichment_pending (questionnaire soumis, en attente de validation admin)
+    {
+      first_name: 'Émilie', last_name: 'Rousseau', email: 'emilie.rousseau@demo.fr',
+      phone: '+33 6 78 90 12 34',
+      city: 'Toulouse', country: 'France',
+      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
+      address_private: '24 rue Saint-Rome, 31000 Toulouse',
+      consignes: 'Digicode 7842. 4ème étage sans ascenseur. Parking gratuit après 19h place du Capitole.',
+      viewing_setup: 'TV 50 pouces + barre de son',
+      profile_photo_url: 'seed-placeholder/emilie-rousseau/profile.jpg',
+      healing_challenge_done: true,
+      church_attendance: 'hebdomadaire',
+      denomination: 'évangélique',
+      parcours_spirituel: "Convertie il y a 8 ans après une guérison physique pendant un séminaire. Je sers dans l'équipe d'accueil de mon église locale et accompagne des nouvelles converties depuis 3 ans.",
+      livres_lus: 'Guérir les malades, Défi Guérison',
+      conferences_assistees: true,
+      lat: 43.6047, lng: 1.4442, quartier: 'Toulouse Capitole', status: 'enrichment_pending',
+    },
+    // Pascal : enrichment_pending (église occasionnelle, dossier complet en attente)
+    {
+      first_name: 'Pascal', last_name: 'Nguyen', email: 'pascal.nguyen@demo.fr',
+      phone: '+33 6 21 43 65 87',
+      city: 'Strasbourg', country: 'France',
+      host_type: 'church', contact_mode: 'whatsapp', capacity: 50,
+      address_private: '12 rue du Faubourg de Pierre, 67000 Strasbourg',
+      consignes: 'Salle communautaire au sous-sol. Entrée par la cour intérieure côté gauche. Accessible PMR.',
+      whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupStrasbourg789',
+      viewing_setup: 'Vidéoprojecteur Full HD + sonorisation + écran 3m',
+      church_subtype: 'occasional', denomination: 'protestant',
+      profile_photo_url: 'seed-placeholder/pascal-nguyen/profile.jpg',
+      room_photo_urls: ['seed-placeholder/pascal-nguyen/room-1.jpg', 'seed-placeholder/pascal-nguyen/room-2.jpg'],
+      healing_challenge_done: true,
+      church_attendance: 'hebdomadaire',
+      parcours_spirituel: "Pasteur associé de l'Église Évangélique Strasbourg-Centre depuis 5 ans. J'accompagne le ministère de prière pour les malades et anime les rencontres de jeunes adultes.",
+      livres_lus: 'Guérir les malades, Vraiment Libre, La puissance de la prière',
+      conferences_assistees: true,
+      lat: 48.5734, lng: 7.7521, quartier: 'Strasbourg Centre', status: 'enrichment_pending',
     },
   ];
 

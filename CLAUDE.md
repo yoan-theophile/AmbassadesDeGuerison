@@ -105,6 +105,8 @@ node scripts/seed.js                                      # insère les données
 | `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 15e |
 | `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet | Lyon Presqu'île |
 | `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature | Bordeaux Chartrons |
+| `emilie.rousseau@demo.fr` | ambassadeur | `enrichment_pending` | Toulouse — domicile, queue admin | Toulouse Capitole |
+| `pascal.nguyen@demo.fr` | ambassadeur | `enrichment_pending` | Strasbourg — église, queue admin | Strasbourg Centre |
 | `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 10e |
 | `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 11e |
 | `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) | Paris 3e |
