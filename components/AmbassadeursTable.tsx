@@ -43,11 +43,12 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   rejected:           { label: 'Refusé',                className: 'bg-slate-100 text-slate-500'   },
 };
 
-// La transition pending_review → pre_approved est désormais self-service (le candidat l'effectue depuis /dashboard).
-// L'admin ne peut plus pré-approuver. Seul validated_bypass autorise un raccourci vers validated.
+// La transition pending_review → pre_approved est self-service (le candidat l'effectue depuis /dashboard).
+// L'admin valide depuis enrichment_pending (questionnaire complet, photo de profil obligatoire).
+// L'API conserve `validated_bypass` comme escape hatch pour les cas exceptionnels (script SQL, support).
 const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
   pending_review:     [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
-  pre_approved:       [{ action: 'validated_bypass', label: 'Valider (bypass)',   className: 'bg-amber-50 text-amber-700 hover:bg-amber-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  pre_approved:       [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   enrichment_pending: [{ action: 'validated',       label: 'Valider',            className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   validated:          [{ action: 'suspended',       label: 'Suspendre',          className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
   suspended:          [{ action: 'reactiver',       label: 'Réactiver',          className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }],
