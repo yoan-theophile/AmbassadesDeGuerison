@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col">
+      <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col sticky top-0 h-screen self-start">
         <div className="px-4 py-5 border-b border-slate-800">
           <div className="flex items-center justify-between">
             <div>
@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {NAV.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
