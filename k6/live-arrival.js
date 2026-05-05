@@ -17,7 +17,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'https://davidthery-app.vercel.app';
+const BASE_URL = __ENV.BASE_URL || 'https://ambassades-guerison.vercel.app';
 
 export default function () {
   // Chargement initial de la carte

@@ -53,7 +53,7 @@ un hôte ne peut jamais voir les données d'un autre hôte.
 
 ```bash
 git clone <repo-url>
-cd davidthery-app
+cd ambassades-guerison
 npm install
 ```
 
@@ -127,7 +127,7 @@ Chaque push sur `main` déclenche un déploiement automatique sur Vercel.
 ```
 git push origin main
 → Vercel build automatique
-→ Disponible sur https://davidthery-app.vercel.app
+→ Disponible sur https://ambassades-guerison.vercel.app
 ```
 
 ### Déploiement manuel (si besoin)

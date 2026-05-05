@@ -14,7 +14,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'https://davidthery-app.vercel.app';
+const BASE_URL = __ENV.BASE_URL || 'https://ambassades-guerison.vercel.app';
 const SIGNAL_ID = __ENV.SIGNAL_ID; // requis : ID d'un signal 'pending'
 
 export default function () {
