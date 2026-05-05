@@ -2,7 +2,8 @@ import { Resend } from 'resend';
 import * as React from 'react';
 
 import MagicLink from '@/emails/magic-link';
-import PreValidationAccordee from '@/emails/pre-validation-accordee';
+import NouvelleInscriptionAdmin from '@/emails/nouvelle-inscription-admin';
+import AideVisiteurAdmin from '@/emails/aide-visiteur-admin';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
@@ -18,6 +19,7 @@ import SignalApproved from '@/emails/signal-approved';
 import NouvelleActivationAdmin from '@/emails/nouvelle-activation-admin';
 import EnrichissementRecu from '@/emails/enrichissement-recu';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
+import AmbassadeurModificationAdmin from '@/emails/ambassadeur-modification-admin';
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -31,19 +33,6 @@ export async function sendMagicLink(to: string, magicLinkUrl: string) {
     from: FROM(), to,
     subject: 'Votre lien de connexion — Ambassades de Guérison',
     react: React.createElement(MagicLink, { magicLinkUrl }),
-  });
-}
-
-export async function sendPreValidationAccordee(to: string, firstName: string, videoUrl: string, pdfUrl: string) {
-  return getResend().emails.send({
-    from: FROM(), to,
-    subject: 'Bonne nouvelle — votre candidature ambassadeur est pré-approuvée !',
-    react: React.createElement(PreValidationAccordee, {
-      firstName,
-      questionnaireUrl: `${APP_URL()}/dashboard/questionnaire`,
-      videoUrl,
-      pdfUrl,
-    }),
   });
 }
 
@@ -112,13 +101,14 @@ export async function sendNewContactRequestHost(
   visitorEmail: string,
   visitorWhatsapp: string | null,
   visitorMessage: string | null,
+  acceptUrl: string,
   declineUrl: string,
 ) {
   return getResend().emails.send({
     from: FROM(), to,
     subject: `${visitorFirstName} souhaite rejoindre votre ambassade`,
     react: React.createElement(ContactReceivedHost, {
-      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, declineUrl,
+      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
     }),
   });
 }
@@ -160,12 +150,14 @@ export async function sendAcceptationVisite(
   eventTitle: string,
   eventDate: string,
   contactEquipeUrl: string,
+  hostEmail: string | null = null,
+  hostWhatsappGroupUrl: string | null = null,
 ) {
   return getResend().emails.send({
     from: FROM(), to,
     subject: `${hostFirstName} vous accueille — voici l'adresse`,
     react: React.createElement(AcceptationVisite, {
-      visitorFirstName, hostFirstName, hostAddress, hostPhone, eventTitle, eventDate, contactEquipeUrl,
+      visitorFirstName, hostFirstName, hostAddress, hostPhone, hostEmail, hostWhatsappGroupUrl, eventTitle, eventDate, contactEquipeUrl,
     }),
   });
 }
@@ -202,6 +194,30 @@ export async function sendSignalApproved(to: string, firstName: string, liveLink
   });
 }
 
+export async function sendNouvelleInscriptionAdmin(firstName: string, city: string, country: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: process.env.RESEND_ADMIN_EMAIL!,
+    subject: `Nouvelle candidature — ${firstName}, ${city}`,
+    react: React.createElement(NouvelleInscriptionAdmin, {
+      firstName, city, country,
+      adminUrl: `${APP_URL()}/admin/ambassadeurs`,
+    }),
+  });
+}
+
+export async function sendAideVisiteurAdmin(visitorEmail: string, message: string) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: process.env.RESEND_ADMIN_EMAIL!,
+    subject: `Demande d'aide visiteur — ${visitorEmail}`,
+    react: React.createElement(AideVisiteurAdmin, {
+      visitorEmail, message,
+      adminUrl: `${APP_URL()}/admin/live`,
+    }),
+  });
+}
+
 export async function sendNouvelleActivationAdmin(firstName: string, city: string, country: string) {
   return getResend().emails.send({
     from: FROM(),
@@ -221,6 +237,25 @@ export async function sendEnrichissementRecu(adminEmail: string, ambassadeurFirs
     subject: `Questionnaire soumis — ${ambassadeurFirstName} attend sa validation finale`,
     react: React.createElement(EnrichissementRecu, {
       ambassadeurFirstName,
+      adminUrl: `${APP_URL()}/admin/ambassadeurs`,
+    }),
+  });
+}
+
+export async function sendAmbassadeurModificationAdmin(
+  adminEmail: string,
+  ambassadeurFirstName: string,
+  ancienneVille: string,
+  nouvelleVille: string,
+) {
+  return getResend().emails.send({
+    from: FROM(),
+    to: adminEmail,
+    subject: `${ambassadeurFirstName} a modifié sa ville — ${ancienneVille} → ${nouvelleVille}`,
+    react: React.createElement(AmbassadeurModificationAdmin, {
+      ambassadeurFirstName,
+      ancienneVille,
+      nouvelleVille,
       adminUrl: `${APP_URL()}/admin/ambassadeurs`,
     }),
   });

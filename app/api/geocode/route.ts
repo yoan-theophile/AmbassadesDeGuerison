@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
 
   const raw: any[] = await res.json();
 
+  const seen = new Set<string>();
   const results = raw
     .filter((r) => r.lat && r.lon)
     .map((r) => {
@@ -42,6 +43,12 @@ export async function GET(req: NextRequest) {
         lat: parseFloat(r.lat),
         lng: parseFloat(r.lon),
       };
+    })
+    .filter((r) => {
+      const key = `${r.lat}-${r.lng}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
 
   return NextResponse.json(results);

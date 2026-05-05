@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/browser';
-import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Loader2 } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
+import Dropzone from '@/components/ui/Dropzone';
 
 const CHURCH_ATTENDANCE_OPTIONS = [
   { value: 'regular', label: 'Régulièrement (chaque semaine ou presque)' },
@@ -29,9 +30,20 @@ export default function QuestionnairePage() {
     church_attendance: '',
     denomination: '',
     parcours_spirituel: '',
-    phone: '',
     livres_lus: '',
   });
+
+  // Suivi des photos (chemin stocké en DB → signed URL pour aperçu)
+  const [profilePhotoPath, setProfilePhotoPath] = useState<string | null>(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [profileUploading, setProfileUploading] = useState(false);
+
+  // Photos du lieu (max 5)
+  const [roomPhotoPaths, setRoomPhotoPaths] = useState<string[]>([]);
+  const [roomPhotoUrls, setRoomPhotoUrls] = useState<Record<string, string>>({});
+  const [roomUploading, setRoomUploading] = useState(false);
+
+  const [photoError, setPhotoError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -40,12 +52,39 @@ export default function QuestionnairePage() {
 
       const { data: profile } = await supabase
         .from('host_profiles')
-        .select('status')
+        .select('status, profile_photo_url, room_photo_urls')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!profile) { router.replace('/inscription'); return; }
       if (profile.status !== 'pre_approved') { setAccessDenied(true); setLoading(false); return; }
+
+      // Charge la photo de profil existante
+      if (profile.profile_photo_url) {
+        const path = profile.profile_photo_url;
+        setProfilePhotoPath(path);
+        if (path.startsWith('http')) {
+          setProfilePhotoUrl(path);
+        } else {
+          const { data } = await supabase.storage.from('ambassador-photos').createSignedUrl(path, 900);
+          setProfilePhotoUrl(data?.signedUrl ?? null);
+        }
+      }
+
+      // Charge les photos du lieu existantes
+      const roomPaths: string[] = profile.room_photo_urls ?? [];
+      if (roomPaths.length > 0) {
+        setRoomPhotoPaths(roomPaths);
+        const entries = await Promise.all(
+          roomPaths.map(async (p) => {
+            if (p.startsWith('http')) return [p, p] as const;
+            const { data } = await supabase.storage.from('ambassador-photos').createSignedUrl(p, 900);
+            return [p, data?.signedUrl ?? ''] as const;
+          })
+        );
+        setRoomPhotoUrls(Object.fromEntries(entries.filter(([, url]) => url)));
+      }
+
       setLoading(false);
     })();
   }, [router, supabase]);
@@ -54,8 +93,87 @@ export default function QuestionnairePage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  async function uploadProfilePhoto(file: File) {
+    setProfileUploading(true);
+    setPhotoError('');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', 'profile');
+    const res = await fetch('/api/upload/ambassador-photo', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      setPhotoError(data.error ?? 'Erreur lors de l\'upload.');
+    } else {
+      setProfilePhotoPath(data.path);
+      setProfilePhotoUrl(data.url);
+    }
+    setProfileUploading(false);
+  }
+
+  async function removeProfilePhoto() {
+    if (!profilePhotoPath) return;
+    setProfileUploading(true);
+    setPhotoError('');
+    const res = await fetch('/api/upload/ambassador-photo', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: profilePhotoPath, type: 'profile' }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setPhotoError(data.error ?? 'Erreur lors de la suppression.');
+    } else {
+      setProfilePhotoPath(null);
+      setProfilePhotoUrl(null);
+    }
+    setProfileUploading(false);
+  }
+
+  async function uploadRoomPhoto(file: File) {
+    setRoomUploading(true);
+    setPhotoError('');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', 'room');
+    const res = await fetch('/api/upload/ambassador-photo', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      setPhotoError(data.error ?? 'Erreur lors de l\'upload.');
+    } else {
+      setRoomPhotoPaths((prev) => [...prev, data.path]);
+      setRoomPhotoUrls((prev) => ({ ...prev, [data.path]: data.url }));
+    }
+    setRoomUploading(false);
+  }
+
+  async function removeRoomPhoto(path: string) {
+    setRoomUploading(true);
+    setPhotoError('');
+    const res = await fetch('/api/upload/ambassador-photo', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, type: 'room' }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setPhotoError(data.error ?? 'Erreur lors de la suppression.');
+    } else {
+      setRoomPhotoPaths((prev) => prev.filter((p) => p !== path));
+      setRoomPhotoUrls((prev) => {
+        const next = { ...prev };
+        delete next[path];
+        return next;
+      });
+    }
+    setRoomUploading(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!profilePhotoPath) {
+      setError('Une photo de profil est requise avant d\'envoyer votre profil.');
+      return;
+    }
     setSubmitting(true);
     setError('');
 
@@ -222,30 +340,95 @@ export default function QuestionnairePage() {
               </Field>
             </div>
 
-            {/* Contact */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <Field label="Téléphone (optionnel)">
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => set('phone', e.target.value)}
-                  placeholder="+33 6 00 00 00 00"
-                  maxLength={20}
-                  className={inputCls}
-                />
-                <p className="text-xs text-slate-400 mt-1">
-                  Uniquement visible par l'équipe — jamais transmis aux visiteurs sans ton accord.
+            {/* Photos de l'ambassade */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-5">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-indigo-500" />
+                <p className="text-sm font-medium text-slate-700">Photos de votre ambassade</p>
+              </div>
+
+              {photoError && (
+                <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{photoError}</p>
+              )}
+
+              {/* Photo de profil (obligatoire) */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                  Photo de profil <span className="text-red-500 normal-case font-normal">— requise</span>
                 </p>
-              </Field>
+                {profileUploading ? (
+                  <div className="flex items-center justify-center h-32 rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <Dropzone
+                    onFile={uploadProfilePhoto}
+                    preview={profilePhotoUrl}
+                    onRemove={profilePhotoUrl ? removeProfilePhoto : undefined}
+                    label="Photo de profil — privée, vue uniquement par David pour valider votre ambassade"
+                  />
+                )}
+              </div>
+
+              {/* Photos du lieu (optionnel, max 5) */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                  Photos du lieu d&apos;accueil
+                  <span className="font-normal text-slate-400 normal-case ml-1">
+                    (optionnel — max 5, {roomPhotoPaths.length}/5)
+                  </span>
+                </p>
+                <p className="text-xs text-slate-500">
+                  Aide David à se faire une idée de l&apos;espace où vous accueillerez les visiteurs (salon, salle de prière, etc).
+                </p>
+
+                {roomPhotoPaths.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {roomPhotoPaths.map((path) => (
+                      <div key={path} className="relative group rounded-lg overflow-hidden border border-slate-100">
+                        <img src={roomPhotoUrls[path] ?? ''} alt="Lieu d'accueil" className="w-full h-24 object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeRoomPhoto(path)}
+                          disabled={roomUploading}
+                          className="absolute top-1 right-1 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 shadow text-xs disabled:opacity-50"
+                          aria-label="Supprimer cette photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {roomPhotoPaths.length < 5 && (
+                  roomUploading ? (
+                    <div className="flex items-center justify-center h-24 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <Dropzone
+                      onFile={uploadRoomPhoto}
+                      label="Ajouter une photo du lieu d'accueil"
+                    />
+                  )
+                )}
+              </div>
             </div>
 
             {error && (
               <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
 
+            {!profilePhotoPath && (
+              <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                Une photo de profil est requise pour soumettre votre profil.
+              </p>
+            )}
+
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !profilePhotoPath}
               className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}

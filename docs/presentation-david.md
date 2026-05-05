@@ -89,6 +89,36 @@ Ce n'est qu'une fois **validé** que l'hôte peut être activé pour un live.
 
 ## Parcours 3 — David (admin)
 
+### Gestion des candidatures (en continu)
+
+David reçoit un **email automatique** dès qu'un ambassadeur s'inscrit :
+*"Nouvelle candidature — Prénom, Ville — à valider dans l'admin."*
+
+Il va ensuite dans `/admin/ambassadeurs` pour traiter la candidature :
+
+```
+Email reçu : nouvelle candidature
+        │
+        ▼
+David ouvre /admin/ambassadeurs
+        │
+        ├── Pré-approuver → l'ambassadeur reçoit un email avec le questionnaire
+        │                    et les vidéos d'onboarding
+        │                          │
+        │                          ▼
+        │                    L'ambassadeur remplit le questionnaire
+        │                          │
+        │                          ▼
+        │                    David reçoit un email : questionnaire soumis
+        │                          │
+        │                          ▼
+        │                    David valide → ambassadeur ACTIF
+        │
+        └── Rejeter → candidature archivée
+```
+
+David peut aussi **suspendre** ou **réactiver** un ambassadeur à tout moment depuis cette même page.
+
 ### Avant le live
 
 1. David crée un **événement** dans l'admin : titre, date, lien YouTube, lien StreamYard/Zoom
@@ -110,6 +140,13 @@ Ce n'est qu'une fois **validé** que l'hôte peut être activé pour un live.
 
 - David consulte les statistiques : combien de visites, combien de contacts, témoignages reçus
 - Les témoignages des hôtes sont visibles sur une page publique de l'application
+- David modère les témoignages dans `/admin/temoignages` avant qu'ils soient publiés
+
+### Alertes visiteur
+
+Si un visiteur ne trouve pas d'ambassade ou a besoin d'aide, il peut envoyer un message via
+un formulaire. David reçoit un **email automatique** avec le contenu du message et l'adresse
+email du visiteur pour lui répondre directement.
 
 ---
 

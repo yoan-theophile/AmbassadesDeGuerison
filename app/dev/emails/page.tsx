@@ -4,7 +4,6 @@ import * as React from 'react';
 import { MOCKS } from '@/emails/__mocks__';
 
 import MagicLink from '@/emails/magic-link';
-import PreValidationAccordee from '@/emails/pre-validation-accordee';
 import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
@@ -28,7 +27,6 @@ export default async function EmailPreviewPage() {
 
   const [
     htmlMagicLink,
-    htmlPreValidation,
     htmlBienvenue,
     htmlValidation,
     htmlRegistration,
@@ -46,13 +44,12 @@ export default async function EmailPreviewPage() {
     htmlAlerte,
   ] = await Promise.all([
     render(<MagicLink magicLinkUrl={m.magicLink} />),
-    render(<PreValidationAccordee firstName={m.marie.firstName} questionnaireUrl={m.questionnaireUrl} videoUrl={m.videoUrl} pdfUrl={m.pdfUrl} />),
     render(<BienvenueAmbassadeur firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
     render(<ValidationFinale firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
     render(<RegistrationConfirmation firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} />),
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
-    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} declineUrl={m.declineUrl} />),
+    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} />),
     render(<ContactReserved visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostCity={m.jp.city} hostEmail={m.host.email} hostWhatsappGroupUrl={m.host.whatsappGroupUrl} accueilUrl={m.accueilUrl} availableAt={m.availableAt} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
     render(<AcceptationVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostAddress={m.host.address} hostPhone={m.host.phone} eventTitle={m.liveTitle} eventDate={m.liveDate} contactEquipeUrl={m.contactEquipeUrl} />),
@@ -66,7 +63,6 @@ export default async function EmailPreviewPage() {
 
   const ambassadeur = [
     { label: 'Magic link (connexion standard)', html: htmlMagicLink },
-    { label: 'Pré-validation accordée', html: htmlPreValidation },
     { label: 'Bienvenue ambassadeur (validation finale)', html: htmlBienvenue },
     { label: 'Validation finale — ambassade active', html: htmlValidation },
     { label: 'Confirmation inscription', html: htmlRegistration },

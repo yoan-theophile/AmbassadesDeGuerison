@@ -125,6 +125,32 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] La barre de recherche ne chevauche pas le header sur mobile
 - [ ] L'overlay carte vide est centré et lisible sur mobile (max-w-xs avec padding)
 
+### Géolocalisation automatique au premier chargement
+
+> Vérifier que la carte zoome directement sur la zone du visiteur si la permission est accordée.
+
+- [ ] Au premier chargement, le navigateur affiche la pop-up de permission de géolocalisation
+- [ ] Permission acceptée → la carte zoome automatiquement sur la zone du visiteur (zoom ~9, vue métropole)
+- [ ] Permission refusée → la carte reste sur la vue monde (zoom 3, centre `[20, 10]`) — pas d'erreur visible
+- [ ] Le bouton GPS bas-droit reste cliquable pour relancer la localisation manuellement
+- [ ] Si HTTPS non disponible (autre que localhost) → permission refusée silencieusement, vue monde conservée
+
+### Cluster de pins co-localisés (état `live` recommandé)
+
+> Vérifie le regroupement des pins quand plusieurs ambassadeurs sont à la même coordonnée. Avec les seeds : 6 ambassadeurs à Paris (Marie + 5 cluster) au point `48.8698, 2.3315`.
+
+- [ ] En état `live`, zoomer sur Paris → un seul pin visible (cercle indigo) avec un badge `6` (ou le nombre actif selon l'état du live)
+- [ ] Le pin cluster est rond (pas teardrop) et plus large (36×36 px) que les pins individuels
+- [ ] Cliquer sur le cluster → popup s'ouvre avec un titre "N ambassades · Paris"
+- [ ] Le popup liste chaque ambassadeur : prénom, type (Domicile / Église), places (`accepted_count/capacity`), lien "Contacter →"
+- [ ] **Quartier** : les ambassadeurs avec `quartier` renseigné (ex : Marie → "Paris 15e", Lucas → "Paris 10e") affichent leur quartier en gris clair sous le type/places dans le popup cluster
+- [ ] Ambassadeur sans `quartier` (aucun ambassadeur Paris du seed n'est dans ce cas) → pas de ligne grise vide
+- [ ] Si le popup dépasse 280px de hauteur → scroll vertical activé (`overflow-y:auto`)
+- [ ] Cliquer sur "Contacter →" pour un ambassadeur → ouvre `/ambassade/[id]` correspondant
+- [ ] Hôte avec `is_full = true` dans le cluster → badge "Complet" inline, pas de lien "Contacter →"
+- [ ] Pin individuel (ex : Lyon JP Martin) → popup affiche le quartier "Lyon Presqu'île" sous la ligne ville/pays
+- [ ] Hors Paris : pins individuels classiques (Lyon, Bruxelles, etc.) — comportement teardrop conservé
+
 ---
 
 ## Module 2 — Page ambassade publique `/ambassade/[id]`
@@ -222,7 +248,7 @@ node scripts/magic-link.js david.thery@demo.fr
 > Token = `action_token` d'une demande de contact acceptée.
 
 - [ ] La page charge avec les infos du visiteur et de l'ambassade
-- [ ] Adresse privée de l'hôte visible (après le délai de 24h ou immédiatement si testé directement)
+- [ ] Adresse privée de l'hôte visible si la demande est acceptée
 - [ ] Token invalide → 404 ou message d'erreur approprié
 
 ---
@@ -247,18 +273,36 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
+## Module 7b — Édition profil ambassadeur (`/dashboard` — section MesInfosSection)
+
+> Se connecter avec `node scripts/magic-link.js marie.dubois@demo.fr` (statut `validated`).
+
+- [ ] La section "Mes informations" est visible pour un ambassadeur `validated`
+- [ ] Les champs ville, pays, adresse privée, consignes, téléphone sont pré-remplis avec les données existantes
+- [ ] **Champ quartier** visible entre le sélecteur pays et l'adresse privée, pré-rempli avec "Paris 15e" (valeur seed Marie)
+- [ ] Modifier le quartier → sauvegarder → rafraîchir la page → valeur conservée en DB
+- [ ] Vider le quartier (champ vide) → sauvegarder → `host_profiles.quartier = null` en DB
+- [ ] Modifier uniquement le quartier (sans changer la ville) → pas d'email admin envoyé
+- [ ] Modifier la ville → email admin `ambassadeur-modification-admin` envoyé même si quartier inchangé
+
+---
+
 ## Module 8 — Inscription ambassadeur `/inscription`
 
 ### Étape 1 — Informations personnelles
 
-- [ ] Champs obligatoires : prénom, email, ville, pays
-- [ ] Champ **téléphone** (optionnel) visible après l'email — label "Téléphone (optionnel)", type tel, maxLength 20, note de confidentialité sous le champ
+- [ ] Champs obligatoires : prénom, **nom**, email, **téléphone**, ville, pays — bouton "Continuer" bloqué si l'un manque
+- [ ] Champ **téléphone** (obligatoire) — label "Téléphone", type tel, maxLength 20, note de confidentialité sous le champ
 - [ ] `CityInput` : saisir "Paris" → dropdown Nominatim apparaît → sélectionner "Paris, Île-de-France" → coordonnées lat/lng renseignées
-- [ ] Sans sélection dans le dropdown → hint ambre "Sélectionnez une ville dans la liste"
-- [ ] Bouton "Continuer" désactivé si `lat` est absent
+- [ ] Sans sélection dans le dropdown → hint ambre "Sélectionnez votre ville dans la liste pour confirmer votre position sur la carte"
+- [ ] Bouton "Continuer" désactivé si `lat == null` (ville tapée sans sélection dropdown)
 - [ ] Sélectionner une ville étrangère (ex: "Yaoundé") → pays bascule automatiquement sur "Cameroun"
 - [ ] `CountrySelect` : pays épinglés (FR, BE, CH, CA, LU, MA, SN, CI, CM) visibles en premier
-- [ ] Soumettre avec un téléphone → `host_profiles.phone` sauvegardé en DB
+- [ ] **Champ quartier** (optionnel) : visible après le sélecteur de pays, placeholder "ex : Paris 15e, Abidjan Cocody, Lyon Presqu'île", note explicite "Aide les visiteurs à te retrouver s'ils sont dans le même quartier."
+- [ ] Laisser le champ quartier vide → soumission réussie (`quartier = null` en DB)
+- [ ] Remplir le champ quartier → `host_profiles.quartier` sauvegardé en DB
+- [ ] Bouton "Continuer" **non bloqué** si quartier vide (champ optionnel)
+- [ ] Soumettre → `host_profiles.phone`, `host_profiles.last_name` sauvegardés en DB
 
 ### Étape 2 — Type d'ambassade
 
@@ -274,12 +318,21 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 9 — Onboarding `/onboarding` *(flux legacy — non utilisé dans le pipeline actuel)*
+## Module 9 — Onboarding self-service inline (`/dashboard` pour `pending_review`)
 
-> ⚠️ Le flux principal est désormais admin-driven (`pending_review → pre_approved → questionnaire → enrichment_pending → validated`). La page `/onboarding` reste accessible mais n'est plus le chemin critique. Le statut `pending_onboarding` n'existe pas en DB.
+> Pipeline self-service jusqu'au questionnaire : `/inscription → pending_review → pre_approved → enrichment_pending → validated`. La transition `pending_review → pre_approved` est déclenchée par le candidat lui-même depuis son dashboard (pas d'admin). La route `/onboarding` autonome a été supprimée.
 
-- [ ] La page `/onboarding` charge sans erreur 500
-- [ ] Un profil `validated` accédant à `/onboarding` est redirigé vers `/dashboard`
+- [ ] `GET /onboarding` retourne 404 (route legacy supprimée)
+- [ ] Connecté en tant que Sophie (`pending_review`) → `/dashboard` affiche l'encart "Bienvenue, Sophie !" avec invite à regarder la vidéo
+- [ ] Vidéo de formation YouTube visible (iframe `enablejsapi=1`)
+- [ ] Bouton "Télécharger" le guide PDF visible et fonctionnel
+- [ ] Checkbox "J'ai regardé la vidéo et accepté les conditions" **désactivée** par défaut
+- [ ] Cliquer dans l'iframe vidéo → la checkbox devient activable (détection blur)
+- [ ] Cocher la checkbox → le bouton "Activer mon onboarding" devient cliquable
+- [ ] Cliquer "Activer mon onboarding" → `PATCH /api/onboarding/complete` retourne 200 → dashboard recharge → encart "Conditions acceptées" visible avec CTA "Compléter mon profil →"
+- [ ] Second appel à `PATCH /api/onboarding/complete` (idempotent) → 200 noop, status reste `pre_approved`
+- [ ] `PATCH /api/onboarding/complete` sans session → 401
+- [ ] `PATCH /api/onboarding/complete` depuis statut `suspended` → 400
 
 ---
 
@@ -367,8 +420,8 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Actions par statut
 
-- [ ] Sophie (`pending_review`) → boutons "Pré-approuver" + "Refuser"
-- [ ] Sophie (`pre_approved`) → bouton "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard)
+- [ ] Sophie (`pending_review`) → bouton "Refuser" uniquement (la transition vers `pre_approved` est désormais self-service côté candidat — l'admin ne peut pas pré-approuver)
+- [ ] Sophie (`pre_approved`) → boutons "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis)
 - [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
 - [ ] Marie (`validated`) → bouton "Suspendre"
 - [ ] Marie (`suspended`) → bouton "Réactiver"
@@ -462,8 +515,8 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 23 — Admin : settings onboarding `/admin/settings`
 
 - [ ] La page charge avec l'URL vidéo actuelle (vide → fallback `config/onboarding.ts`)
-- [ ] Modifier l'URL YouTube → sauvegarder → la page `/onboarding` affiche la nouvelle vidéo
-- [ ] Modifier le chemin PDF → sauvegarder → répercuté dans `/onboarding`
+- [ ] Modifier l'URL YouTube → sauvegarder → l'encart pending_review du `/dashboard` affiche la nouvelle vidéo
+- [ ] Modifier le chemin PDF → sauvegarder → lien "Télécharger" dans le `/dashboard` pointe vers le nouveau chemin
 
 ---
 
@@ -507,23 +560,15 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 27 — Pages preview (noindex)
-
-> Ces pages ne doivent pas être indexées par Google.
-
-- [ ] `/preview/homepage-poster` charge sans erreur
-- [ ] `/preview/homepage-annuaire` charge sans erreur
-- [ ] `/preview/homepage-storytelling` charge sans erreur
-- [ ] Chaque page preview a une meta `robots: noindex`
-
----
-
 ## Module 28 — APIs : sécurité
 
 ### Honeypot
 
 - [ ] `POST /api/temoignages` avec `website` rempli → 200 silencieux (pas de vrai enregistrement)
 - [ ] `POST /api/inscriptions` avec `website` rempli → 200 silencieux
+- [ ] `POST /api/inscriptions` sans `lat`/`lng` → 400 `"Champs obligatoires manquants."`
+- [ ] `POST /api/inscriptions` sans `last_name` → 400 `"Champs obligatoires manquants."`
+- [ ] `POST /api/inscriptions` sans `phone` → 400 `"Champs obligatoires manquants."`
 
 ### Rate limiting
 
@@ -560,20 +605,21 @@ npm run test:e2e
 
 ---
 
-## Module 30 — Cycle de statut ambassadeur (admin)
+## Module 30 — Cycle de statut ambassadeur
 
-> Tester depuis `/admin/ambassadeurs`. Utiliser Sophie (`pending_review`) et Marie (`validated`).
+> Pipeline self-service jusqu'au questionnaire. L'admin n'intervient qu'à la fin (validation finale ou refus). Utiliser Sophie (`pending_review`) et Marie (`validated`).
 
-| Transition | Action admin | Résultat attendu |
+| Transition | Déclencheur | Résultat attendu |
 |---|---|---|
-| `pending_review → pre_approved` | Bouton "Pré-approuver" | Statut `pre_approved`, email avec CTA questionnaire envoyé |
-| `pre_approved → enrichment_pending` | Sophie ouvre `/dashboard/questionnaire` et soumet | Statut `enrichment_pending`, notif admin reçue |
-| `enrichment_pending → validated` | Bouton "Valider" (standard) | Statut `validated`, email bienvenue envoyé |
-| `pre_approved → validated` (bypass) | Bouton "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
-| `validated → suspended` | Bouton "Suspendre" | Statut `suspended`, pin disparaît de la carte |
-| `suspended → validated` | Bouton "Réactiver" | Statut `validated`, pin réapparaît |
-| `pending_review → rejected` | Bouton "Refuser" | Statut `rejected` |
-| ~~`pre_approved → validated` (API directe)~~ | POST action=`validated` sur un `pre_approved` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire" |
+| `pending_review → pre_approved` | Sophie clique "Activer mon onboarding" sur `/dashboard` | Statut `pre_approved`, **aucun email envoyé**, dashboard recharge avec encart "Conditions acceptées" |
+| `pre_approved → enrichment_pending` | Sophie soumet `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin reçue |
+| `enrichment_pending → validated` | Admin clique "Valider" depuis `/admin/ambassadeurs` | Statut `validated`, email bienvenue envoyé |
+| `* → validated` (bypass) | Admin clique "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
+| `validated → suspended` | Admin clique "Suspendre" | Statut `suspended`, pin disparaît de la carte |
+| `suspended → validated` | Admin clique "Réactiver" | Statut `validated`, pin réapparaît |
+| `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected` |
+| ~~admin action `pre_approved`~~ | POST `action: 'pre_approved'` | **400 JSON** — "Action invalide" (transition désormais self-service) |
+| ~~admin valider depuis `pending_review`~~ | POST `action: 'validated'` sur `pending_review` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire. Utilisez validated_bypass si nécessaire." |
 
 ---
 
@@ -584,9 +630,17 @@ npm run test:e2e
 - [ ] Un profil `pending_review` accédant à `/dashboard/questionnaire` → message "Ce questionnaire n'est accessible que pour les candidats pré-approuvés" + lien retour
 - [ ] Un profil `validated` accédant → même message de blocage
 - [ ] Un profil `pre_approved` → le formulaire s'affiche complet
-- [ ] Champs présents : case "J'ai suivi le Défi Guérison", case "J'ai déjà assisté à une conférence de David Théry", select fréquentation église (3 options), champ dénomination (optionnel), textarea parcours spirituel (max 500 chars), textarea livres (max 300 chars), champ téléphone (optionnel)
+- [ ] Champs présents : case "J'ai suivi le Défi Guérison", case "J'ai déjà assisté à une conférence de David Théry", select fréquentation église (3 options), champ dénomination (optionnel), textarea parcours spirituel (max 500 chars), textarea livres (max 300 chars)
 - [ ] Compteur caractères visible sous le textarea parcours (ex : "42/500")
-- [ ] Soumettre → `PATCH /api/ambassadeur/enrichissement` → statut passe à `enrichment_pending`
+- [ ] **Section photos** : 2 blocs distincts
+  - Bloc "Photo de profil — requise" : dropzone unique, preview après upload, bouton supprimer (croix)
+  - Bloc "Photos du lieu d'accueil (optionnel — max 5, N/5)" : compteur dynamique, grid 3 colonnes après le 1er upload, croix de suppression sur chaque vignette, dropzone disparaît à 5/5
+- [ ] Bouton "Envoyer mon profil pour validation" reste désactivé tant que la photo de profil n'est pas uploadée + hint ambre "Une photo de profil est requise"
+- [ ] Upload room → `POST /api/upload/ambassador-photo` `type=room` → vignette apparaît + compteur passe à 1/5
+- [ ] Suppression room → `DELETE /api/upload/ambassador-photo` → vignette disparaît + DB `room_photo_urls` synchronisée (vérifier via SELECT)
+- [ ] Tentative d'upload d'une 6e photo room → 400 "Maximum 5 photos de salle atteint"
+- [ ] Soumettre sans photo de profil → erreur 400 "Une photo de profil est requise pour soumettre votre profil."
+- [ ] Soumettre avec photo de profil → `PATCH /api/ambassadeur/enrichissement` → statut passe à `enrichment_pending`
 - [ ] Après soumission → écran de confirmation "Profil envoyé !" + lien retour dashboard
 - [ ] Soumettre 2 fois → 403 (statut déjà `enrichment_pending`, plus `pre_approved`)
 - [ ] Champs enregistrés en DB : vérifier dans `/admin/ambassadeurs` → panneau détail
@@ -805,13 +859,13 @@ npm run test:e2e
 | 2026-05-01 | M24 — Admin settings timing | ✅ | 6 champs numériques (J avant/après). API PATCH 200. Feedback "Sauvegardé" 3s dans bouton (code OK, timing difficile à capturer via JS). |
 | 2026-05-01 | M25 — Auth `/auth` | ✅ | Formulaire magic link. Soumission email inconnu → "Vérifiez votre messagerie" (anti-énumération, comportement normal). |
 | 2026-05-01 | M26 — Pages publiques | ✅ | /faq (12 Q&A) OK. /contact-equipe → formulaire + "Message envoyé" OK. /page-inexistante → 404 "Page introuvable" + CTA. |
-| 2026-05-01 | M27 — Pages preview | ✅ | /preview/homepage-poster, /annuaire, /storytelling → 200 + meta noindex, nofollow confirmé. |
 | 2026-05-01 | M3 — Flux visiteur `/live/[event_id]/ambassade/[host_id]` | ✅ corrigé | Page charge avec infos ambassade + formulaire. Bug critique : VisitRequestForm envoyait `visitor_first_name/email/...` mais l'API attend `first_name/email/consent`. Fix : renommage des clés JSON. Après fix : 201 + action_token. |
 | 2026-05-01 | M5 — Page visiteur `/visitor/[token]` | ✅ | État "en attente" : event, ambassade, "Marie a reçu votre demande", "Sous 24h". Token invalide → "Page introuvable". |
 | 2026-05-01 | M6 — Page hôte `/accueillir/[token]` | ✅ | Note : route est `/accueillir/[token]` (pas `/accueil-invite/`). Infos visiteur (Lucas, 2 personnes, message), boutons "J'accueille" / "Je ne peux pas" visibles. |
 | 2026-05-01 | M10 — Témoignages publics `/temoignages` | ✅ | 16 témoignages • 10 villes. Filtre par live (combobox custom) → 9 témoignages "Nuit de Prière". "Filtré sur", "Effacer ×", "Lire la suite", WhatsApp/Copier link OK. |
 | 2026-05-01 | M11 — Formulaire témoignage | ✅ | Bouton désactivé < 20 chars. Compteur 96/2000. Soumission → "Merci pour ton témoignage" screen OK. Pré-sélection live, prénom + ville optionnels OK. |
 | 2026-05-01 | M8 — Inscription `/inscription` | ✅ corrigé | 3 étapes OK. Autocomplétion Nominatim + auto-pays OK. Bouton "Continuer" bloqué sans sélection dropdown. Bug critique : API insérait `status='pending_onboarding'` → violation contrainte check. Fix : status → `'pending_review'`. Redirect post-soumission → écran "Demande envoyée" (remplace ancien `/onboarding`). Ambassadeur Lucie visible dans admin `pending_review`. |
+| 2026-05-03 | M8 — Validation lat/lng inscription | ✅ fix | **Bug** : `POST /api/inscriptions` acceptait `lat`/`lng` null → profil créé sans coordonnées → ambassadeur invisible sur la carte (filtré silencieusement par `host-activations/route.ts`). **Fix double couche** : (1) API ligne 28 : `lat == null \|\| lng == null` → 400 ; (2) frontend `inscription/page.tsx` : check `form.lat == null` (remplace `!form.lat`, corrige edge case lat=0). Champs `last_name` et `phone` (obligatoires) également ajoutés au check API et au disabled du bouton. |
 | 2026-05-01 | M9 — Onboarding | ⚠️ obsolète | Flux `pending_onboarding → /onboarding → active` remplacé par review admin. `/api/onboarding/complete` référence encore ces statuts (dead code). Sophie seed a déjà `pending_review`. Page `/onboarding` non reliée au nouveau flux. |
 | 2026-05-01 | M7 — Flux visiteur refus | ✅ | Bénédicte refusée via `/accueillir/[token]` (bouton "Je ne peux pas"). Page `/visitor/[token]` passe en état "Demande non retenue" avec bandeau "Pas de place cette fois". |
 | 2026-05-01 | M12 — Page visiteur états | ✅ | Avant refus : état "en attente". Après refus : "Demande non retenue". Token invalide → "Page introuvable" + CTA "Retour à la carte". |
@@ -880,7 +934,7 @@ npm run dev
 |---|---|---|---|
 | 1 | `magic-link` | Magic link (connexion standard) | [ ] |
 | ~~2~~ | ~~`magic-link-bienvenue`~~ | ~~Magic link — bienvenue nouvel inscrit~~ | 🗑 Supprimé — redondant avec `registration-confirmation` |
-| 3 | `pre-validation-accordee` | Pré-validation accordée | [ ] |
+| ~~3~~ | ~~`pre-validation-accordee`~~ | ~~Pré-validation accordée~~ | 🗑 Supprimé — la transition `pending_review → pre_approved` est désormais self-service (pas d'email intermédiaire) |
 | 4 | `bienvenue-ambassadeur` | Bienvenue ambassadeur (validation finale) | [ ] |
 | 5 | `validation-finale` | Validation finale — ambassade active | [ ] |
 | 6 | `registration-confirmation` | Confirmation inscription | [ ] |
@@ -909,7 +963,7 @@ npm run dev
 | **Ton général** | Les emails utilisent "ambassadeur" et "ambassade de guérison" — c'est bien le vocabulaire que tu veux ? Ou "groupe de prière" est plus juste pour les emails externes ? | Garder "ambassadeur" dans les emails internes. Dans `campagne-visiteurs`, ajouter une ligne de contextualisation ("chez des particuliers ou des petites églises") pour les non-initiés. C'est déjà en partie là. |
 | **Prénom seul** | On s'adresse toujours aux gens par leur prénom ("Bonjour Marie,"). C'est suffisant ou tu veux ajouter le nom de famille dans certains cas ? | Prénom seul est le bon registre pastoral. Ajouter le nom = ton administratif. Pas de changement. |
 | **Magic link** | L'email de connexion est minimaliste (juste le bouton). Tu veux ajouter une phrase d'accroche spirituelle, ou le garder fonctionnel/neutre ? | Garder neutre. `magic-link-bienvenue` a été supprimé (redondant). Le magic link standard reste fonctionnel. |
-| **Pré-validation** | Email `pre-validation-accordee` : "Bonne nouvelle — votre candidature est pré-approuvée". Le ton est-il assez chaleureux ? Trop formel ? | Bon ton. "Bonne nouvelle !" est du vocabulaire pastoral naturel. Option d'enrichissement : "Vous faites partie de ceux qui étendent le réseau de guérison dans le monde." — pas bloquant. |
+| ~~Pré-validation~~ | Question retirée. Le template `pre-validation-accordee` a été supprimé : la transition `pending_review → pre_approved` est désormais déclenchée par le candidat lui-même sur le dashboard (vidéo + PDF + checkbox CGU). Pas d'email à ce stade — le candidat est connecté et voit immédiatement le questionnaire débloqué. | — |
 | **Bienvenue ambassadeur** | Les emails de bienvenue mentionnent le dashboard et la carte. Est-ce que tu veux une phrase personnelle de toi (signature David Théry) dans ces emails ? | **OUI, recommandé.** `validation-finale` se termine par "Merci d'ouvrir votre maison. C'est là que tout se passe." — ajouter "— David Théry" transforme l'email système en lettre personnelle. Idem pour `bienvenue-ambassadeur`. |
 | **Campagne ambassadeurs** | L'email de campagne peut contenir un `customMessage` libre. Tu l'utiliseras souvent ? Faut-il un template de message suggéré dans l'admin ? | Utilisé à chaque live. Ajouter un placeholder dans le champ admin : "Décris le live en 1-2 phrases. Ex : Ce soir, David priera pour les malades." |
 | **Feedback post-live** | Email envoyé après le live pour demander un retour. Vers quoi pointe `feedbackUrl` ? Formulaire interne ou Google Form ? | Formulaire interne (`/feedback?token=...`). La page n'existe pas encore — à construire. Google Form = perte de données et coupure de marque. |

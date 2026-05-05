@@ -18,7 +18,40 @@ export async function GET(
     .single();
 
   if (!host) {
-    return new Response('Not found', { status: 404 });
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
+            color: 'white',
+            fontFamily: 'sans-serif',
+            padding: '40px',
+          }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
+          <div style={{ fontSize: '22px', opacity: 0.85, marginBottom: '16px' }}>
+            Badge non disponible
+          </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '14px',
+            }}
+          >
+            Ambassades de Guérison
+          </div>
+        </div>
+      ),
+      { width: 1200, height: 630 }
+    );
   }
 
   const typeLabel = host.host_type === 'church' ? 'Église ambassade' : 'Ambassade privée';

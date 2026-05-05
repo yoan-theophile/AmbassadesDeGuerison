@@ -36,7 +36,7 @@ export async function GET() {
       id, is_active, is_full, capacity, accepted_count,
       host_profiles!inner (
         id, first_name, city, country, lat, lng,
-        contact_mode, whatsapp_group_url, geocoding_failed, host_type
+        contact_mode, whatsapp_group_url, geocoding_failed, host_type, quartier
       )
     `)
     .eq('event_id', lastEvent.id)
@@ -66,6 +66,7 @@ export async function GET() {
         capacity: a.capacity,
         whatsapp_group_url: hp.whatsapp_group_url ?? null,
         host_type: hp.host_type ?? 'domicile',
+        quartier: hp.quartier ?? null,
         activation_id: a.id,
       };
     });

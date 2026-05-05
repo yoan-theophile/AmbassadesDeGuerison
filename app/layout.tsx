@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import DevOverlay from '@/components/DevOverlay';
+import { isDevOverlayEnabled } from '@/lib/dev-overlay-auth';
 
 const geist = Geist({ variable: '--font-geist', subsets: ['latin'] });
 
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className={`${geist.variable} h-full antialiased`}>
       <body className={`${geist.className} min-h-full flex flex-col`}>
         {children}
-        {process.env.NODE_ENV !== 'production' && <DevOverlay />}
+        {isDevOverlayEnabled() && <DevOverlay />}
       </body>
     </html>
   );

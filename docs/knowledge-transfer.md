@@ -207,29 +207,30 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-17 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+
+> Le template `pre-validation-accordee.tsx` a été supprimé en mai 2026 quand la transition `pending_review → pre_approved` est passée en self-service (le candidat clique "J'accepte" sur son dashboard, le questionnaire s'affiche immédiatement sans email intermédiaire).
 
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
-| Magic link bienvenue | Nouvel inscrit — premier magic link |
-| Pré-validation accordée | Admin passe l'hôte en `pre_approved` → lien questionnaire + vidéo |
 | Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
 | Validation finale | Confirmation de l'activation finale |
 | Confirmation inscription | Nouvel ambassadeur inscrit |
 | Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
 | Feedback post-live | Ambassadeur invité à donner son retour après le live |
-| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien déclin |
-| Demande acceptée (visiteur) | Hôte accepte → visiteur informé |
-| Place réservée | Hôte a accepté, coordonnées partielles avant dévoilement adresse |
-| Demande refusée | Hôte refuse → visiteur redirigé vers la carte |
-| Confirmation visite — adresse dévoilée | Adresse complète envoyée au visiteur accepté |
-| Visite refusée | Refus à l'étape finale → visiteur redirigé |
+| Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien /accueillir/[token] (accepter) + lien /refuser/[token] (refuser) |
+| Demande refusée | Hôte refuse via /refuser/[token] → visiteur redirigé vers la carte |
+| Confirmation visite — adresse dévoilée | Hôte accepte via /accueillir/[token] → adresse complète + e-mail + lien WhatsApp envoyés au visiteur |
+| Visite refusée | Refus à l'étape /accueillir → visiteur redirigé |
 | Campagne visiteurs | Cron visiteurs → lien carte + lien désinscription |
 | Signal approuvé | Admin approuve un signal live → lien live envoyé à l'ambassadeur |
 | Nouvelle ambassade activée (admin) | Hôte passe `validated` → notification admin |
 | Questionnaire soumis (admin) | Hôte soumet questionnaire enrichissement → notification admin |
 | Alerte 0 hôtes actifs (admin) | Aucun hôte actif 48h avant un live |
+| Nouvelle candidature (admin) | Ambassadeur s'inscrit → notification admin (action requise : valider) |
+| Demande d'aide visiteur (admin) | Visiteur soumet une demande d'aide → notification admin avec le message |
+| Modification profil ambassadeur (admin) | Ambassadeur modifie sa ville via `PATCH /api/ambassadeur/profile` → email admin avec ancienne ville → nouvelle ville |
 
 ### Voir les emails envoyés
 
@@ -308,7 +309,7 @@ Alerte l'admin si 0 hôtes actifs pour le prochain live.
 1. Vérifier que l'événement existe et que `event_date` est correct
 2. Vérifier que les hôtes ont `status = 'validated'` dans `host_profiles`
 3. Vérifier que `host_activations.is_active = TRUE` pour cet événement
-4. Vérifier que `lat` et `lng` ne sont pas NULL (si NULL, `geocoding_failed = TRUE`)
+4. Vérifier que `lat` et `lng` ne sont pas NULL — depuis la validation API (`POST /api/inscriptions` retourne 400 si lat/lng absents), tout nouveau profil a obligatoirement des coordonnées. Si un profil ancien a `lat = NULL`, l'ambassadeur ne s'affichera jamais sur la carte : corriger via `UPDATE host_profiles SET lat = ..., lng = ... WHERE id = '...'`
 
 ### "Un hôte ne reçoit pas ses emails"
 
@@ -389,11 +390,14 @@ AND hp.id NOT IN (
 | `live_signals` | Admin + l'hôte qui a créé le signal | L'hôte lui-même |
 | `events` | Public | Admin uniquement |
 
+**Storage bucket `ambassador-photos`** : bucket Supabase **privé** (public = false). Les colonnes `profile_photo_url` / `room_photo_urls` de `host_profiles` contiennent un chemin Storage, pas une URL. Accès via signed URL (`lib/storage/photo-url.ts`). L'admin lit via `getAdminPhotoUrl()` (service_role, 1h), l'ambassadeur via `getOwnerPhotoUrl()` (anon, 15 min). Aucun composant public ne lit ces chemins.
+
 ### Ne jamais faire
 
 - Exposer `SUPABASE_SERVICE_ROLE_KEY` côté client
 - Bypasser RLS dans une route API publique
 - Stocker `action_token` (liens accept/decline) en clair dans les logs
+- Exposer `profile_photo_url` / `room_photo_urls` dans une réponse API publique ou sur la carte
 
 ---
 

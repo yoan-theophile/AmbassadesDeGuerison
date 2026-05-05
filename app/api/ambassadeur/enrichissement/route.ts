@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('host_profiles')
-    .select('id, status, first_name')
+    .select('id, status, first_name, profile_photo_url')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -30,13 +30,20 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  // Vérifier qu'une photo de profil a bien été uploadée avant soumission
+  if (!profile.profile_photo_url) {
+    return NextResponse.json(
+      { error: 'Une photo de profil est requise pour soumettre votre profil.' },
+      { status: 400 }
+    );
+  }
+
   const body = await req.json();
   const {
     healing_challenge_done,
     church_attendance,
     denomination,
     parcours_spirituel,
-    phone,
     livres_lus,
     conferences_assistees,
   } = body;
@@ -46,7 +53,6 @@ export async function PATCH(req: NextRequest) {
   if (church_attendance !== undefined) updates.church_attendance = church_attendance;
   if (denomination !== undefined) updates.denomination = denomination;
   if (parcours_spirituel !== undefined) updates.parcours_spirituel = parcours_spirituel;
-  if (phone !== undefined) updates.phone = phone?.trim() || null;
   if (livres_lus !== undefined) updates.livres_lus = livres_lus;
   if (typeof conferences_assistees === 'boolean') updates.conferences_assistees = conferences_assistees;
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { sendRegistrationConfirmation } from '@/lib/email/templates';
+import { sendRegistrationConfirmation, sendNouvelleInscriptionAdmin } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
 export async function POST(req: NextRequest) {
@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
   const {
     email,
     first_name,
+    last_name,
     phone,
     city,
     country,
@@ -22,9 +23,10 @@ export async function POST(req: NextRequest) {
     consignes,
     lat,
     lng,
+    quartier,
   } = body;
 
-  if (!email || !first_name || !city || !country || !address_private) {
+  if (!email || !first_name || !last_name || !phone?.trim() || !city || !country || !address_private || lat == null || lng == null) {
     return NextResponse.json({ error: 'Champs obligatoires manquants.' }, { status: 400 });
   }
 
@@ -66,6 +68,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         email,
         first_name,
+        last_name,
         city,
         country,
         host_type: type ?? 'individual',
@@ -74,9 +77,10 @@ export async function POST(req: NextRequest) {
         address_private,
         whatsapp_group_url: whatsapp_group_url || null,
         consignes: consignes || null,
-        phone: phone?.trim() || null,
+        phone: phone.trim(),
         lat: lat ?? null,
         lng: lng ?? null,
+        quartier: quartier || null,
         status: 'pending_review',
       }).select('id').single();
       if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
@@ -92,6 +96,7 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       email,
       first_name,
+      last_name,
       city,
       country,
       host_type: type ?? 'individual',
@@ -100,6 +105,7 @@ export async function POST(req: NextRequest) {
       address_private,
       whatsapp_group_url: whatsapp_group_url || null,
       consignes: consignes || null,
+      phone: phone.trim(),
       lat: lat ?? null,
       lng: lng ?? null,
       status: 'pending_review',
@@ -110,6 +116,7 @@ export async function POST(req: NextRequest) {
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     await sendRegistrationConfirmation(email, first_name).catch(() => {});
+    await sendNouvelleInscriptionAdmin(first_name, city, country).catch(() => {});
   }
 
   return NextResponse.json({ success: true, id: profileId }, { status: 201 });

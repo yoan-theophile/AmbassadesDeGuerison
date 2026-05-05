@@ -34,9 +34,14 @@ export default function CityInput({
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // True uniquement après une frappe utilisateur — empêche l'ouverture auto au montage ou sur focus passif
+  const hasUserTyped = useRef(false);
 
-  // Sync si value change de l'extérieur
-  useEffect(() => { setQuery(value); }, [value]);
+  // Sync si value change de l'extérieur (ex : parent recharge le profil)
+  useEffect(() => {
+    hasUserTyped.current = false;
+    setQuery(value);
+  }, [value]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -47,7 +52,7 @@ export default function CityInput({
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`).catch(() => null);
       const data: CityResult[] = res?.ok ? await res.json() : [];
       setResults(data);
-      setOpen(data.length > 0);
+      setOpen(hasUserTyped.current && data.length > 0);
       setLoading(false);
     }, 300);
 
@@ -73,6 +78,7 @@ export default function CityInput({
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    hasUserTyped.current = true;
     const v = e.target.value;
     setQuery(v);
     onChange(v); // sans coordonnées — l'utilisateur tape librement
@@ -96,7 +102,7 @@ export default function CityInput({
           required={required}
           value={query}
           onChange={handleInputChange}
-          onFocus={() => results.length > 0 && setOpen(true)}
+          onFocus={() => hasUserTyped.current && results.length > 0 && setOpen(true)}
           placeholder={placeholder}
           autoComplete="off"
           className="w-full border border-slate-200 rounded-lg pl-9 pr-8 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white"

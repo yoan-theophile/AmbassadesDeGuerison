@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, UserPlus, ChevronRight, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
+import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 const TYPES = [
-  { value: 'individual', label: 'Domicile / particulier' },
-  { value: 'church', label: 'Église / lieu de culte' },
+  { value: 'individual', label: 'Domicile' },
+  { value: 'church', label: 'Église' },
 ];
 
 export default function InscriptionPage() {
@@ -18,10 +20,12 @@ export default function InscriptionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showWhatsAppHelp, setShowWhatsAppHelp] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
     first_name: '',
+    last_name: '',
     phone: '',
     city: '',
     country: 'France',
@@ -32,6 +36,7 @@ export default function InscriptionPage() {
     address_private: '',
     whatsapp_group_url: '',
     consignes: '',
+    quartier: '',
   });
 
   function set(field: string, value: string) {
@@ -126,12 +131,19 @@ export default function InscriptionPage() {
               <Field label="Prénom" required>
                 <input type="text" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required className={inputCls} placeholder="Marie" />
               </Field>
+              <Field label="Nom" required>
+                <input type="text" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required className={inputCls} placeholder="Dupont" />
+              </Field>
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
               </Field>
-              <Field label="Téléphone (optionnel)">
-                <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} maxLength={20} className={inputCls} placeholder="+33 6 00 00 00 00" />
-                <p className="text-xs text-slate-400 mt-1">Uniquement visible par l'équipe — jamais transmis aux visiteurs.</p>
+              <Field label="Téléphone (WhatsApp de préférence)" required>
+                <PhoneInput
+                  id="phone"
+                  value={form.phone}
+                  onChange={(v) => set('phone', v)}
+                />
+                <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
               </Field>
               <CityInput
                 label="Ville"
@@ -142,7 +154,7 @@ export default function InscriptionPage() {
                   setForm((prev) => ({ ...prev, city, lat, lng, ...(country ? { country } : {}) }))
                 }
               />
-              {form.city && !form.lat && (
+              {form.city && form.lat == null && (
                 <p className="text-xs text-amber-600 -mt-1">
                   Sélectionnez votre ville dans la liste pour confirmer votre position sur la carte.
                 </p>
@@ -154,10 +166,26 @@ export default function InscriptionPage() {
                 value={form.country}
                 onChange={(country) => set('country', country)}
               />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Quartier ou arrondissement
+                  <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.quartier}
+                  onChange={(e) => set('quartier', e.target.value)}
+                  placeholder="ex : Paris 15e, Abidjan Cocody, Lyon Presqu'île"
+                  className={inputCls}
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Aide les visiteurs à te retrouver s'ils sont dans le même quartier.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                disabled={!form.first_name || !form.email || !form.city || !form.lat}
+                disabled={!form.first_name || !form.last_name || !form.email || !form.phone || !isValidPhoneNumber(form.phone) || !form.city || form.lat == null}
                 className={`${btnPrimary} flex items-center gap-2 justify-center`}
               >
                 Continuer <ArrowRight className="w-4 h-4" />
@@ -175,11 +203,13 @@ export default function InscriptionPage() {
               <Field label="Capacité d'accueil (personnes)" required>
                 <input type="number" min="1" max="500" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} required className={inputCls} />
               </Field>
-              <Field label="Adresse complète (privée)" required>
+              <Field label="Adresse complète — privée, partagée uniquement avec un visiteur que vous avez accepté" required>
                 <textarea value={form.address_private} onChange={(e) => set('address_private', e.target.value)} required rows={3} className={inputCls} placeholder="12 rue des Lilas, 69001 Lyon" />
+                <p className="text-xs text-slate-400 mt-1">Vous validez chaque demande avant que l'adresse soit dévoilée.</p>
               </Field>
-              <Field label="Consignes d'accès (optionnel)">
-                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={2} className={inputCls} placeholder="Sonner à l'interphone B. Parking gratuit en face." />
+              <Field label="Détails utiles pour vos visiteurs (optionnel)">
+                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder="Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30." />
+                <p className="text-xs text-slate-400 mt-1">Sera transmis aux visiteurs acceptés. Tout détail qui facilite leur arrivée.</p>
               </Field>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)} className={btnSecondary}>
@@ -194,19 +224,51 @@ export default function InscriptionPage() {
 
           {step === 3 && (
             <>
-              <Field label="Lien groupe WhatsApp (optionnel)">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <label className="text-sm font-medium text-slate-700">
+                    Lien groupe WhatsApp <span className="font-normal text-slate-400">(optionnel)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppHelp((v) => !v)}
+                    className="text-slate-400 hover:text-indigo-600 transition-colors"
+                    aria-label="En savoir plus sur le lien WhatsApp"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                </div>
                 <input type="url" value={form.whatsapp_group_url} onChange={(e) => set('whatsapp_group_url', e.target.value)} className={inputCls} placeholder="https://chat.whatsapp.com/..." />
-              </Field>
+                {showWhatsAppHelp && (
+                  <div className="mt-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-2">
+                    <p><span className="font-medium text-slate-700">À quoi ça sert ?</span> Ce lien apparaît sur votre page ambassade publique. Les visiteurs peuvent rejoindre votre groupe directement — avant même de vous contacter personnellement.</p>
+                    <p><span className="font-medium text-slate-700">Particulièrement utile pour une église.</span> Votre groupe devient un canal de mobilisation : les fidèles partagent le lien, coordonnent l'arrivée et restent en contact après le live.</p>
+                    <div>
+                      <p className="font-medium text-slate-700 mb-1">Comment créer le lien ?</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-slate-500">
+                        <li>Ouvrez votre groupe WhatsApp</li>
+                        <li>Appuyez sur le nom du groupe → <strong>Infos du groupe</strong></li>
+                        <li>→ <strong>Lien d'invitation</strong> → <strong>Copier le lien</strong></li>
+                      </ol>
+                    </div>
+                    <p className="text-amber-600 font-medium">⚠️ Ce lien est public — tout visiteur qui consulte votre fiche peut rejoindre le groupe. Ne l'utilisez que si votre groupe est ouvert.</p>
+                  </div>
+                )}
+              </div>
 
               <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 border border-slate-100">
                 <p className="font-medium text-slate-800 mb-1">Récapitulatif</p>
-                <p className="text-slate-600">{form.first_name} — {form.city}, {form.country}</p>
+                <p className="text-slate-600">{form.first_name} {form.last_name} — {form.city}, {form.country}</p>
                 <p className="text-slate-500 text-xs mt-0.5">
                   {TYPES.find((t) => t.value === form.type)?.label} · {form.capacity} personnes
                 </p>
               </div>
 
               {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                En soumettant cette demande, vous reconnaissez que l'équipe de David Thery se réserve le droit d'accepter ou de refuser toute candidature, sans avoir à en justifier les raisons.
+              </p>
 
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(2)} className={btnSecondary}>

@@ -54,6 +54,7 @@ CREATE TABLE host_profiles (
   id                     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                UUID        REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name             TEXT        NOT NULL,
+  last_name              TEXT        NOT NULL,
   email                  TEXT        NOT NULL UNIQUE,
   host_type              TEXT        NOT NULL DEFAULT 'individual'
     CHECK (host_type IN ('individual', 'church')),
@@ -63,6 +64,7 @@ CREATE TABLE host_profiles (
   country                TEXT        NOT NULL,
   lat                    DOUBLE PRECISION,
   lng                    DOUBLE PRECISION,
+  quartier               TEXT        DEFAULT NULL,
   geocoding_failed       BOOLEAN     DEFAULT FALSE,
   address_private        TEXT,
   address_public         BOOLEAN     DEFAULT FALSE,
@@ -81,7 +83,7 @@ CREATE TABLE host_profiles (
   -- Photos (profil public, pièce admin-only via RLS)
   profile_photo_url      TEXT,
   room_photo_urls        TEXT[],
-  phone                  TEXT,
+  phone                  TEXT        NOT NULL,
   -- Questionnaire enrichi — admin-only (RLS strict)
   healing_challenge_done BOOLEAN,
   church_attendance      TEXT,
@@ -109,13 +111,14 @@ CREATE TABLE admin_users (
 
 -- Activation par live (opt-in explicite — is_active=FALSE par défaut)
 CREATE TABLE host_activations (
-  id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-  host_profile_id UUID    NOT NULL REFERENCES host_profiles(id) ON DELETE CASCADE,
-  event_id        UUID    NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  capacity        INT     NOT NULL DEFAULT 10 CHECK (capacity > 0),
-  accepted_count  INT     NOT NULL DEFAULT 0  CHECK (accepted_count >= 0),
-  is_active       BOOLEAN DEFAULT FALSE,
-  is_full         BOOLEAN DEFAULT FALSE,
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_profile_id UUID        NOT NULL REFERENCES host_profiles(id) ON DELETE CASCADE,
+  event_id        UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  capacity        INT         NOT NULL DEFAULT 10 CHECK (capacity > 0),
+  accepted_count  INT         NOT NULL DEFAULT 0  CHECK (accepted_count >= 0),
+  is_active       BOOLEAN     DEFAULT FALSE,
+  is_full         BOOLEAN     DEFAULT FALSE,
+  created_at      TIMESTAMPTZ DEFAULT now(),
   UNIQUE (host_profile_id, event_id)
 );
 
@@ -265,7 +268,7 @@ INSERT INTO event_timing_config (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 CREATE VIEW host_profiles_public AS
 SELECT
-  id, user_id, first_name, host_type, church_subtype,
+  id, user_id, first_name, last_name, host_type, church_subtype,
   city, country, lat, lng, geocoding_failed,
   whatsapp_group_url, address_public, contact_mode,
   capacity, consignes, viewing_setup, profile_photo_url,
@@ -530,3 +533,30 @@ CREATE INDEX idx_campaign_recipients_activation ON campaign_recipients(activatio
 CREATE INDEX idx_campaign_recipients_unsub       ON campaign_recipients(unsubscribe_token) WHERE unsubscribe_token IS NOT NULL;
 CREATE INDEX idx_blacklist_email               ON blacklist(email);
 CREATE INDEX idx_blacklist_phone               ON blacklist(phone);
+
+-- ============================================================
+-- 9. STORAGE BUCKETS
+-- ============================================================
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'ambassador-photos',
+  'ambassador-photos',
+  true,
+  5242880,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "ambassador_photos_public_read"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_service_insert" ON storage.objects;
+
+-- Lecture publique via URL (bucket public)
+CREATE POLICY "ambassador_photos_public_read"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'ambassador-photos');
+
+-- Upload réservé au service_role (bypass RLS) — policy de sécurité pour les clés anon
+CREATE POLICY "ambassador_photos_service_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'ambassador-photos');

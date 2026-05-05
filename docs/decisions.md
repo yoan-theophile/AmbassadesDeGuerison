@@ -209,6 +209,21 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 
 ---
 
+### 2026-05 | Onboarding ambassadeur self-service jusqu'au questionnaire
+
+**Décision :** Suppression du gate admin `pre_approve`. La transition `pending_review → pre_approved` est désormais déclenchée par le candidat lui-même depuis son dashboard (vidéo de formation + téléchargement PDF + checkbox CGU + bouton "Activer mon onboarding"). L'admin n'intervient qu'à la fin, sur un dossier complet (statut `enrichment_pending`), pour valider ou refuser.
+
+**Pourquoi :** À l'inscription, l'admin n'a que nom/email/téléphone/ville/pays/type/capacité — pas assez pour qualifier un candidat. Le gate `pre_approved` admin-driven était de la friction sans signal de qualification. Le questionnaire (parcours spirituel, formation, photo) est ce qui qualifie réellement un dossier — c'est là que l'admin doit décider. Cohérent avec le principe fondateur : on fait confiance aux gens qui ouvrent leur maison. Aligne aussi l'expérience candidat sur du self-service immédiat plutôt qu'une attente passive d'email.
+
+**Implémentation :** Gate inline dans l'encart contextuel `pending_review` du `/dashboard` (pas de page `/onboarding` séparée — la route legacy a été supprimée). `PATCH /api/onboarding/complete` vise désormais `pre_approved` (au lieu de `validated`), idempotent, sans email. L'action admin `pre_approve` a été retirée de `/api/admin/ambassadeurs/[id]/status` ; tentative d'appel → 400. Le template email `pre-validation-accordee.tsx` a été supprimé (le candidat voit immédiatement le questionnaire débloqué sur son dashboard, pas besoin de mail intermédiaire).
+
+**Alternatives écartées :**
+- Renommer `pre_approved` en `cgu_accepted` ou `onboarding_completed` : plus honnête sémantiquement, mais ~25 fichiers touchés (tests, labels, dashboard, admin) pour zéro gain UX. Le nom devient un debt cosmétique acceptable.
+- Collapser à 3 statuts (`pending_review → enrichment_pending → validated`) en intégrant tout (vidéo + PDF + accept + questionnaire) inline dans le dashboard : UX plus dense, perd la séparation propre entre "CGU acceptées" et "questionnaire en attente".
+- Garder un email auto-confirmation "tu as accepté les CGU, voici le lien questionnaire" : utile uniquement si le candidat ferme l'onglet ; on peut ajouter un cron de relance plus tard sans perte de contexte. HOLD scope = pas d'expansion maintenant.
+
+---
+
 ## À compléter
 
 Ajouter ici chaque décision significative prise lors du développement :

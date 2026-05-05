@@ -44,5 +44,6 @@ next-env.d.ts
 .gstack-design/
 test-results/
 screenshots/
+.playwright-mcp/
 
 .vercel

@@ -174,20 +174,6 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 ---
 
-## TODO-18 : Pass design sur les 3 directions homepage `/preview/*`
-
-**Quoi :** Lancer un audit `/design-review` ciblé sur `/preview/homepage-poster`, `/preview/homepage-annuaire`, `/preview/homepage-storytelling`. Rédiger une fiche comparative pour aider David à choisir la direction.
-
-**Pourquoi :** David doit choisir une des 3 directions le jour de la démo. Une fiche "ici les forces / faiblesses de chaque direction vs DESIGN.md" facilite la décision.
-
-**Pros :** Active une décision difficile à prendre à froid. Permet d'éliminer les directions qui violent la palette/typo dès maintenant.
-
-**Cons :** Légère pression sur David si on présente comme "voici notre recommandation". À garder neutre.
-
-**Contexte :** Pages preview construites, gardées intentionnellement comme variantes. Post-démo, la direction choisie devient `app/page.tsx` et les 2 autres sont supprimées (décision prise dans le checkpoint Ordre 8).
-
----
-
 ## TODO-19 : Pins inactifs — différenciation visuelle `is_active=false`
 
 **Quoi :** Sur la carte, distinguer visuellement les ambassades activées pour le live courant (`is_active=true`) vs celles non encore confirmées (`is_active=false`). Piste : même teinte indigo mais opacité 60% + point gris sur les inactifs.

@@ -13,11 +13,11 @@ async function getAmbassadeurs(page: number, q: string, status: string) {
   let query = supabase
     .from('host_profiles')
     .select(
-      'id, first_name, email, city, country, host_type, status, contact_mode, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus',
+      'id, first_name, last_name, email, city, country, host_type, status, contact_mode, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus',
       { count: 'exact' }
     );
 
-  if (q) query = (query as any).or(`first_name.ilike.%${q}%,email.ilike.%${q}%,city.ilike.%${q}%`);
+  if (q) query = (query as any).or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,city.ilike.%${q}%`);
   if (status !== 'all') query = (query as any).eq('status', status);
 
   const { data, count } = await (query as any)

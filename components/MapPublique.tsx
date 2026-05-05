@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { Search } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap } from 'leaflet';
 
@@ -33,11 +34,22 @@ interface HostPin {
   capacity: number | null;
   whatsapp_group_url?: string;
   host_type: string;
+  quartier?: string | null;
+}
+
+function makeClusterIcon(L: any, count: number) {
+  return L.divIcon({
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:#4f46e5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;line-height:1;">${count}</div>`,
+    className: '',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -22],
+  });
 }
 
 function makeIcon(L: any, hostType: string, isFull: boolean) {
   const isChurch = hostType === 'eglise' || hostType === 'church';
-  const bg = isFull ? '#ef4444' : isChurch ? '#4338ca' : '#4f46e5';
+  const bg = isFull ? '#ef4444' : isChurch ? '#7c3aed' : '#4f46e5';
   const symbol = isChurch
     ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M9 5h6M3 21h18M5 21V10l7-4 7 4v11M10 21v-5h4v5"/></svg>`
     : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
@@ -235,6 +247,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       new LocateControl({ position: 'bottomright' }).addTo(map);
       map.on('locationerror', () => { /* permission refusée — silencieux */ });
 
+      // Géolocalisation automatique au premier chargement : zoome sur la zone
+      // du visiteur s'il accepte la permission. Si refus → vue monde conservée.
+      map.locate({ setView: true, maxZoom: 9 });
+
       function updateViewport() {
         const bounds = map.getBounds();
         const zoom = map.getZoom();
@@ -267,10 +283,20 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         if (layer instanceof L.Marker) mapRef.current!.removeLayer(layer);
       });
 
-      // Ajoute les nouveaux
-      hosts
-        .filter((h) => h.lat && h.lng)
-        .forEach((host) => {
+      // Regroupe les hôtes par coordonnées exactes pour éviter la superposition
+      const grouped = new Map<string, HostPin[]>();
+      hosts.filter((h) => h.lat && h.lng).forEach((host) => {
+        const key = `${host.lat},${host.lng}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(host);
+      });
+
+      grouped.forEach((group, key) => {
+        const [lat, lng] = key.split(',').map(Number);
+
+        if (group.length === 1) {
+          // Pin individuel — comportement existant
+          const host = group[0];
           const fullBadge = host.is_full
             ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
             : '';
@@ -278,16 +304,47 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
             <div style="min-width:190px;padding:2px 0">
               <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
-              <p class="text-xs text-indigo-500 mt-1">Lieu de prière — lives de guérison</p>
+              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${host.quartier}</p>` : ''}
+              <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
               ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
               ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             </div>
           `;
-          L.marker([host.lat, host.lng], { icon: makeIcon(L, host.host_type, host.is_full) })
+          L.marker([lat, lng], { icon: makeIcon(L, host.host_type, host.is_full) })
             .addTo(mapRef.current!)
             .bindPopup(popup, { maxWidth: 280 });
-        });
+        } else {
+          // Pin groupé — plusieurs ambassades à la même localisation
+          const city = group[0].city;
+          const rows = group.map((host) => {
+            const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
+            const fullBadge = host.is_full
+              ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">Complet</span>'
+              : '';
+            const cta = !host.is_full
+              ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
+              : '';
+            return `
+              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
+                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}</p>
+                <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${host.quartier}</p>` : ''}
+                ${cta}
+              </div>
+            `;
+          }).join('');
+          const popup = `
+            <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
+              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${city}</p>
+              ${rows}
+            </div>
+          `;
+          L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
+            .addTo(mapRef.current!)
+            .bindPopup(popup, { maxWidth: 300 });
+        }
+      });
     }
 
     updatePins();
@@ -335,21 +392,24 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full z-0" />
       {/* Barre de recherche par ville */}
-      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 pointer-events-auto">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => {
-            const q = e.target.value;
-            setSearchQuery(q);
-            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-            searchTimeoutRef.current = setTimeout(() => searchCity(q), 400);
-          }}
-          onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
-          onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-          placeholder="Rechercher une ville…"
-          className="w-full bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl shadow-md px-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow"
-        />
+      <div className="absolute top-3 left-3 z-[1000] w-56 sm:w-64 lg:w-80 pointer-events-auto">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              const q = e.target.value;
+              setSearchQuery(q);
+              if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+              searchTimeoutRef.current = setTimeout(() => searchCity(q), 400);
+            }}
+            onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+            onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+            placeholder="Rechercher une ville…"
+            className="w-full bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl shadow-md pl-8 pr-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-shadow"
+          />
+        </div>
         {searchOpen && searchResults.length > 0 && (
           <ul className="absolute top-full mt-1 w-full bg-white border border-slate-100 rounded-xl shadow-lg overflow-hidden">
             {searchResults.map((r, i) => {

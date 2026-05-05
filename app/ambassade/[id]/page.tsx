@@ -46,12 +46,12 @@ export default async function AmbassadePage({ params }: Props) {
   const hostType = (host as any).type ?? (host as any).host_type ?? 'autre';
 
   const typeLabels: Record<string, string> = {
-    domicile: 'Domicile',
+    domicile: 'Lieu de prière à domicile',
     salle: 'Salle communautaire',
-    eglise: "Église / lieu de culte",
+    eglise: 'Lieu de prière en église',
     autre: "Lieu d'accueil",
-    individual: 'Domicile',
-    church: "Église / lieu de culte",
+    individual: 'Lieu de prière à domicile',
+    church: 'Lieu de prière en église',
   };
 
   const contactLabels: Record<string, string> = {

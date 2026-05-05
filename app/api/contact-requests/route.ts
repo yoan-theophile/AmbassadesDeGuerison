@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { sendContactRequestReserved, sendNewContactRequestHost } from '@/lib/email/templates';
+import { sendNewContactRequestHost } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
-
-const DELAY_HOURS = 24;
 
 // DEPRECATED: utiliser POST /api/visit-requests qui exige event_id explicite
 // Cette route utilise "dernier live" comme fallback — problématique si deux lives proches
@@ -80,21 +78,10 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (hostDetails && FEATURES.EMAIL_NOTIFICATIONS) {
-    const accueilUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accueil-invite/${data.action_token}`;
+    const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accueillir/${data.action_token}`;
     const declineUrl = `${process.env.NEXT_PUBLIC_APP_URL}/refuser/${data.action_token}`;
-    const availableAt = new Date(new Date(data.created_at).getTime() + DELAY_HOURS * 60 * 60 * 1000);
 
     Promise.allSettled([
-      sendContactRequestReserved(
-        visitor_email.trim(),
-        visitor_first_name.trim(),
-        hostDetails.first_name,
-        hostDetails.city,
-        hostDetails.email,
-        hostDetails.whatsapp_group_url ?? null,
-        accueilUrl,
-        availableAt
-      ),
       sendNewContactRequestHost(
         hostDetails.email,
         hostDetails.first_name,
@@ -102,7 +89,8 @@ export async function POST(request: NextRequest) {
         visitor_email.trim(),
         visitor_whatsapp?.trim() || null,
         visitor_message?.trim() || null,
-        declineUrl
+        acceptUrl,
+        declineUrl,
       ),
     ]);
   }

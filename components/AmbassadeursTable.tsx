@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Ambassadeur {
   id: string;
   first_name: string;
+  last_name: string;
   email: string;
   city: string;
   country: string;
@@ -34,17 +35,18 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  validated:          { label: 'Validé',          className: 'bg-emerald-50 text-emerald-700' },
-  pending_review:     { label: 'En examen',       className: 'bg-amber-50 text-amber-700'    },
-  pre_approved:       { label: 'Pré-approuvé',    className: 'bg-blue-50 text-blue-700'      },
-  enrichment_pending: { label: 'Questionnaire',   className: 'bg-purple-50 text-purple-700'  },
-  suspended:          { label: 'Suspendu',        className: 'bg-red-50 text-red-700'        },
-  rejected:           { label: 'Refusé',          className: 'bg-slate-100 text-slate-500'   },
+  validated:          { label: 'Validé',                className: 'bg-emerald-50 text-emerald-700' },
+  pending_review:     { label: 'En examen',             className: 'bg-amber-50 text-amber-700'    },
+  pre_approved:       { label: 'Conditions acceptées',  className: 'bg-blue-50 text-blue-700'      },
+  enrichment_pending: { label: 'Questionnaire',         className: 'bg-purple-50 text-purple-700'  },
+  suspended:          { label: 'Suspendu',              className: 'bg-red-50 text-red-700'        },
+  rejected:           { label: 'Refusé',                className: 'bg-slate-100 text-slate-500'   },
 };
 
-// pre_approved → validated est bloqué côté API ; seul validated_bypass est permis
+// La transition pending_review → pre_approved est désormais self-service (le candidat l'effectue depuis /dashboard).
+// L'admin ne peut plus pré-approuver. Seul validated_bypass autorise un raccourci vers validated.
 const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
-  pending_review:     [{ action: 'pre_approved',    label: 'Pré-approuver',      className: 'bg-blue-50 text-blue-700 hover:bg-blue-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  pending_review:     [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   pre_approved:       [{ action: 'validated_bypass', label: 'Valider (bypass)',   className: 'bg-amber-50 text-amber-700 hover:bg-amber-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   enrichment_pending: [{ action: 'validated',       label: 'Valider',            className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   validated:          [{ action: 'suspended',       label: 'Suspendre',          className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
@@ -53,7 +55,7 @@ const STATUS_ACTIONS: Record<string, { action: string; label: string; className:
 };
 
 const HOST_TYPE_LABELS: Record<string, string> = {
-  individual: 'Particulier',
+  individual: 'Domicile',
   church:     'Église',
 };
 
@@ -66,7 +68,7 @@ const CHURCH_ATTENDANCE_LABELS: Record<string, string> = {
 const FILTERS = [
   { value: 'all',              label: 'Tous'          },
   { value: 'pending_review',   label: 'En examen'     },
-  { value: 'pre_approved',     label: 'Pré-approuvés' },
+  { value: 'pre_approved',     label: 'Conditions acceptées' },
   { value: 'enrichment_pending', label: 'Questionnaire' },
   { value: 'validated',        label: 'Validés'       },
   { value: 'suspended',        label: 'Suspendus'     },
@@ -239,8 +241,8 @@ export default function AmbassadeursTable({
                   const isLoading = actionLoading === a.id;
                   const isExpanded = expandedId === a.id;
                   return (
-                    <>
-                      <tr key={a.id} className="hover:bg-slate-50/50">
+                    <React.Fragment key={a.id}>
+                      <tr className="hover:bg-slate-50/50">
                         <td className="px-4 py-3">
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : a.id)}
@@ -250,7 +252,7 @@ export default function AmbassadeursTable({
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{a.first_name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{a.first_name} {a.last_name}</td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{a.city}, {a.country}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
@@ -279,7 +281,7 @@ export default function AmbassadeursTable({
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${a.id}-detail`}>
+                        <tr>
                           <td colSpan={9} className="px-6 pb-5 pt-3 bg-slate-50/60 border-b border-slate-100">
                             <div className="max-w-2xl">
                               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
@@ -299,7 +301,7 @@ export default function AmbassadeursTable({
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>

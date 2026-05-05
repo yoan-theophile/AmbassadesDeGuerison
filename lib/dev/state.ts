@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type DevState = 'live' | 'live-zero' | 'soon' | 'upcoming' | 'past' | 'closed' | 'blank';
+export type DevState = 'live' | 'live-zero' | 'soon' | 'soon-confirmed' | 'upcoming' | 'upcoming-confirmed' | 'past' | 'closed' | 'blank';
 
 export async function applyState(supabase: SupabaseClient, state: DevState) {
   const { data: events, error } = await supabase
@@ -121,6 +121,68 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
         .from('events')
         .update({ event_date: daysFromNow(10) })
         .eq('id', demoFutureEvent.id);
+    }
+    return;
+  }
+
+  // Futur live dans 3j, quelques ambassadeurs ont déjà cliqué le lien de campagne
+  if (state === 'soon-confirmed') {
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
+    await supabase
+      .from('events')
+      .update({
+        event_date: daysAgo(7),
+        registration_opens_at: daysAgo(14),
+        registration_closes_at: daysAgo(7),
+      })
+      .eq('id', demoLiveEvent.id);
+    if (demoFutureEvent) {
+      await supabase
+        .from('events')
+        .update({ event_date: daysFromNow(3) })
+        .eq('id', demoFutureEvent.id);
+      const { data: activations } = await supabase
+        .from('host_activations')
+        .select('id')
+        .eq('event_id', demoFutureEvent.id)
+        .limit(4);
+      if (activations?.length) {
+        await supabase
+          .from('host_activations')
+          .update({ is_active: true })
+          .in('id', activations.map((a) => a.id));
+      }
+    }
+    return;
+  }
+
+  // Futur live dans 10j, quelques ambassadeurs ont déjà cliqué le lien de campagne
+  if (state === 'upcoming-confirmed') {
+    await supabase.from('host_activations').update({ is_active: false }).in('is_active', [true, false]);
+    await supabase
+      .from('events')
+      .update({
+        event_date: daysAgo(7),
+        registration_opens_at: daysAgo(14),
+        registration_closes_at: daysAgo(7),
+      })
+      .eq('id', demoLiveEvent.id);
+    if (demoFutureEvent) {
+      await supabase
+        .from('events')
+        .update({ event_date: daysFromNow(10) })
+        .eq('id', demoFutureEvent.id);
+      const { data: activations } = await supabase
+        .from('host_activations')
+        .select('id')
+        .eq('event_id', demoFutureEvent.id)
+        .limit(4);
+      if (activations?.length) {
+        await supabase
+          .from('host_activations')
+          .update({ is_active: true })
+          .in('id', activations.map((a) => a.id));
+      }
     }
     return;
   }

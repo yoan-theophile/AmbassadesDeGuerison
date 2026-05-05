@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildVideoUrl } from '@/app/onboarding/page';
+import { buildVideoUrl } from '@/lib/youtube';
 
 describe('buildVideoUrl — ajout de enablejsapi=1', () => {
   it('ajoute enablejsapi=1 à une URL sans paramètre', () => {

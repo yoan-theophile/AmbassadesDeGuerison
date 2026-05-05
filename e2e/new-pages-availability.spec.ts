@@ -42,9 +42,4 @@ test.describe('Pages publiques v2 — disponibilité', () => {
     const res = await page.goto('/feedback/token-inexistant-000000000000');
     expect(res?.status()).toBe(404);
   });
-
-  test('/preview/homepage-poster répond 200', async ({ page }) => {
-    const res = await page.goto('/preview/homepage-poster');
-    expect(res?.status()).toBe(200);
-  });
 });

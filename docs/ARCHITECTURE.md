@@ -27,7 +27,7 @@
 │  │  Cron Jobs (Vercel Cron)                            │    │
 │  │  /api/cron/dispatch-campaigns (08:00 UTC)           │    │
 │  │  /api/cron/send-feedback-emails (10:00 UTC)         │    │
-│  │  /api/cron/check-activations (non activé)           │    │
+│  │  /api/cron/check-activations (09:00 UTC)            │    │
 │  └─────────────────────────────────────────────────────┘    │
 └────────────────────┬────────────────────────────────────────┘
                      │ PostgreSQL (port 6543 — pooler PgBouncer)
@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  17 templates TSX (React Email v6) — emails transactionnels │
+│  19 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -115,33 +115,49 @@ MapWrapper (Client Component, SSR:false pour Leaflet)
 
 ## Cycle de vie d'un ambassadeur
 
+Pipeline self-service jusqu'au questionnaire — l'admin n'intervient qu'à la fin, sur un dossier complet.
+
 ```
 /inscription
   │  POST /api/inscriptions
   │  → status = 'pending_review'
   │  → email sendRegistrationConfirmation
   ▼
-Dashboard admin /admin/ambassadeurs
-  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'pre_approve' }
-  │  → status = 'pre_approved'
-  │  → email sendPreValidationAccordee (lien questionnaire + vidéo)
+/dashboard (encart pending_review : vidéo + PDF + checkbox CGU + bouton)
+  │  candidat regarde la vidéo, télécharge le guide, accepte les conditions
+  │  PATCH /api/onboarding/complete  (auth, plus aucune action admin)
+  │  → status = 'pre_approved' (idempotent : 200 noop si déjà ≥ pre_approved)
+  │  → log structuré, aucun email envoyé
   ▼
-/dashboard/questionnaire (ambassadeur)
-  │  POST /api/ambassadeur/enrichissement
+/dashboard/questionnaire (ambassadeur, accessible dès pre_approved)
+  │  Upload photos via POST /api/upload/ambassador-photo (type=profile|room)
+  │   - Photo de profil : requise (path stocké dans profile_photo_url)
+  │   - Photos du lieu : optionnel, max 5 (paths dans room_photo_urls[])
+  │  Suppression d'une photo : DELETE /api/upload/ambassador-photo
+  │   (ownership check par préfixe profile.id/)
+  │  PATCH /api/ambassadeur/enrichissement
   │  → status = 'enrichment_pending'
+  │  → garde : refuse si profile_photo_url null
+  │  → email sendEnrichissementRecu (notification admin)
   ▼
-Dashboard admin (revue du questionnaire)
-  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'validate' }
+/admin/ambassadeurs (revue du dossier complet)
+  │  PATCH /api/admin/ambassadeurs/[id]/status { action: 'validated' }
   │  → status = 'validated'
-  │  → email sendBienvenueAmbassadeur + sendNouvelleActivationAdmin
+  │  → email sendValidationFinale (bienvenue ambassadeur)
   │  → trigger DB crée host_activations (is_active=false) pour tous les events futurs
   ▼
 Hôte visible sur la carte au prochain live
   (après réception de la campagne email et clic sur le lien d'activation)
 ```
 
-Transitions inverses : `validated ↔ suspended` via
-`PATCH /api/admin/ambassadeurs/[id]/status`.
+Transitions admin valides (`PATCH /api/admin/ambassadeurs/[id]/status`) :
+- `validated` (depuis enrichment_pending uniquement)
+- `validated_bypass` (escape hatch, depuis n'importe quel statut)
+- `rejected` (depuis n'importe quel statut)
+- `suspended` (depuis validated)
+- `reactiver` (depuis suspended ou rejected, → validated)
+
+L'action `pre_approve` n'existe **plus** côté admin — la transition `pending_review → pre_approved` est exclusivement self-service.
 
 ---
 
@@ -174,8 +190,9 @@ Carte publique — le pin apparaît
   ▼
 Pendant le live — visiteur contacte un hôte
   │  POST /api/contact-requests (ou /api/visit-requests)
-  │  → email sendContactReceivedHost (notifie l'hôte)
-  │  → email sendContactAccepted/Declined selon réponse
+  │  → email contact-received-host (hôte notifié + lien /accueillir/[token] + lien /refuser/[token])
+  │  → hôte accepte via /accueillir/[token] → email acceptation-visite (adresse + email + WhatsApp de l'hôte)
+  │     ou hôte refuse via /refuser/[token] → email refus-visite (visiteur redirigé vers la carte)
   │
   ▼
 Après le live
@@ -197,8 +214,10 @@ Après le live
 | `/api/testimonials` | Lecture/modération témoignages | Admin |
 | `/api/live-signals` | Signaux live depuis dashboard hôte | Session hôte |
 | `/api/inscriptions` | Création profil ambassadeur | Non |
-| `/api/onboarding/*` | Questionnaire + config onboarding | Session hôte / Admin |
-| `/api/ambassadeur/*` | Enrichissement profil | Session hôte |
+| `/api/onboarding/complete` | Self-service : pending_review → pre_approved (CGU acceptées) | Session candidat |
+| `/api/onboarding/config` | Config vidéo + PDF onboarding | Public (lecture) / Admin (écriture) |
+| `/api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire) | Session hôte |
+| `/api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, téléphone) | Session hôte |
 | `/api/admin/*` | Toutes les actions admin | Admin uniquement |
 | `/api/campaign-activations` | Activation hôte via lien email | Token signé |
 | `/api/cron/*` | Jobs planifiés Vercel Cron | `CRON_SECRET` header |
@@ -225,13 +244,18 @@ Toute action initiée par un utilisateur connecté (dashboard, formulaires) util
 
 **Routes cron protégées** via le header `Authorization: Bearer CRON_SECRET`.
 
-**DevOverlay — `NODE_ENV=development` uniquement.** `components/DevOverlay.tsx` et
-`app/api/dev/*` vérifient `process.env.NODE_ENV`. Ces routes mutent la DB (dates,
-`is_active`) et ne doivent jamais être accessibles en production.
+**DevOverlay — gated par flag + secret.** `components/DevOverlay.tsx` se rend si
+`NODE_ENV !== 'production'` OU `NEXT_PUBLIC_DEV_OVERLAY === 'true'`. En production,
+les routes `/api/dev/state` et `/api/dev/magic-link` exigent en plus un header
+`x-dev-secret` valide (comparé à `DEV_OVERLAY_SECRET`). Helper centralisé :
+`lib/dev-overlay-auth.ts:isDevOverlayAuthorized()`. La route magic-link est
+sensible (génère un lien admin pour n'importe quel email) — sans secret, 403.
 
 **`/dev/emails` — `EMAIL_PREVIEW=true` uniquement.** La route retourne 404 si la
 variable d'environnement n'est pas exactement `"true"` (la chaîne `"false"` est truthy
 en JS — le guard utilise `=== 'true'`).
+
+**Photos hôtes — bucket privé.** Le bucket Supabase `ambassador-photos` est `public: false`. Les colonnes `profile_photo_url` et `room_photo_urls` dans `host_profiles` stockent un *chemin* Supabase Storage, pas une URL publique. Lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` pour l'ambassadeur lui-même (signed URL courte), `getAdminPhotoUrl(path)` pour la fiche admin. Jamais exposées sur la carte publique ni les pages `/ambassade/[id]`.
 
 ---
 
@@ -246,6 +270,9 @@ en JS — le guard utilise `=== 'true'`).
 | `DevOverlay` | Client Component | État local + mutations via `fetch` |
 | `app/admin/*` | Server Components + Client Components mixtes | Données init en SSR, interactions en client |
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
+| `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
+| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
+| `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse + consignes + tel) |
 
 **Polling** : `MapPublique` et `AdminFeed` refetchent toutes les 5 secondes.
 Pas de WebSocket — Supabase Realtime ajouterait de la complexité pour un usage
@@ -286,25 +313,30 @@ Mis à jour manuellement à chaque PR significative.
 
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
-| Carte publique (pins) | ✅ | `GET /api/host-activations` | |
+| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto pour pins co-localisés (groupement par clé `lat,lng`). Champ `quartier` affiché dans les popups (cluster + pin individuel) si renseigné. |
+| Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). |
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
-| Inscription ambassadeur | ✅ | `POST /api/inscriptions` | |
-| Pipeline candidat (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | |
+| Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. Champ optionnel `quartier` (texte libre). |
+| Champ quartier (profil ambassadeur) | ✅ | `host_profiles.quartier`, `PATCH /api/ambassadeur/profile` | Texte libre optionnel (ex : "Paris 15e"). Saisissable à l'inscription et modifiable dans `MesInfosSection`. Affiché dans les popups carte. |
+| Onboarding self-service | ✅ | `PATCH /api/onboarding/complete` | Gate inline dans `/dashboard` pour `pending_review` : vidéo + PDF + CGU + bouton. Idempotent. Aucune action admin requise. |
+| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
-| Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | Toggle "J'accueille / Inactif" dans `/dashboard` |
+| Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
+| Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse, consignes, téléphone. Email admin si ville change. |
 | Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte) |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
-| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel, **cron non schedulé** (pas de `vercel.json`) |
-| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join, cron non schedulé |
+| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join — cron désactivé (hors production) |
 | Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
 | Clôture live | ❌ | — | Pas de bouton admin. DevOverlay uniquement (dev). **Décision D1 : créer bouton dans `/admin/live`** |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` | Bucket `ambassador-photos` Supabase Storage |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
+| Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
 | Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
@@ -326,9 +358,9 @@ Mis à jour manuellement à chaque PR significative.
 
 | Cron | Route | Schedule | Statut prod |
 |------|-------|----------|-------------|
-| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ✅ Schedulé dans `vercel.json` |
-| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⚠️ Schedulé — **bug SQL join** à corriger avant usage réel |
-| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` (suggéré) | ⏸ **Non activé** — route écrite, à ajouter dans `vercel.json` |
+| Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ⏸ Désactivé (hors production) |
+| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⏸ Désactivé — **bug SQL join** à corriger avant activation |
+| Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` | ⏸ Désactivé (hors production) |
 | Auto-decline visiteurs | `/api/cron/auto-decline` | — | 💀 **Supprimé** (David ne l'a pas demandé) |
 
 ---
@@ -392,21 +424,24 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/live-signals` | Signal live depuis dashboard hôte | Session hôte | ✅ |
 | `GET /api/live-signals` | Feed signaux (admin/live) | Admin | ✅ |
 | `POST /api/inscriptions` | Création profil ambassadeur | Non | ✅ |
-| `GET/PATCH /api/onboarding/*` | Questionnaire + config | Session hôte / Admin | ✅ |
-| `PATCH /api/ambassadeur/*` | Enrichissement profil | Session hôte | ✅ |
-| `PATCH /api/admin/ambassadeurs/[id]/status` | Pipeline candidat | Admin | ✅ |
+| `PATCH /api/onboarding/complete` | Self-service : pending_review → pre_approved | Session candidat | ✅ |
+| `GET /api/onboarding/config` | Config vidéo + PDF onboarding (lecture publique) | Public | ✅ |
+| `PATCH /api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire, photos) | Session hôte | ✅ |
+| `PATCH /api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, tél.) | Session hôte | ✅ |
+| `PATCH /api/admin/ambassadeurs/[id]/status` | Validation finale + suspension/réintégration | Admin | ✅ |
 | `POST/DELETE /api/admin/team` | Gestion équipe admin | Super admin | ✅ |
 | `POST /api/admin/campaigns` | Créer campagne planifiée | Admin | ✅ |
 | `GET/PATCH /api/admin/settings/onboarding` | Config vidéo/PDF onboarding | Admin | ✅ |
 | `GET /api/admin/settings/timing` | Config timing (lecture) | Admin | ✅ |
-| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ✅ Schedulé |
-| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⚠️ Schedulé — bug SQL join |
-| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Non activé |
+| `POST /api/cron/dispatch-campaigns` | Envoi campagnes dues | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
+| `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⏸ Désactivé — bug SQL join |
+| `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
 | `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
 | `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
 | `GET /api/unsubscribe/[token]` | Désabonnement email | Token | ✅ |
-| `POST /api/upload/ambassador-photo` | Upload photo | Session hôte | ✅ |
+| `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
+| `DELETE /api/upload/ambassador-photo` | Suppression photo (ownership check path) | Session hôte | ✅ |
 | `POST /api/visitor-help-request` | Email aide visiteur | Non | ✅ |
 | `GET /dev/emails` | Preview emails (dev) | `EMAIL_PREVIEW=true` | ✅ |
 | `POST /api/dev/state` | Simulation états DB | `NODE_ENV=development` | ✅ |

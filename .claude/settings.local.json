@@ -67,7 +67,16 @@
       "PowerShell(& \"C:\\\\Users\\\\tagne\\\\.claude\\\\skills\\\\gstack\\\\browse\\\\dist\\\\browse.exe\" screenshot 2>&1)",
       "PowerShell(& \"C:\\\\Users\\\\tagne\\\\.claude\\\\skills\\\\gstack\\\\browse\\\\dist\\\\browse.exe\" goto \"http://localhost:3000/\" 2>&1)",
       "Skill(browse)",
-      "Skill(browse:*)"
+      "Skill(browse:*)",
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\tagne\\\\Documents\\\\projects\\\\DavidTheryApp\" -Name \"proxy.ts\" -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(xargs basename *)",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_fill_form",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_evaluate"
     ]
   }
 }
