@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Removed
+- **Gate d'ouverture des inscriptions** (J-7 par défaut) : le trigger SQL `fn_set_event_registration_dates` ne pose plus de date d'ouverture automatique. `registration_opens_at` reste NULL par défaut → l'API `POST /api/visit-requests` ne renvoie plus "Les inscriptions ne sont pas encore ouvertes". Dès qu'une fiche ambassade est visible (host actif), un visiteur peut s'inscrire.
+- **API check `now < registration_opens_at`** dans `/api/visit-requests` : retiré (devenu code mort). Le SELECT ne charge plus la colonne.
+
+### Rationale produit
+Le gate de 7 jours était une friction artificielle introduite par le trigger DB sans cahier des charges. Le principe fondateur du produit ("on fait confiance aux gens qui ouvrent leur maison") s'applique aussi aux visiteurs qui veulent venir. Si une ambassade est visible sur la carte, l'inscription doit être possible — pas de blocage temporel.
+
+La fermeture automatique des inscriptions à `event_date` reste en place : l'hôte doit pouvoir préparer son accueil sans recevoir de nouvelles demandes de dernière minute.
+
+### Migration
+- `scripts/migration-remove-registration-opens-gate.sql` : `CREATE OR REPLACE FUNCTION` du trigger + `UPDATE events SET registration_opens_at = NULL WHERE event_date > NOW()` pour libérer immédiatement les events à venir du gate.
+
 ## [0.1.4.0] - 2026-05-03
 
 ### Added

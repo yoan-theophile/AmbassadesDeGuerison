@@ -303,13 +303,15 @@ $$;
 -- 5. TRIGGERS
 -- ============================================================
 
--- Trigger A : dates d'inscription auto sur les events
+-- Trigger A : fermeture auto des inscriptions au moment du live.
+-- registration_opens_at reste NULL par défaut — pas de gate d'ouverture.
+-- Principe produit : on fait confiance aux visiteurs comme aux ambassadeurs.
+-- Si une fiche d'ambassade est visible (host actif), l'inscription est possible.
+-- David peut éventuellement fixer manuellement registration_opens_at sur un event
+-- spécifique (cas exceptionnel — l'API check reste NULL-safe : NULL = no gate).
 CREATE OR REPLACE FUNCTION fn_set_event_registration_dates()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.registration_opens_at IS NULL THEN
-    NEW.registration_opens_at := NEW.event_date - INTERVAL '7 days';
-  END IF;
   IF NEW.registration_closes_at IS NULL THEN
     NEW.registration_closes_at := NEW.event_date;
   END IF;
