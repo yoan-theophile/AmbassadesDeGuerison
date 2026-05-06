@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       phone: phone.trim(),
       lat: lat ?? null,
       lng: lng ?? null,
+      quartier: quartier || null,
       status: 'pending_review',
     }).select('id').single();
     if (profileError) return NextResponse.json({ error: humanizeDbError(profileError.message) }, { status: 400 });
