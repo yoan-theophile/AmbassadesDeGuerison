@@ -536,7 +536,10 @@ node scripts/magic-link.js david.thery@demo.fr
 ## Module 24 — Admin : settings timing `/admin/settings/timing`
 
 - [ ] La page charge avec les valeurs par défaut de la `event_timing_config`
+- [ ] Premier champ visible : "Ouverture des inscriptions (J avant)" (défaut 7)
 - [ ] Modifier une valeur → sauvegarder → les délais sont mis à jour
+- [ ] Modifier `registration_opens_days_before` à 14 → créer un nouvel event en admin/planning → vérifier que `events.registration_opens_at = event_date - 14 jours`
+- [ ] Les events existants conservent leur `registration_opens_at` (le trigger ne fire qu'à l'INSERT/UPDATE)
 
 ---
 

@@ -6,6 +6,11 @@ import type { TimingConfig } from '@/lib/timing-config';
 
 const FIELDS: { key: keyof TimingConfig; label: string; tooltip: string }[] = [
   {
+    key: 'registration_opens_days_before',
+    label: 'Ouverture des inscriptions (J avant)',
+    tooltip: 'Nombre de jours avant le live à partir desquels les visiteurs peuvent demander à rejoindre une ambassade. Avant cette date, le formulaire renvoie "Les inscriptions ne sont pas encore ouvertes". Appliqué au moment de la création d\'un live ; les events existants conservent leur date d\'ouverture.',
+  },
+  {
     key: 'campaign_ambassadors_days_before',
     label: 'Campagne ambassadeurs (J avant)',
     tooltip: 'Nombre de jours avant le live pour envoyer le mail d\'invitation aux ambassadeurs.',

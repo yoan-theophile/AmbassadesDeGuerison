@@ -250,6 +250,7 @@ CREATE TABLE onboarding_config (
 -- Plages temporelles configurables sans déploiement
 CREATE TABLE event_timing_config (
   id                               INTEGER     PRIMARY KEY DEFAULT 1,
+  registration_opens_days_before   INTEGER     DEFAULT 7,
   campaign_ambassadors_days_before INTEGER     DEFAULT 7,
   campaign_visitors_days_before    INTEGER     DEFAULT 3,
   host_reminder_days_before        INTEGER     DEFAULT 2,
@@ -304,11 +305,17 @@ $$;
 -- ============================================================
 
 -- Trigger A : dates d'inscription auto sur les events
+-- Lit registration_opens_days_before depuis event_timing_config (id=1) — fallback 7 si non trouvé.
+-- registration_closes_at reste fixé à event_date (clôture au moment du live).
 CREATE OR REPLACE FUNCTION fn_set_event_registration_dates()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_opens_days INTEGER;
 BEGIN
   IF NEW.registration_opens_at IS NULL THEN
-    NEW.registration_opens_at := NEW.event_date - INTERVAL '7 days';
+    SELECT registration_opens_days_before INTO v_opens_days
+    FROM event_timing_config WHERE id = 1;
+    NEW.registration_opens_at := NEW.event_date - (COALESCE(v_opens_days, 7) || ' days')::INTERVAL;
   END IF;
   IF NEW.registration_closes_at IS NULL THEN
     NEW.registration_closes_at := NEW.event_date;
