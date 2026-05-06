@@ -195,8 +195,14 @@ Chaque hôte définit sa capacité (ex: 5 personnes). L'application surveille au
 si la capacité est atteinte.
 
 ### Les inscriptions
-Les inscriptions ouvrent 7 jours avant le live et ferment le jour du live.
-Les hôtes déjà actifs peuvent continuer à gérer leurs ambassades même après la fermeture.
+Dès qu'une ambassade est visible sur la carte (un hôte a cliqué "Je participe"),
+n'importe qui peut s'inscrire pour la rejoindre. Pas de fenêtre d'ouverture artificielle :
+si on fait confiance aux gens qui ouvrent leur maison, on fait aussi confiance à ceux
+qui veulent venir.
+
+Les inscriptions ferment automatiquement le jour du live (l'hôte doit pouvoir préparer
+son accueil sans nouvelles demandes de dernière minute). Les hôtes déjà actifs peuvent
+continuer à gérer leurs ambassades même après la fermeture.
 
 ### La confidentialité
 Les hôtes en Afrique ou dans des zones rurales peuvent choisir de ne pas afficher

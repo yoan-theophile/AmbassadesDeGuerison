@@ -36,10 +36,17 @@ export default function CityInput({
   const containerRef = useRef<HTMLDivElement>(null);
   // True uniquement après une frappe utilisateur — empêche l'ouverture auto au montage ou sur focus passif
   const hasUserTyped = useRef(false);
+  // Mémorise la dernière valeur envoyée au parent (onChange/handleSelect)
+  // pour distinguer les bounces internes des vrais changements externes
+  const ownedValueRef = useRef(value);
 
   // Sync si value change de l'extérieur (ex : parent recharge le profil)
   useEffect(() => {
-    hasUserTyped.current = false;
+    if (value !== ownedValueRef.current) {
+      // Changement externe — réinitialise la frappe
+      hasUserTyped.current = false;
+      ownedValueRef.current = value;
+    }
     setQuery(value);
   }, [value]);
 
@@ -71,6 +78,8 @@ export default function CityInput({
   }, []);
 
   function handleSelect(r: CityResult) {
+    hasUserTyped.current = false;
+    ownedValueRef.current = r.city;
     setQuery(r.city);
     setOpen(false);
     setResults([]);
@@ -80,6 +89,7 @@ export default function CityInput({
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     hasUserTyped.current = true;
     const v = e.target.value;
+    ownedValueRef.current = v;
     setQuery(v);
     onChange(v); // sans coordonnées — l'utilisateur tape librement
   }

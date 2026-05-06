@@ -526,7 +526,8 @@ export default function DashboardPage() {
                     </div>
                     <a
                       href={onboardingConfig.pdf_url}
-                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-indigo-100 transition-colors shrink-0"
                     >
                       <Download className="w-4 h-4" />

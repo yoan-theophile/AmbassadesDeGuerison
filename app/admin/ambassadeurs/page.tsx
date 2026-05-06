@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAdminPhotoUrl } from '@/lib/storage/photo-url';
 import AdminLayout from '@/components/AdminLayout';
 import AmbassadeursTable from '@/components/AmbassadeursTable';
 
@@ -13,7 +14,7 @@ async function getAmbassadeurs(page: number, q: string, status: string) {
   let query = supabase
     .from('host_profiles')
     .select(
-      'id, first_name, last_name, email, city, country, host_type, status, contact_mode, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus',
+      'id, first_name, last_name, email, city, country, host_type, status, contact_mode, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus, profile_photo_url, room_photo_urls',
       { count: 'exact' }
     );
 
@@ -24,7 +25,20 @@ async function getAmbassadeurs(page: number, q: string, status: string) {
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
-  return { ambassadeurs: data ?? [], total: count ?? 0 };
+  // Convertir les chemins Storage privés en signed URLs (1h) pour affichage admin
+  const ambassadeurs = await Promise.all(
+    (data ?? []).map(async (a: any) => {
+      const profile_photo_signed_url = a.profile_photo_url
+        ? await getAdminPhotoUrl(a.profile_photo_url)
+        : null;
+      const room_photo_signed_urls = a.room_photo_urls?.length
+        ? (await Promise.all(a.room_photo_urls.map((p: string) => getAdminPhotoUrl(p)))).filter(Boolean)
+        : [];
+      return { ...a, profile_photo_signed_url, room_photo_signed_urls };
+    })
+  );
+
+  return { ambassadeurs, total: count ?? 0 };
 }
 
 interface PageProps {

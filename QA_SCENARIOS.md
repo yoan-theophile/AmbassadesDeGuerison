@@ -158,6 +158,8 @@ node scripts/magic-link.js david.thery@demo.fr
 > Prérequis : état `upcoming` ou `live`. Cliquer sur un pin de Marie (Paris) depuis la carte.
 
 - [ ] La page charge avec le nom, ville, pays de l'ambassadeur
+- [ ] Si l'ambassadeur a un `quartier` renseigné (ex : Marie → "Paris 15e") → ligne `text-slate-400` affichée sous "Ville, Pays"
+- [ ] Si pas de `quartier` → aucune ligne grise affichée
 - [ ] Le formulaire de contact est visible (prénom, email, message)
 - [ ] Soumettre le formulaire avec des données valides → message de confirmation
 - [ ] Soumettre sans prénom → erreur de validation
@@ -173,6 +175,7 @@ node scripts/magic-link.js david.thery@demo.fr
 > Page de demande de visite avec `event_id` explicite.
 
 - [ ] La page charge pour un event futur valide
+- [ ] Si l'ambassadeur a un `quartier` renseigné → ligne `text-slate-400` affichée sous "Ville, Pays"
 - [ ] Formulaire : prénom, email, téléphone, message, nb_personnes
 - [ ] Soumettre → confirmation → la demande apparaît dans le dashboard ambassadeur
 - [ ] Si l'ambassade est pleine (`is_full=TRUE`) → message d'erreur approprié
@@ -312,8 +315,8 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ### Soumission
 
-- [ ] Succès → profil créé avec statut `pending_review` → message inline "Demande envoyée !" (plus de redirect vers `/onboarding`)
-- [ ] Email déjà existant → message d'erreur "Email déjà utilisé"
+- [ ] Succès → profil créé avec statut `pending_review` → écran inline "Inscription confirmée !" + e-mail affiché + CTA "Accéder à mon espace ambassadeur" → `/auth`
+- [ ] Email déjà existant → message d'erreur "Un compte ambassadeur existe déjà avec cet e-mail. Connecte-toi depuis la page de connexion." (humanisé depuis l'erreur Postgres `duplicate key`)
 - [ ] Honeypot rempli → 200 silencieux
 
 ---
@@ -403,29 +406,39 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ## Module 15 — Admin : ambassadeurs `/admin/ambassadeurs`
 
-- [ ] La page charge avec la datatable (8 ambassadeurs dans le seed)
-- [ ] Colonne statut : badges `Validé`, `En examen`, `Pré-approuvé`, `Questionnaire`, `Suspendu`, `Refusé`
+- [ ] La page charge avec la datatable (15 ambassadeurs dans le seed : 12 validés + 2 enrichment_pending + 1 pending_review)
+- [ ] Colonne statut : badges `Validé`, `Inscrit`, `Conditions acceptées`, `Questionnaire`, `Suspendu`, `Refusé`
 - [ ] Filtre "Questionnaire" visible dans la barre de filtres (en plus des autres)
 - [ ] Champ de recherche : saisir "Marie" → seule Marie apparaît
-- [ ] Filtre par statut : "validated" → seuls les 7 validés
+- [ ] Filtre par statut : "validated" → seuls les 12 validés
 - [ ] Filtre par statut : "pending_review" → seulement Sophie
+- [ ] Filtre par statut : "enrichment_pending" → Émilie + Pascal
 - [ ] Pagination fonctionnelle si > 20 ambassadeurs
+
+### Photos (avatar + galerie)
+
+- [ ] Colonne Nom : chaque ambassadeur affiche un avatar 32px à gauche du nom
+- [ ] Si `profile_photo_url` renseigné → photo s'affiche (signed URL 1h, bucket privé)
+- [ ] Si pas de photo → icône fallback `User` sur fond gris
+- [ ] Émilie/Pascal (seed avec chemins placeholder) → fallback icône (fichiers absents du bucket)
 
 ### Chevron expand/collapse
 
 - [ ] Chaque ligne a un chevron (▾/▴) en première colonne
-- [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau "Questionnaire ambassadeur" s'ouvre
+- [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau s'ouvre
+- [ ] Section "Photos" en haut du panneau : photo de profil (encadrée indigo) + photos du lieu (vue 1, vue 2…) si présentes
+- [ ] Cliquer une vignette → ouvre l'image pleine taille dans un nouvel onglet (signed URL valide 1h)
+- [ ] Section "Questionnaire ambassadeur" en dessous
 - [ ] Si questionnaire non rempli → message "Questionnaire non encore rempli"
 - [ ] Si questionnaire rempli → champs affichés : téléphone, fréquentation église, dénomination, Défi Guérison (Oui/Non), Conférence DT (Oui/Non), parcours spirituel, livres/formations
 
 ### Actions par statut
 
 - [ ] Sophie (`pending_review`) → bouton "Refuser" uniquement (la transition vers `pre_approved` est désormais self-service côté candidat — l'admin ne peut pas pré-approuver)
-- [ ] Sophie (`pre_approved`) → boutons "Valider (bypass)" + "Refuser" (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis)
+- [ ] Sophie (`pre_approved`) → bouton "Refuser" uniquement (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis ; le bouton "Valider (bypass)" a été retiré du UI — escape hatch API uniquement)
 - [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
 - [ ] Marie (`validated`) → bouton "Suspendre"
 - [ ] Marie (`suspended`) → bouton "Réactiver"
-- [ ] Cliquer "Valider (bypass)" depuis `pre_approved` → statut `validated`, log `bypass_enrichment` créé dans `moderation_log`
 - [ ] Cliquer "Valider" depuis `enrichment_pending` → statut `validated`
 
 ---
@@ -614,7 +627,7 @@ npm run test:e2e
 | `pending_review → pre_approved` | Sophie clique "Activer mon onboarding" sur `/dashboard` | Statut `pre_approved`, **aucun email envoyé**, dashboard recharge avec encart "Conditions acceptées" |
 | `pre_approved → enrichment_pending` | Sophie soumet `/dashboard/questionnaire` | Statut `enrichment_pending`, notif admin reçue |
 | `enrichment_pending → validated` | Admin clique "Valider" depuis `/admin/ambassadeurs` | Statut `validated`, email bienvenue envoyé |
-| `* → validated` (bypass) | Admin clique "Valider (bypass)" | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
+| `* → validated` (bypass) | Appel API direct `PATCH /api/admin/ambassadeurs/[id]/status` avec `action: 'validated_bypass'` (escape hatch — plus de bouton UI) | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
 | `validated → suspended` | Admin clique "Suspendre" | Statut `suspended`, pin disparaît de la carte |
 | `suspended → validated` | Admin clique "Réactiver" | Statut `validated`, pin réapparaît |
 | `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected` |

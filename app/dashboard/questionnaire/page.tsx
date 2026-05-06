@@ -334,7 +334,7 @@ export default function QuestionnairePage() {
                   onChange={(e) => set('livres_lus', e.target.value)}
                   rows={2}
                   maxLength={300}
-                  placeholder="Ex : 'Guérir les malades' de Bill Johnson, l'IBRP…"
+                  placeholder="Ex : Guérir les malades, Défi Guérison, Vraiment Libre…"
                   className={inputCls}
                 />
               </Field>

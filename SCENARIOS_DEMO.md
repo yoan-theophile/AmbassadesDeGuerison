@@ -161,10 +161,23 @@ Connexion : magic link `david.thery@demo.fr` (DevOverlay > Magic Link, ou termin
 
 ### 3b — Pipeline candidat (3 min)
 
-`/admin/ambassadeurs` — **Sophie Leroux (Bordeaux)** est en `En examen`.
+`/admin/ambassadeurs` — **Sophie Leroux (Bordeaux)** est en `Inscrit`.
 
-1. Cliquer *"Pré-approuver"* → statut passe à `pre_approved`
-2. *À dire :* Sophie reçoit un email avec un lien questionnaire + vidéo à regarder. Elle revient une fois son questionnaire rempli. Puis validation finale → elle apparaît dans tous les lives futurs, mais ne s'active que via la campagne email.
+*À dire :*
+> « Sophie vient de s'inscrire. À partir de là, elle est autonome — vous n'avez rien à faire pour l'instant.
+> Elle ouvre son dashboard, regarde la vidéo de formation, télécharge le guide PDF, accepte les conditions,
+> puis remplit son questionnaire (photo, lieu d'accueil, motivations).
+>
+> Vous n'intervenez qu'à la fin, quand son dossier est complet — vous voyez la photo, l'adresse, ses motivations,
+> et vous validez ou refusez. C'est à ce moment-là qu'elle apparaît dans tous les lives futurs.
+> Pour s'activer pour un live précis, elle clique sur le lien dans la campagne email. »
+
+**Étapes du parcours côté Sophie** (visible dans la colonne statut au fil du temps) :
+
+1. `Inscrit` — vient de s'inscrire, n'a pas encore démarré son onboarding
+2. `Conditions acceptées` — a regardé la vidéo + accepté les CGU sur son dashboard (self-service)
+3. `Questionnaire` — a soumis son questionnaire avec photo et détails (notification admin envoyée)
+4. `Validé` — admin clique "Valider" depuis `/admin/ambassadeurs` → email de bienvenue envoyé
 
 ### 3c — Campagne email (3 min)
 

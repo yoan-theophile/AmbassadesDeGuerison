@@ -36,19 +36,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: 'pending' }, { status: 201 });
   }
 
-  // Vérifier la fenêtre d'inscription de l'event
+  // Vérifier que l'event existe et que les inscriptions ne sont pas fermées.
+  // Pas de gate d'ouverture : dès qu'une fiche d'ambassade est visible, l'inscription
+  // est possible. La fermeture (registration_closes_at) est posée automatiquement
+  // par le trigger DB à event_date.
   const now = new Date().toISOString();
   const { data: event } = await supabase
     .from('events')
-    .select('id, registration_opens_at, registration_closes_at')
+    .select('id, registration_closes_at')
     .eq('id', event_id)
     .single();
 
   if (!event) {
     return NextResponse.json({ error: 'Événement introuvable' }, { status: 404 });
-  }
-  if (event.registration_opens_at && now < event.registration_opens_at) {
-    return NextResponse.json({ error: 'Les inscriptions ne sont pas encore ouvertes' }, { status: 400 });
   }
   if (event.registration_closes_at && now > event.registration_closes_at) {
     return NextResponse.json({ error: 'Les inscriptions sont fermées' }, { status: 400 });

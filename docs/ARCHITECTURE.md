@@ -152,7 +152,7 @@ Hôte visible sur la carte au prochain live
 
 Transitions admin valides (`PATCH /api/admin/ambassadeurs/[id]/status`) :
 - `validated` (depuis enrichment_pending uniquement)
-- `validated_bypass` (escape hatch, depuis n'importe quel statut)
+- `validated_bypass` (escape hatch API uniquement — plus de bouton UI ; usage support/script SQL)
 - `rejected` (depuis n'importe quel statut)
 - `suspended` (depuis validated)
 - `reactiver` (depuis suspended ou rejected, → validated)
@@ -318,9 +318,9 @@ Mis à jour manuellement à chaque PR significative.
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. Champ optionnel `quartier` (texte libre). |
-| Champ quartier (profil ambassadeur) | ✅ | `host_profiles.quartier`, `PATCH /api/ambassadeur/profile` | Texte libre optionnel (ex : "Paris 15e"). Saisissable à l'inscription et modifiable dans `MesInfosSection`. Affiché dans les popups carte. |
+| Champ quartier (profil ambassadeur) | ✅ | `host_profiles.quartier`, `PATCH /api/ambassadeur/profile` | Texte libre optionnel (ex : "Paris 15e"). Saisissable à l'inscription et modifiable dans `MesInfosSection`. Affiché dans les popups carte + fiche publique `/ambassade/[id]` + fiche live `/live/[event_id]/ambassade/[host_id]` sous la ligne ville/pays. |
 | Onboarding self-service | ✅ | `PATCH /api/onboarding/complete` | Gate inline dans `/dashboard` pour `pending_review` : vidéo + PDF + CGU + bouton. Idempotent. Aucune action admin requise. |
-| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
+| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse, consignes, téléphone. Email admin si ville change. |

@@ -16,7 +16,7 @@ export default async function AmbassadePage({ params }: Props) {
 
   const { data: host, error } = await supabase
     .from('host_profiles')
-    .select('id, first_name, city, country, host_type, capacity, contact_mode, consignes, whatsapp_group_url')
+    .select('id, first_name, city, country, quartier, host_type, capacity, contact_mode, consignes, whatsapp_group_url')
     .eq('id', id)
     .eq('status', 'validated')
     .single();
@@ -79,6 +79,9 @@ export default async function AmbassadePage({ params }: Props) {
                 Ambassade de {host.first_name}
               </h1>
               <p className="text-slate-500 text-sm">{host.city}, {host.country}</p>
+              {host.quartier && (
+                <p className="text-slate-400 text-xs mt-0.5">{host.quartier}</p>
+              )}
             </div>
           </div>
 

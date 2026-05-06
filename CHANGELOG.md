@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5.0] - 2026-05-06
+
+### Added
+- **Photos ambassadeurs visibles dans `/admin/ambassadeurs`** : avatar 32px dans la colonne Nom + galerie complète (photo de profil + photos du lieu) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé). L'admin peut désormais valider un dossier en voyant les photos.
+- **Champ `quartier` sur les fiches publiques d'ambassade** : affiché en `text-slate-400` sous "Ville, Pays" sur `/ambassade/[id]` et `/live/[event_id]/ambassade/[host_id]`. Donne un signal de proximité immédiat au visiteur. Cohérent avec l'affichage déjà en place dans les popups de la carte.
+- **Sidebar admin pinné** (`components/AdminLayout.tsx`) : `sticky top-0 h-screen self-start` — le sidebar reste visible au scroll, les liens du bas (Carte publique, Se déconnecter) ne disparaissent plus sous le pli.
+- **Seed enrichment_pending** (`scripts/seed.js`) : 2 nouveaux ambassadeurs (Émilie Rousseau / Toulouse, Pascal Nguyen / Strasbourg) avec questionnaire complet, pour tester la queue de validation admin.
+
+### Changed
+- **Pipeline d'inscription self-service entièrement aligné** : nouvel écran "Inscription confirmée !" sur `/inscription` avec CTA explicite vers `/auth` (au lieu de "Demande envoyée — en cours d'examen", message obsolète depuis le passage en self-service).
+- **Statut admin "En examen" → "Inscrit"** sur `/admin/ambassadeurs` : "En examen" sonnait jugemental et inexact (l'admin n'examine plus rien à ce stade). "Inscrit" est factuel, neutre, aligné avec le ton pastoral du ministère.
+- **Bouton "Valider (bypass)" retiré du UI admin** : un bypass produit un ambassadeur validé sans photo de profil ni questionnaire — incohérent avec le standard "lieu de prière de qualité". L'API conserve `validated_bypass` comme escape hatch (support, script SQL).
+- **Guide PDF onboarding** ouvre dans un nouvel onglet (au lieu de forcer le téléchargement) — le candidat peut le lire directement depuis le dashboard.
+- **"Lieu N" → "Vue N"** sur les photos du lieu d'accueil (`/admin/ambassadeurs`) : reflète mieux que ce sont des angles différents du même lieu, pas plusieurs adresses.
+
+### Fixed
+- **`CityInput` : la dropdown ne s'ouvrait plus sur `/inscription`** : le `useEffect([value])` resetait `hasUserTyped` à chaque frappe car `onChange(v)` faisait bouncer la value via le parent. Fix : `ownedValueRef` distingue les bounces internes des vrais changements externes.
+- **Quartier perdu à l'inscription** (`/api/inscriptions`) : la branche INSERT "nouvel utilisateur Auth" oubliait le champ `quartier` — silencieusement perdu pour tous les nouveaux inscrits. Refactor : insert unifié, source de vérité unique pour les deux cas (Auth existant vs créé).
+- **Message d'erreur "duplicate key" humanisé** : si un visiteur tente de s'inscrire avec un e-mail déjà existant, l'API renvoie maintenant "Un compte ambassadeur existe déjà avec cet e-mail. Connecte-toi depuis la page de connexion." au lieu de l'erreur Postgres brute.
+
+### Removed
+- **Gate d'ouverture des inscriptions** (J-7 par défaut) : le trigger SQL `fn_set_event_registration_dates` ne pose plus de date d'ouverture automatique. `registration_opens_at` reste NULL par défaut → l'API `POST /api/visit-requests` ne renvoie plus "Les inscriptions ne sont pas encore ouvertes". L'API check `now < registration_opens_at` est retiré (code mort). Dès qu'une fiche ambassade est visible (host actif), un visiteur peut s'inscrire.
+
+### Rationale produit
+Le gate de 7 jours était une friction artificielle introduite par le trigger DB sans cahier des charges. Le principe fondateur du produit ("on fait confiance aux gens qui ouvrent leur maison") s'applique aussi aux visiteurs qui veulent venir. Si une ambassade est visible sur la carte, l'inscription doit être possible — pas de blocage temporel.
+
+La fermeture automatique des inscriptions à `event_date` reste en place : l'hôte doit pouvoir préparer son accueil sans recevoir de nouvelles demandes de dernière minute.
+
+### Migration
+- `scripts/migration-remove-registration-opens-gate.sql` : `CREATE OR REPLACE FUNCTION` du trigger + `UPDATE events SET registration_opens_at = NULL WHERE event_date > NOW()` pour libérer immédiatement les events à venir du gate. **Déjà appliqué sur la DB linkée**.
+
+### Docs
+- CLAUDE.md, docs/ARCHITECTURE.md, QA_SCENARIOS.md, SCENARIOS_DEMO.md, docs/presentation-david.md alignés sur tous les changements ci-dessus.
+
 ## [0.1.4.0] - 2026-05-03
 
 ### Added

@@ -105,6 +105,8 @@ node scripts/seed.js                                      # insère les données
 | `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 15e |
 | `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet | Lyon Presqu'île |
 | `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature | Bordeaux Chartrons |
+| `emilie.rousseau@demo.fr` | ambassadeur | `enrichment_pending` | Toulouse — domicile, queue admin | Toulouse Capitole |
+| `pascal.nguyen@demo.fr` | ambassadeur | `enrichment_pending` | Strasbourg — église, queue admin | Strasbourg Centre |
 | `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 10e |
 | `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 11e |
 | `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) | Paris 3e |
@@ -154,7 +156,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 - L'inscription crée le profil avec `status = 'pending_review'`.
 - **Gate inline dans `/dashboard`** : pour `pending_review`, l'encart contextuel intègre vidéo + lien PDF + checkbox "J'accepte" + bouton "Activer mon onboarding". Cliquer le bouton appelle `PATCH /api/onboarding/complete` qui fait passer `pending_review → pre_approved`. **Pas d'email** — le candidat est sur le dashboard, le questionnaire est immédiatement visible. Idempotent : déjà ≥ pre_approved → 200 noop ; statuts terminaux (suspended/rejected) → 400. La route `/onboarding` autonome n'existe plus.
 - **Video gate** : la checkbox d'engagement reste désactivée jusqu'au premier clic dans la vidéo YouTube (le candidat doit avoir interagi avec). Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement`. Helper `buildVideoUrl` exporté depuis `lib/youtube.ts`.
-- **Admin** (`PATCH /api/admin/ambassadeurs/[id]/status`) : actions valides = `validated`, `validated_bypass`, `rejected`, `suspended`, `reactiver`. L'action `pre_approved` n'existe **plus** (transition self-service). `validated` n'est autorisé que depuis `enrichment_pending` ; `validated_bypass` permet l'escape hatch depuis n'importe quel statut. La validation finale envoie `sendNouvelleActivationAdmin` + `sendValidationFinale` (bienvenue).
+- **Admin** (`PATCH /api/admin/ambassadeurs/[id]/status`) : actions valides = `validated`, `validated_bypass`, `rejected`, `suspended`, `reactiver`. L'action `pre_approved` n'existe **plus** (transition self-service). `validated` n'est autorisé que depuis `enrichment_pending`. `validated_bypass` reste accepté par l'API comme escape hatch (support, script SQL, migration), **mais le bouton dédié a été retiré du UI** (`/admin/ambassadeurs`) — un bypass produit un ambassadeur sans photo de profil ni questionnaire, visible publiquement avec un profil incomplet. La validation finale envoie `sendNouvelleActivationAdmin` + `sendValidationFinale` (bienvenue).
 - Le dashboard gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
 - Statuts valides (contrainte CHECK DB inchangée) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
 - `enrichment_pending` requiert `profile_photo_url` non NULL — la route `PATCH /api/ambassadeur/enrichissement` refuse la soumission si la photo de profil n'a pas été uploadée. Le questionnaire (`/dashboard/questionnaire`) expose deux blocs photo : **Photo de profil** (requise) et **Photos du lieu d'accueil** (optionnel, max 5). Upload via `POST /api/upload/ambassador-photo` (`type=profile|room`), suppression via `DELETE` même endpoint avec ownership check (le path doit commencer par `<profile.id>/`).
@@ -168,7 +170,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 - **Validation géocodage** : double couche — (1) frontend : bouton "Continuer" désactivé tant que `form.lat == null`, hint ambre si texte tapé sans sélection ; (2) API : `POST /api/inscriptions` retourne 400 si `lat` ou `lng` absents. Évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`). Le check utilise `== null` (et non `!lat`) pour ne pas bloquer les villes à latitude 0 (équateur).
 - **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
 - **`CountrySelect`** (`components/ui/CountrySelect.tsx`) : expose le nom du pays (`"Cameroun"`), pas le code ISO. Pays épinglés : FR, BE, CH, CA, LU, MA, SN, CI, CM.
-- **Champ `quartier`** (optionnel, étape 1) : texte libre pour préciser le quartier ou l'arrondissement (ex : "Paris 15e", "Abidjan Cocody"). Stocké dans `host_profiles.quartier`. Affiché sous le type/places dans les popups de la carte (cluster et pin individuel) en `text-slate-400`. Vide → aucune ligne affichée. Modifiable depuis `MesInfosSection` dans le dashboard.
+- **Champ `quartier`** (optionnel, étape 1) : texte libre pour préciser le quartier ou l'arrondissement (ex : "Paris 15e", "Abidjan Cocody"). Stocké dans `host_profiles.quartier`. Affiché en `text-slate-400` sur trois surfaces publiques : (1) popups carte (cluster + pin individuel), (2) fiche `/ambassade/[id]` sous `Ville, Pays`, (3) fiche live `/live/[event_id]/ambassade/[host_id]` sous `Ville, Pays`. Vide → aucune ligne affichée. Modifiable depuis `MesInfosSection` dans le dashboard.
 - **Types de lieux** (`TYPES` dans `inscription/page.tsx`) : `individual` → "Domicile — lieu de prière", `church` → "Église — lieu de prière". Labels publics orientés ministère. En admin (`AmbassadeursTable`) : "Domicile" / "Église" (court). Sur la carte (popup) : "Lieu de prière à domicile" / "Lieu de prière en église".
 
 ## Pages admin
@@ -176,7 +178,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | Route | Description |
 |-------|-------------|
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
-| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver |
+| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/planning` | Gestion des événements (création, modification) |
 | `/admin/calendrier` | Campagnes email — liste des campagnes planifiées + formulaire pour programmer une campagne ambassadeurs ou visiteurs (`CalendrierCampaignSection`) |

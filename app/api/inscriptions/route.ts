@@ -3,6 +3,13 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sendRegistrationConfirmation, sendNouvelleInscriptionAdmin } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
+function humanizeDbError(msg: string): string {
+  if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+    return 'Un compte ambassadeur existe déjà avec cet e-mail. Connecte-toi depuis la page de connexion.';
+  }
+  return msg;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -48,51 +55,33 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // 1. Résoudre l'user_id Supabase Auth
   // createUser + email_confirm: true crée le compte sans envoyer d'email via Supabase Auth.
   // Évite le rate limit (~2-4/h) de inviteUserByEmail. La confirmation passe par Resend ci-dessous.
+  // Si l'email existe déjà dans Auth (visiteur antérieur, inscription échouée…), on récupère
+  // l'user existant au lieu d'échouer.
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,
     email_confirm: true,
     user_metadata: { role: 'host' },
   });
 
-  let profileId: string | undefined;
+  let userId: string | undefined = authData?.user?.id;
 
   if (authError) {
-    if (authError.message.toLowerCase().includes('already')) {
-      const { data: existingUser } = await supabase.auth.admin.listUsers();
-      const user = existingUser?.users.find((u) => u.email === email);
-      if (!user) return NextResponse.json({ error: authError.message }, { status: 400 });
-
-      const { data: profileData, error: profileError } = await supabase.from('host_profiles').insert({
-        user_id: user.id,
-        email,
-        first_name,
-        last_name,
-        city,
-        country,
-        host_type: type ?? 'individual',
-        capacity: capacity ?? 10,
-        contact_mode: 'email',
-        address_private,
-        whatsapp_group_url: whatsapp_group_url || null,
-        consignes: consignes || null,
-        phone: phone.trim(),
-        lat: lat ?? null,
-        lng: lng ?? null,
-        quartier: quartier || null,
-        status: 'pending_review',
-      }).select('id').single();
-      if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
-      profileId = profileData?.id;
-    } else {
+    if (!authError.message.toLowerCase().includes('already')) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
-  } else {
-    const userId = authData.user?.id;
-    if (!userId) return NextResponse.json({ error: 'Erreur création utilisateur.' }, { status: 500 });
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    userId = existingUsers?.users.find((u) => u.email === email)?.id;
+  }
 
-    const { data: profileData, error: profileError } = await supabase.from('host_profiles').insert({
+  if (!userId) return NextResponse.json({ error: 'Erreur création utilisateur.' }, { status: 500 });
+
+  // 2. Insérer le profil ambassadeur (un seul endroit, source de vérité unique)
+  const { data: profileData, error: profileError } = await supabase
+    .from('host_profiles')
+    .insert({
       user_id: userId,
       email,
       first_name,
@@ -108,11 +97,17 @@ export async function POST(req: NextRequest) {
       phone: phone.trim(),
       lat: lat ?? null,
       lng: lng ?? null,
+      quartier: quartier || null,
       status: 'pending_review',
-    }).select('id').single();
-    if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
-    profileId = profileData?.id;
+    })
+    .select('id')
+    .single();
+
+  if (profileError) {
+    return NextResponse.json({ error: humanizeDbError(profileError.message) }, { status: 400 });
   }
+
+  const profileId = profileData?.id;
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     await sendRegistrationConfirmation(email, first_name).catch(() => {});

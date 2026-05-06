@@ -19,7 +19,7 @@ export default async function VisitRequestPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, capacity, contact_mode, consignes')
+      .select('id, first_name, city, country, quartier, capacity, contact_mode, consignes')
       .eq('id', host_id)
       .eq('status', 'validated')
       .maybeSingle(),
@@ -51,6 +51,9 @@ export default async function VisitRequestPage({ params }: Props) {
               Ambassade de {host.first_name}
             </h1>
             <p className="text-slate-500 text-sm">{host.city}, {host.country}</p>
+            {host.quartier && (
+              <p className="text-slate-400 text-xs mt-0.5">{host.quartier}</p>
+            )}
           </div>
 
           {host.consignes && (

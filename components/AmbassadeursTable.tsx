@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, User } from 'lucide-react';
 
 interface Ambassadeur {
   id: string;
@@ -23,6 +23,8 @@ interface Ambassadeur {
   denomination: string | null;
   parcours_spirituel: string | null;
   livres_lus: string | null;
+  profile_photo_signed_url: string | null;
+  room_photo_signed_urls: string[];
 }
 
 interface Props {
@@ -36,18 +38,19 @@ interface Props {
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   validated:          { label: 'Validé',                className: 'bg-emerald-50 text-emerald-700' },
-  pending_review:     { label: 'En examen',             className: 'bg-amber-50 text-amber-700'    },
+  pending_review:     { label: 'Inscrit',             className: 'bg-amber-50 text-amber-700'    },
   pre_approved:       { label: 'Conditions acceptées',  className: 'bg-blue-50 text-blue-700'      },
   enrichment_pending: { label: 'Questionnaire',         className: 'bg-purple-50 text-purple-700'  },
   suspended:          { label: 'Suspendu',              className: 'bg-red-50 text-red-700'        },
   rejected:           { label: 'Refusé',                className: 'bg-slate-100 text-slate-500'   },
 };
 
-// La transition pending_review → pre_approved est désormais self-service (le candidat l'effectue depuis /dashboard).
-// L'admin ne peut plus pré-approuver. Seul validated_bypass autorise un raccourci vers validated.
+// La transition pending_review → pre_approved est self-service (le candidat l'effectue depuis /dashboard).
+// L'admin valide depuis enrichment_pending (questionnaire complet, photo de profil obligatoire).
+// L'API conserve `validated_bypass` comme escape hatch pour les cas exceptionnels (script SQL, support).
 const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
   pending_review:     [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
-  pre_approved:       [{ action: 'validated_bypass', label: 'Valider (bypass)',   className: 'bg-amber-50 text-amber-700 hover:bg-amber-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
+  pre_approved:       [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   enrichment_pending: [{ action: 'validated',       label: 'Valider',            className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   validated:          [{ action: 'suspended',       label: 'Suspendre',          className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
   suspended:          [{ action: 'reactiver',       label: 'Réactiver',          className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }],
@@ -67,7 +70,7 @@ const CHURCH_ATTENDANCE_LABELS: Record<string, string> = {
 
 const FILTERS = [
   { value: 'all',              label: 'Tous'          },
-  { value: 'pending_review',   label: 'En examen'     },
+  { value: 'pending_review',   label: 'Inscrit'     },
   { value: 'pre_approved',     label: 'Conditions acceptées' },
   { value: 'enrichment_pending', label: 'Questionnaire' },
   { value: 'validated',        label: 'Validés'       },
@@ -252,7 +255,23 @@ export default function AmbassadeursTable({
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{a.first_name} {a.last_name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5">
+                            {a.profile_photo_signed_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={a.profile_photo_signed_url}
+                                alt={`${a.first_name} ${a.last_name}`}
+                                className="w-8 h-8 rounded-full object-cover bg-slate-100 shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                <User className="w-4 h-4 text-slate-400" />
+                              </div>
+                            )}
+                            <span>{a.first_name} {a.last_name}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{a.city}, {a.country}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
@@ -283,9 +302,53 @@ export default function AmbassadeursTable({
                       {isExpanded && (
                         <tr>
                           <td colSpan={9} className="px-6 pb-5 pt-3 bg-slate-50/60 border-b border-slate-100">
-                            <div className="max-w-2xl">
-                              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
-                              <QuestionnairPanel a={a} />
+                            <div className="max-w-2xl space-y-5">
+                              {(a.profile_photo_signed_url || a.room_photo_signed_urls.length > 0) && (
+                                <div>
+                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Photos</p>
+                                  <div className="flex flex-wrap gap-3">
+                                    {a.profile_photo_signed_url && (
+                                      <a
+                                        href={a.profile_photo_signed_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block group"
+                                        title="Photo de profil — ouvrir en grand"
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={a.profile_photo_signed_url}
+                                          alt="Photo de profil"
+                                          className="w-24 h-24 rounded-lg object-cover bg-slate-100 ring-2 ring-indigo-200 group-hover:ring-indigo-400 transition"
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Profil</p>
+                                      </a>
+                                    )}
+                                    {a.room_photo_signed_urls.map((url, idx) => (
+                                      <a
+                                        key={url}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block group"
+                                        title={`Vue ${idx + 1} du lieu d'accueil — ouvrir en grand`}
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={url}
+                                          alt={`Vue ${idx + 1} du lieu d'accueil`}
+                                          className="w-24 h-24 rounded-lg object-cover bg-slate-100 ring-1 ring-slate-200 group-hover:ring-indigo-400 transition"
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Vue {idx + 1}</p>
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
+                                <QuestionnairPanel a={a} />
+                              </div>
                               {displayStatus === 'enrichment_pending' && (
                                 <div className="mt-4 pt-4 border-t border-slate-100">
                                   <button
