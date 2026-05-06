@@ -158,6 +158,8 @@ node scripts/magic-link.js david.thery@demo.fr
 > Prérequis : état `upcoming` ou `live`. Cliquer sur un pin de Marie (Paris) depuis la carte.
 
 - [ ] La page charge avec le nom, ville, pays de l'ambassadeur
+- [ ] Si l'ambassadeur a un `quartier` renseigné (ex : Marie → "Paris 15e") → ligne `text-slate-400` affichée sous "Ville, Pays"
+- [ ] Si pas de `quartier` → aucune ligne grise affichée
 - [ ] Le formulaire de contact est visible (prénom, email, message)
 - [ ] Soumettre le formulaire avec des données valides → message de confirmation
 - [ ] Soumettre sans prénom → erreur de validation
@@ -173,6 +175,7 @@ node scripts/magic-link.js david.thery@demo.fr
 > Page de demande de visite avec `event_id` explicite.
 
 - [ ] La page charge pour un event futur valide
+- [ ] Si l'ambassadeur a un `quartier` renseigné → ligne `text-slate-400` affichée sous "Ville, Pays"
 - [ ] Formulaire : prénom, email, téléphone, message, nb_personnes
 - [ ] Soumettre → confirmation → la demande apparaît dans le dashboard ambassadeur
 - [ ] Si l'ambassade est pleine (`is_full=TRUE`) → message d'erreur approprié
