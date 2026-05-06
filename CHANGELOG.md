@@ -2,15 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
-### Added
-- **Fenêtre d'ouverture des inscriptions configurable** : le délai entre l'ouverture des inscriptions et la date du live (auparavant hardcodé à 7 jours dans le trigger SQL `fn_set_event_registration_dates`) est désormais lu depuis `event_timing_config.registration_opens_days_before` (défaut 7). David peut le modifier depuis `/admin/settings/timing` sans toucher au code.
-- **`scripts/migration-registration-opens-config.sql`** : migration idempotente pour bases existantes (ajoute la colonne + réécrit la fonction trigger).
-
-### Changed
-- **Trigger SQL `fn_set_event_registration_dates`** : lit maintenant la config DB au lieu d'utiliser `INTERVAL '7 days'` codé en dur. Les events existants ne sont pas affectés (le trigger ne fire qu'à l'INSERT/UPDATE).
-
 ## [0.1.4.0] - 2026-05-03
 
 ### Added

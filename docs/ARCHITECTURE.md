@@ -350,6 +350,7 @@ Mis à jour manuellement à chaque PR significative.
 | Table | Colonne manquante | Impact | Fix |
 |-------|------------------|--------|-----|
 | `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | Cron `send-feedback-emails` plante au premier run | Ajouter dans `reset-db.sql` + migration |
+| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | Seuil "soon" hardcodé dans `MapPublique.tsx` (ligne 101) | Ajouter colonne + lire depuis DB **Décision D3** |
 
 ---
 
@@ -364,12 +365,10 @@ Mis à jour manuellement à chaque PR significative.
 
 ---
 
-### Timing config — consommateurs
+### Timing config — champs sans cron correspondant (💀 Mort)
 
-| Champ `event_timing_config` | Consommateur | État |
-|-----------------------------|--------------|------|
-| `registration_opens_days_before` | Trigger DB `fn_set_event_registration_dates` (lu à l'INSERT/UPDATE d'un event) | ✅ Actif |
-| `soon_threshold_days` | `MapPublique.tsx` (overlay carte vide état "soon") | ✅ Actif |
+| Champ `event_timing_config` | Cron correspondant | État |
+|-----------------------------|-------------------|------|
 | `campaign_ambassadors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
 | `campaign_visitors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
 | `feedback_days_after` | `/api/cron/send-feedback-emails` | ⚠️ Bug + non schedulé |

@@ -195,8 +195,7 @@ Chaque hôte définit sa capacité (ex: 5 personnes). L'application surveille au
 si la capacité est atteinte.
 
 ### Les inscriptions
-Les inscriptions ouvrent par défaut 7 jours avant le live et ferment le jour du live.
-Le délai d'ouverture est configurable depuis `/admin/settings/timing` (champ "Ouverture des inscriptions").
+Les inscriptions ouvrent 7 jours avant le live et ferment le jour du live.
 Les hôtes déjà actifs peuvent continuer à gérer leurs ambassades même après la fermeture.
 
 ### La confidentialité

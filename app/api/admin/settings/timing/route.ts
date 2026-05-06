@@ -8,7 +8,6 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const fields = [
-    'registration_opens_days_before',
     'campaign_ambassadors_days_before',
     'campaign_visitors_days_before',
     'host_reminder_days_before',
