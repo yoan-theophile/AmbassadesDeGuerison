@@ -6,6 +6,27 @@
 
 DavidTheryApp — Ambassades de Guérison. Next.js 15 + Supabase + Tailwind.
 
+## Phase actuelle — conception (pas encore en production)
+
+**L'app n'est pas encore lancée auprès de vrais utilisateurs.** Camille (assistante de David) n'est pas encore briefée. La DB Supabase ne contient que des données seed/démo.
+
+L'URL `https://ambassades-guerison.vercel.app` est techniquement une "production" Vercel mais sert d'**environnement de démo/preview** — pas de trafic réel, pas de vrais ambassadeurs, pas de vraies demandes de visite.
+
+**Implications pour les changements :**
+
+- Pas besoin de garantir zero-downtime ou backwards compat sur les changements DB — `supabase db query --linked --file scripts/reset-db.sql && node scripts/seed.js` repart toujours à zéro.
+- Les scripts `scripts/migration-*.sql` sont **forward-looking** : utiles le jour où Camille sera briefée et qu'on aura de vrais profils en DB qu'on ne voudra plus écraser. Pour l'instant, modifier `reset-db.sql` directement est OK.
+- Pas de canary, rolling release, ni feature flag requis pour les changements UX. Un push sur `main` actualise simplement la démo.
+- Le DevOverlay est rendu sur l'URL "production" (`NEXT_PUBLIC_DEV_OVERLAY=true`) précisément parce qu'on est encore en conception — David et nous testons les états DB depuis l'URL publique.
+
+**Ce qui change le jour où on quitte la phase de conception :**
+
+1. Camille reçoit un magic link et commence à valider de vrais profils → la DB a de vrais ambassadeurs
+2. Désactiver `NEXT_PUBLIC_DEV_OVERLAY` en prod (le DevOverlay disparaît)
+3. Désactiver les routes `/dev/*` (déjà gated par secret, mais à durcir)
+4. Activer les crons dans `vercel.json` (campaigns + feedback + check-activations)
+5. À partir de là : zero-downtime obligatoire, migrations idempotentes obligatoires, rollback plan pour chaque release.
+
 ## Testing
 
 ```bash
