@@ -187,12 +187,12 @@ CREATE TABLE live_feedbacks (
 
 -- Blacklist email / téléphone (anti-spam, anti-abus)
 CREATE TABLE blacklist (
-  id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  email    TEXT,
-  phone    TEXT,
-  reason   TEXT        NOT NULL,
-  added_by UUID        REFERENCES auth.users(id),
-  added_at TIMESTAMPTZ DEFAULT NOW()
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      TEXT,
+  phone      TEXT,
+  reason     TEXT        NOT NULL,
+  added_by   UUID        REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Campagnes mail programmées (dispatched par GitHub Actions cron */5 min)
