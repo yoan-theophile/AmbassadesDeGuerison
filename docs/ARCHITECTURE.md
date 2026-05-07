@@ -430,7 +430,7 @@ Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable sel
 
 **Conséquence intentionnelle :** le feed admin (`/admin/live`) voit un live "en cours" pendant 6h après son heure de début, tandis que la carte publique arrête d'afficher les pins après 4h. David peut continuer à surveiller les signaux même après la fermeture de la carte.
 
-**Point d'attention :** si David configure `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` à 6h (Q7 de `SCENARIOS_DEMO.md`), les deux familles seront alignées. Si la durée dépasse 6h, il faudra aussi ajuster `LIVE_WINDOW_PAST_HOURS` manuellement dans Vercel.
+**Point d'attention :** si David configure `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` à 6h (Q7 de `docs/SCENARIOS_DEMO.md`), les deux familles seront alignées. Si la durée dépasse 6h, il faudra aussi ajuster `LIVE_WINDOW_PAST_HOURS` manuellement dans Vercel.
 
 ---
 
