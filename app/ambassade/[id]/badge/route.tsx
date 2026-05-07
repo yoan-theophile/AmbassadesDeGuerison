@@ -1,60 +1,35 @@
 import { ImageResponse } from 'next/og';
-import { createServiceClient } from '@/lib/supabase/server';
 
-export const runtime = 'edge';
+// Image OG (1200x630) du badge ambassade — utilisée pour les previews de
+// partage WhatsApp/réseaux et le bouton "Voir mon badge" dans /dashboard.
+//
+// IMPORTANT — ne PAS importer @supabase/supabase-js ici : combiné avec
+// next/og ImageResponse sur Next.js 16, l'import crashe silencieusement
+// la route (ERR_EMPTY_RESPONSE). On utilise un fetch direct vers l'API
+// REST PostgREST de Supabase.
+//
+// IMPORTANT — ne PAS déclarer `export const runtime = 'edge'` : le edge
+// runtime aggrave le crash (même symptôme).
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = createServiceClient();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const { data: host } = await supabase
-    .from('host_profiles')
-    .select('first_name, city, country, host_type, status')
-    .eq('id', id)
-    .eq('status', 'validated')
-    .single();
-
-  if (!host) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
-            color: 'white',
-            fontFamily: 'sans-serif',
-            padding: '40px',
-          }}
-        >
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
-          <div style={{ fontSize: '22px', opacity: 0.85, marginBottom: '16px' }}>
-            Badge non disponible
-          </div>
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              padding: '6px 16px',
-              borderRadius: '20px',
-              fontSize: '14px',
-            }}
-          >
-            Ambassades de Guérison
-          </div>
-        </div>
-      ),
-      { width: 1200, height: 630 }
+  let host: { first_name: string; city: string; country: string; host_type: string } | null = null;
+  if (supabaseUrl && serviceKey) {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/host_profiles?id=eq.${id}&status=eq.validated&select=first_name,city,country,host_type`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }, cache: 'no-store' }
     );
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0) host = rows[0];
+    }
   }
-
-  const typeLabel = host.host_type === 'church' ? 'Église ambassade' : 'Ambassade privée';
 
   return new ImageResponse(
     (
@@ -66,7 +41,9 @@ export async function GET(
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+          background: host
+            ? 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)'
+            : 'linear-gradient(135deg, #94A3B8 0%, #64748B 100%)',
           color: 'white',
           fontFamily: 'sans-serif',
           padding: '40px',
@@ -74,11 +51,13 @@ export async function GET(
       >
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
         <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          {host.first_name}
+          {host ? host.first_name : 'Badge non disponible'}
         </div>
-        <div style={{ fontSize: '18px', opacity: 0.9, marginBottom: '4px' }}>
-          {host.city}, {host.country}
-        </div>
+        {host && (
+          <div style={{ fontSize: '18px', opacity: 0.9, marginBottom: '4px' }}>
+            {host.city}, {host.country}
+          </div>
+        )}
         <div
           style={{
             marginTop: '16px',
@@ -88,16 +67,12 @@ export async function GET(
             fontSize: '14px',
           }}
         >
-          {typeLabel} — Ambassades de Guérison
+          {host
+            ? `${host.host_type === 'church' ? 'Église ambassade' : 'Ambassade privée'} — Ambassades de Guérison`
+            : 'Ambassades de Guérison'}
         </div>
       </div>
     ),
-    {
-      width: 1200,
-      height: 630,
-      headers: {
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
-      },
-    }
+    { width: 1200, height: 630 }
   );
 }
