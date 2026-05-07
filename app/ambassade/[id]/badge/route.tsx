@@ -91,7 +91,8 @@ export async function GET(
   // Cas : ambassade valide → badge complet
   const isChurch = host.host_type === 'church';
   const emoji = isChurch ? '⛪' : '🏠';
-  const hostTypeLabel = isChurch ? 'Église ambassadrice' : 'Ambassade chez l’habitant';
+  // Vocabulaire aligné sur le reste du site (carte, fiche /ambassade/[id]).
+  const hostTypeLabel = isChurch ? 'Lieu de prière en église' : 'Lieu de prière à domicile';
   // Quartier affiché en sous-ligne uniquement s'il apporte de l'info
   // (sinon redondant : "Paris" + "Paris 15e"). Heuristique : on cache si
   // le quartier contient déjà le nom de la ville.
@@ -196,10 +197,10 @@ export async function GET(
           }}
         >
           <div style={{ fontSize: '24px', fontWeight: 600, marginBottom: '6px' }}>
-            {`Rejoignez ${host.first_name} pour le live`}
+            {`Rejoignez ${host.first_name} pour la prière`}
           </div>
           <div style={{ fontSize: '15px', opacity: 0.65 }}>
-            Adresse partagée après acceptation
+            Adresse dévoilée après acceptation
           </div>
         </div>
       </div>
