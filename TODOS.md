@@ -174,17 +174,9 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 ---
 
-## TODO-19 : Pins inactifs — différenciation visuelle `is_active=false`
+## TODO-19 : Pins inactifs — différenciation visuelle `is_active=false` — **COMPLETED**
 
-**Quoi :** Sur la carte, distinguer visuellement les ambassades activées pour le live courant (`is_active=true`) vs celles non encore confirmées (`is_active=false`). Piste : même teinte indigo mais opacité 60% + point gris sur les inactifs.
-
-**Pourquoi :** Actuellement les 7 pins sont identiques visuellement. En état `live`, un visiteur peut cliquer sur un pin "inactif" et envoyer une demande à un hôte qui n'a pas confirmé sa participation — friction inutile.
-
-**Pros :** Information visible avant le clic. Réduit les demandes "à vide".
-
-**Cons :** Risque de paraître "moins peuplée" la carte. À tester si la différenciation aide ou décourage.
-
-**Contexte :** Issu du design-review 2026-05-02. À traiter quand on a un vrai event en `live` avec mix `is_active=true/false` (le seed actuel a déjà les conditions).
+**Statut :** Livré par commit `0d83cc1 feat(carte): pins grisés (Feature A) + groupes femmes (Feature B)` (2026-05-07). `MapPublique.tsx` distingue maintenant les pins actifs (couleur normale) vs inactifs (grisés, popup contextuel "Pas encore confirmé" hors-live ou "Pas disponible" pendant le live). Cluster regroupé en 2 sections (Disponibles / En attente). EmptyMapContent reste affiché si `activeHosts.length === 0` même quand des pins inactifs sont visibles.
 
 ---
 

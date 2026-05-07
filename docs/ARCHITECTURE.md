@@ -367,9 +367,9 @@ Mis à jour manuellement à chaque PR significative.
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
 | Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
-| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join — cron désactivé (hors production) |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | Colonne `events.feedback_sent` ajoutée au schéma. Reste : bug SQL join à corriger avant activation. Cron désactivé (hors production). |
 | Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
-| Clôture live | ❌ | — | Pas de bouton admin. DevOverlay uniquement (dev). **Décision D1 : créer bouton dans `/admin/live`** |
+| Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
@@ -387,10 +387,12 @@ Mis à jour manuellement à chaque PR significative.
 
 ### Gaps schéma confirmés
 
-| Table | Colonne manquante | Impact | Fix |
-|-------|------------------|--------|-----|
-| `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | Cron `send-feedback-emails` plante au premier run | Ajouter dans `reset-db.sql` + migration |
-| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | Seuil "soon" hardcodé dans `MapPublique.tsx` (ligne 101) | Ajouter colonne + lire depuis DB **Décision D3** |
+Aucun à ce jour. Les colonnes précédemment manquantes ont été ajoutées :
+
+| Table | Colonne | Statut |
+|-------|---------|--------|
+| `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | ✅ Présente dans `reset-db.sql` |
+| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | ✅ Présente, consommée par `MapPublique.tsx` (prop `soonThresholdDays`) |
 
 ---
 
@@ -477,7 +479,7 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⏸ Désactivé — bug SQL join |
 | `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
 | `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
-| `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
+| `POST /api/admin/live/close` | Clôturer le live | Admin | ✅ |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
 | `GET /api/unsubscribe/[token]` | Désabonnement email | Token | ✅ |
 | `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
