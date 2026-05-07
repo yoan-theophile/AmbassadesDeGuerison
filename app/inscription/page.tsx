@@ -286,6 +286,11 @@ export default function InscriptionPage() {
                 <p className="text-slate-500 text-xs mt-0.5">
                   {TYPES.find((t) => t.value === form.type)?.label} · {form.capacity} personnes
                 </p>
+                {form.is_women_only && form.type === 'individual' && (
+                  <p className="text-pink-600 text-xs font-medium mt-1.5">
+                    Groupe réservé aux femmes
+                  </p>
+                )}
               </div>
 
               {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
