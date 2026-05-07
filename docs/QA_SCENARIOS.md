@@ -382,7 +382,6 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] `/admin/stats` → redirige vers `/auth` si non connecté
 - [ ] `/admin/ambassadeurs` → redirige vers `/auth`
 - [ ] `/admin/live` → redirige vers `/auth`
-- [ ] `/admin/planning` → redirige vers `/auth`
 - [ ] `/admin/temoignages` → redirige vers `/auth`
 - [ ] `/admin/feedback` → redirige vers `/auth`
 - [ ] `/admin/blacklist` → redirige vers `/auth`
@@ -461,7 +460,7 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 17 — Admin : planning `/admin/planning`
+## Module 17 — Admin : calendrier section Lives `/admin/calendrier`
 
 - [ ] La page charge avec les 4 events du seed
 - [ ] Les dates sont affichées en heure La Réunion (UTC+4)
@@ -497,12 +496,15 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 20 — Admin : blacklist `/admin/blacklist`
+## Module 20 — Admin : blocages visiteurs `/admin/blacklist`
 
 - [ ] La page charge sans erreur
-- [ ] Formulaire d'ajout : email + motif
-- [ ] Ajouter un email → il apparaît dans la liste
-- [ ] La suppression d'un email de la liste fonctionne
+- [ ] **Layout** : formulaire d'ajout en haut, liste des blocages en bas
+- [ ] Formulaire d'ajout : champs email + téléphone (au moins un requis) + motif (obligatoire)
+- [ ] Ajouter un email → il apparaît dans la liste après reload (cf. `created_at` côté DB)
+- [ ] La suppression d'un email de la liste fonctionne (DELETE optimiste, sans reload)
+- [ ] Tester `POST /api/visit-requests` avec un email blacklisté → réponse `403` + message neutre, pas de demande créée, pas d'email envoyé à l'hôte
+- [ ] Tester `POST /api/visitor-help-request` avec un email blacklisté → même comportement (403, pas de notification admin)
 
 ---
 
@@ -898,7 +900,7 @@ npm run test:e2e
 | 2026-05-02 | M4 — Dashboard ambassadeur (complet) | ✅ | "Bonjour, Marie", Paris, France, badge "Actif". Sections : Formation ambassadeur (vidéo), Votre ambassade (partage + badge), Photos de profil + salle (dropzones), MES DEMANDES (vides — aucune demande sur cet event, non-bloquant). |
 | 2026-05-02 | M31 — Questionnaire `/dashboard/questionnaire` | ✅ | Guard: status `validated` → `accessDenied` affiché (redirige vers /dashboard). Testé en passant Marie à `pre_approved`. Formulaire complet : 2 cases Formation, select Fréquentation (Régulièrement sélectionné), dénomination, textarea parcours spirituel (0/500), livres, téléphone. Soumission → "Profil envoyé !". DB : status → `enrichment_pending`, `healing_challenge_done=true`, `church_attendance=regular`, `parcours_spirituel` enregistré. Marie remise à `validated` après test. |
 | 2026-05-02 | M16 — Admin live `/admin/live` | ✅ | Header "David Théry — Espace admin". Alerte "Aucun live dans les 4 prochaines heures". Affiche dernier event "Nuit de Prière — Souffle nouveau". Section Mains levées : 1 signal en attente (Aminata, Dakar) avec boutons Approuver/Refuser. Section Témoignages : "2 témoignages reçus — À modérer après le live". |
-| 2026-05-02 | M17 — Admin planning `/admin/planning` | ✅ | "1 à venir · 3 passés". Onglets À venir/Passés. Recherche. Event "Live Guérison — La puissance de l'Amour" (mardi 12 mai 2026 à 01h55) + lien YouTube. Bouton Modifier présent. "+ Nouveau live" opérationnel. |
+| 2026-05-02 | M17 — Admin calendrier section Lives `/admin/calendrier` | ✅ | "1 à venir · 3 passés". Onglets À venir/Passés. Recherche. Event "Live Guérison — La puissance de l'Amour" (mardi 12 mai 2026 à 01h55) + lien YouTube. Bouton Modifier présent. "+ Nouveau live" opérationnel. (Testé sur l'ancienne route `/admin/planning`, supprimée le 2026-05-07 — la section Lives est désormais embarquée dans `/admin/calendrier`.) |
 | 2026-05-02 | M23 — Admin settings `/admin/settings` | ✅ | URL vidéo YouTube (format embed) + hint "Remplacer VIDEO_ID". Lien PDF guide + hint. Bouton "Enregistrer". |
 | 2026-05-02 | M10 — Témoignages publics `/temoignages` | ✅ (re-vérif) | "Ce que Dieu a fait" + Sparkles. 12 témoignages • 10 villes. Filtre "Tous les lives". Grille 2 colonnes. "Lire la suite" sur cartes tronquées. Auteur + ville + titre live en indigo. |
 | 2026-05-02 | M11 — Formulaire témoignage `/temoignages/nouveau` | ✅ | Accès sans auth. Dropdown live pré-sélectionné (prochain event). Textarea 206/2000 rempli. Prénom + ville optionnels (placeholders Marie/Lyon). Soumission → "Merci pour ton témoignage — Il sera relu avant d'être publié." Témoignage visible en "Non publiés" dans /admin/temoignages (3 en attente, dont Bordeaux soumis). |

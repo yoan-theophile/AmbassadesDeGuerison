@@ -322,18 +322,18 @@ export default function QuestionnairePage() {
                   value={form.parcours_spirituel}
                   onChange={(e) => set('parcours_spirituel', e.target.value)}
                   rows={4}
-                  maxLength={500}
                   placeholder="Comment en es-tu arrivé à vouloir ouvrir ton foyer ? Qu'est-ce qui t'a conduit à la prière pour la guérison ?"
                   className={inputCls}
                 />
-                <p className="text-xs text-slate-400 mt-1">{form.parcours_spirituel.length}/500</p>
+                <p className={`text-xs mt-1 ${form.parcours_spirituel.length > 500 ? 'text-amber-600' : 'text-slate-400'}`}>
+                  {form.parcours_spirituel.length}{form.parcours_spirituel.length > 500 ? ' caractères — essaie de rester concis pour faciliter la lecture' : ' / 500 (indicatif)'}
+                </p>
               </Field>
               <Field label="Livres ou formations qui t'ont marqué (optionnel)">
                 <textarea
                   value={form.livres_lus}
                   onChange={(e) => set('livres_lus', e.target.value)}
                   rows={2}
-                  maxLength={300}
                   placeholder="Ex : Guérir les malades, Défi Guérison, Vraiment Libre…"
                   className={inputCls}
                 />

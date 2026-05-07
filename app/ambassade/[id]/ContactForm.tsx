@@ -1,17 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
 
 interface Props {
   hostProfileId: string;
   hostName: string;
-  contactMode: string;
   eventId: string | null;
+  isWomenOnly?: boolean;
 }
 
-export default function ContactForm({ hostProfileId, hostName, contactMode, eventId }: Props) {
+export default function ContactForm({ hostProfileId, hostName, eventId, isWomenOnly = false }: Props) {
   const [form, setForm] = useState({
     visitor_first_name: '',
     visitor_email: '',
@@ -20,6 +21,7 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
     visitor_message: '',
     visitor_notifications_optin: true,
   });
+  const [gender, setGender] = useState<'female' | 'male' | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionToken, setActionToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -32,6 +34,9 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!eventId) return;
+    // Garde anti-bypass (touche Entrée) : si l'ambassade est femmes-only,
+    // refuser tout submit qui n'a pas explicitement coché "Femme".
+    if (isWomenOnly && gender !== 'female') return;
     setLoading(true);
     setError('');
 
@@ -118,68 +123,125 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
     );
   }
 
+  // Si l'ambassade est femmes-only et que le visiteur s'est identifié comme homme :
+  // on masque entièrement le formulaire et on propose de retourner à la carte.
+  if (isWomenOnly && gender === 'male') {
+    return (
+      <div className="py-4 space-y-3">
+        <div className="bg-pink-50 border border-pink-100 rounded-xl p-4">
+          <p className="text-pink-800 text-sm font-medium">Cet espace est réservé aux femmes.</p>
+          <p className="text-pink-700 text-xs mt-1.5 leading-relaxed">
+            Cette ambassade accueille uniquement des groupes de femmes. Vous pouvez explorer les autres ambassades sur la carte.
+          </p>
+        </div>
+        <Link
+          href="/"
+          className="w-full inline-flex items-center justify-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voir les autres ambassades
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
-        <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
-        <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
-      </div>
-      <PhoneInput
-        label="Téléphone (optionnel)"
-        id="visitor_phone"
-        value={form.visitor_phone}
-        onChange={(v) => set('visitor_phone', v)}
-        placeholder="+33 6 12 34 56 78"
-      />
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          value={form.nb_personnes}
-          onChange={(e) => set('nb_personnes', Math.max(1, parseInt(e.target.value) || 1))}
-          className={inputCls}
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
-        <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
-      </div>
+      {isWomenOnly && (
+        <div className="bg-pink-50 border border-pink-100 rounded-xl p-3 space-y-2">
+          <p className="text-sm text-pink-800 font-medium">Cet espace est réservé aux femmes.</p>
+          <fieldset>
+            <legend className="text-xs text-pink-700 mb-1.5">Je suis :</legend>
+            <div className="flex gap-2">
+              <label className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm border transition-colors ${gender === 'female' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                <input
+                  type="radio"
+                  name="gender"
+                  checked={gender === 'female'}
+                  onChange={() => setGender('female')}
+                  className="sr-only"
+                />
+                Femme
+              </label>
+              <label className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm border transition-colors ${gender === 'male' ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                <input
+                  type="radio"
+                  name="gender"
+                  checked={gender === 'male'}
+                  onChange={() => setGender('male')}
+                  className="sr-only"
+                />
+                Homme
+              </label>
+            </div>
+          </fieldset>
+        </div>
+      )}
 
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.visitor_notifications_optin}
-          onChange={(e) => set('visitor_notifications_optin', e.target.checked)}
-          className="mt-0.5 accent-indigo-600"
-        />
-        <span className="text-xs text-slate-500">
-          Je souhaite être informé(e) des prochains lives de David Théry.
-        </span>
-      </label>
+      {(!isWomenOnly || gender === 'female') && (
+        <div className={`space-y-3 ${isWomenOnly ? 'form-reveal' : ''}`}>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
+            <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
+            <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
+          </div>
+          <PhoneInput
+            label="Téléphone (optionnel)"
+            id="visitor_phone"
+            value={form.visitor_phone}
+            onChange={(v) => set('visitor_phone', v)}
+            placeholder="+33 6 12 34 56 78"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={form.nb_personnes}
+              onChange={(e) => set('nb_personnes', Math.max(1, parseInt(e.target.value) || 1))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
+            <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
+          </div>
 
-      {/* Honeypot — invisible */}
-      <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.visitor_notifications_optin}
+              onChange={(e) => set('visitor_notifications_optin', e.target.checked)}
+              className="mt-0.5 accent-indigo-600"
+            />
+            <span className="text-xs text-slate-500">
+              Je souhaite être informé(e) des prochains lives de David Théry.
+            </span>
+          </label>
 
-      {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {/* Honeypot — invisible */}
+          <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
 
-      <p className="text-slate-400 text-xs">
-        L'ambassadeur se réserve le droit d'accepter ou non votre demande.
-      </p>
+          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-      >
-        <Send className="w-4 h-4" />
-        {loading ? 'Envoi…' : 'Envoyer la demande'}
-      </button>
+          <p className="text-slate-400 text-xs">
+            L'ambassadeur se réserve le droit d'accepter ou non votre demande.
+          </p>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            {loading ? 'Envoi…' : 'Envoyer la demande'}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

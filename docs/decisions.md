@@ -199,7 +199,7 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 
 ### 2026-05 | `live_link` par événement, pas URL fixe du channel
 
-**Décision :** Chaque événement dans la table `events` possède un champ `live_link` (nullable) que David renseigne dans `/admin/planning` lors de la création du live. L'overlay "live-zero" utilise `lastEvent.live_link` pour afficher "Regarder le live →".
+**Décision :** Chaque événement dans la table `events` possède un champ `live_link` (nullable) que David renseigne dans `/admin/calendrier` lors de la création du live. L'overlay "live-zero" utilise `lastEvent.live_link` pour afficher "Regarder le live →".
 
 **Pourquoi :** L'URL d'un live YouTube change à chaque session (lien de diffusion unique). Une URL fixe du channel renverrait vers la page d'accueil de David, pas vers le live en cours. En demandant à David de saisir le lien au moment de créer l'événement, le lien est toujours précis.
 

@@ -200,3 +200,51 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 **Contexte :** Issu du design-review 2026-05-02. À faire quand on a un moment calme — non bloquant.
 
+---
+
+## TODO-21 : Tracking recherches vides + auto-suggestion villes à recruter
+
+**Quoi :** Quand un visiteur cherche une ville dans la barre Nominatim de `MapPublique` et qu'aucune ambassade n'est visible à proximité du résultat, logguer la recherche dans une nouvelle table `search_misses` (`id, query_normalized, lat, lng, country, has_results=false, created_at`). Aucune donnée identifiante : pas d'IP, pas d'user agent, pas d'identifiant utilisateur. Agrégat sur 30 jours dans `/admin/stats` : "Cette semaine, 12 visiteurs ont cherché en Suisse Romande, 0 ambassade." → drill-down `/admin/ambassadeurs?country=CH`.
+
+**Pourquoi :** La densité du réseau est *la* métrique pastorale qui détermine la qualité de l'expérience (cf design doc d'avril : "La qualité de l'expérience dépend de la densité du réseau, pas de la technologie."). Aujourd'hui, David recrute des ambassadeurs au feeling. Avec ce signal, il sait *exactement* où concentrer ses efforts de recrutement. C'est ce que le doc de recherche appelle "transformer la frustration en recrutement".
+
+**Pros :** Transforme un silence en stratégie. Compose parfaitement avec la "Vue Briefing du Berger" (devient une 3e file d'action après "à traiter" et "silencieux"). Donne à David une intelligence terrain qu'aucun autre canal ne lui donne.
+
+**Cons :** Nouvelle table à maintenir. RGPD à valider même anonymisé (logger une query peut être considéré comme tracking — vérifier la position légale française/européenne sur les recherches anonymes). Signal trop faible avant 200+ ambassades / trafic visiteurs mesurable — peu d'utilité la première année.
+
+**Contexte :** Cherry-pick CP2 du CEO review du 2026-05-07 (`~/.gstack/projects/DavidTheryApp/ceo-plans/2026-05-07-admin-stats-briefing-berger.md`). **Différé** parce que l'app est en phase de conception (DB seed-only, ~50 ambassadeurs prospectés). Signal de déclenchement : quand l'app dépasse 200 ambassades validées OU quand le trafic carte publique devient mesurable (>500 visiteurs uniques / live). À ce moment, ajouter la table + l'agrégat dans la Vue générale.
+
+**Effort estimé :** S-M (humain ~3 jours) → avec CC+gstack : ~3-4h. Nouvelle table + insert depuis `/api/geocode` + helper agrégat + intégration dans `lib/admin/pastoral-stats.ts`.
+
+**Priorité :** P3 (utile mais prématurée).
+
+**Dépend de :** Aucune dépendance technique. Dépend des conditions de déclenchement ci-dessus (volume).
+
+---
+
+## TODO-22 : Briefing pastoral enrichi V2 (narrative + mailto + digest hebdo)
+
+**Quoi :** Reconsidérer une V2 enrichie de `/admin/stats` qui inclurait :
+- Narrative pastoral templaté en haut de page (8-10 fragments déterministes combinés par règles `if N>0`, max 3 phrases, ton restraint validé par David)
+- Bouton "Lui écrire ✉" sur les ambassades à vérifier, avec 3 templates mailto pré-rédigés (encouragement / bienvenue / check-in) dans la voix de David
+- Cron Vercel `admin-weekly-digest` (lundi 8h Réunion) qui envoie le briefing par email aux `admin_users`, opt-out via `admin_users.weekly_digest_enabled BOOLEAN DEFAULT TRUE`
+
+**Pourquoi :** La V1 du plan CEO (2026-05-07) proposait directement ces features dans le scope initial. Codex (outside voice) a fait remonter trois angles morts : (1) le narrative templaté risque de sonner uncanny à la 3e lecture ("software pretending to discern"), (2) le mailto pré-rempli sur métrique faible peut sonner managérial / shaming, (3) l'email digest est prématuré tant que l'usage de la page n'est pas prouvé. Pivot stratégique : valider l'usage V1 (panel factuel sobre) avant d'investir dans la cérémonie.
+
+**Pros :** Si l'usage V1 est prouvé (David ouvre la page après chaque live, clique des liens, Camille traite sa file), les enrichissements V2 transforment la page en vrai outil pastoral d'action — un clic = un geste posé. Pattern "morning briefing" qui marche dans le B2B haut de gamme.
+
+**Cons :** Risque uncanny pastoral si la voix sonne faux. Demande validation explicite voix David (boucle feedback 2-3 semaines). Email digest = surface supplémentaire à maintenir. Si déclenché trop tôt (avant validation usage V1), risque de construire un OS pastoral que David n'utilise pas.
+
+**Contexte :** Issu du pivot CEO review du 2026-05-07 après outside voice Codex. Plan CEO complet : `~/.gstack/projects/DavidTheryApp/ceo-plans/2026-05-07-admin-stats-briefing-berger.md`. **Signal de déclenchement** : 2-3 lives après ship V1, mesurer le tracking page_view. Si David ouvre la page ≥ 1x par live sur 3 lives consécutifs ET clique au moins 1 lien par visite, alors ouvrir une session pour spécifier V2.
+
+**Effort estimé :** L (humain ~1 semaine) → avec CC+gstack : ~6-10h. Inclut narrative builder + 3 templates mailto + cron digest + template React Email + colonne `admin_users.weekly_digest_enabled` + tests + preview `/dev/emails`.
+
+**Priorité :** P3 conditionnelle. Devient P2 si l'usage V1 est confirmé après 2-3 lives.
+
+**Dépend de :**
+- Ship V1 du plan CEO (panel factuel "À noter depuis le dernier live")
+- Tracking page_view actif et exploitable
+- Validation explicite voix David sur 8-10 fragments narrative + 3 templates mailto (preview `/dev/emails`)
+
+---
+

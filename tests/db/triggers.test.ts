@@ -28,7 +28,6 @@ beforeAll(async () => {
       host_type: 'individual',
       city: 'Paris',
       country: 'France',
-      contact_mode: 'public',
       status: 'validated',
     })
     .select('id')
@@ -78,7 +77,6 @@ describe('fn_auto_activate_host_for_existing_events', () => {
         host_type: 'individual',
         city: 'Lyon',
         country: 'France',
-        contact_mode: 'public',
         status: 'pending_onboarding',
       })
       .select('id')

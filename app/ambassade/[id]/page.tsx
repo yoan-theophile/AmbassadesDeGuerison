@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import ContactForm from './ContactForm';
 import AppHeader from '@/components/AppHeader';
-import { Home, Users, MessageCircle, ExternalLink } from 'lucide-react';
+import { Home, Users, ExternalLink, Flower2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +16,7 @@ export default async function AmbassadePage({ params }: Props) {
 
   const { data: host, error } = await supabase
     .from('host_profiles')
-    .select('id, first_name, city, country, quartier, host_type, capacity, contact_mode, consignes, whatsapp_group_url')
+    .select('id, first_name, city, country, quartier, host_type, capacity, consignes, whatsapp_group_url, is_women_only')
     .eq('id', id)
     .eq('status', 'validated')
     .single();
@@ -54,15 +54,6 @@ export default async function AmbassadePage({ params }: Props) {
     church: 'Lieu de prière en église',
   };
 
-  const contactLabels: Record<string, string> = {
-    email: 'E-mail',
-    whatsapp: 'WhatsApp',
-    telephone: 'Téléphone',
-    public: 'Contact direct',
-    form: 'Formulaire',
-    approval: 'Sur approbation',
-  };
-
   return (
     <>
       <AppHeader />
@@ -89,16 +80,18 @@ export default async function AmbassadePage({ params }: Props) {
             <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
               {typeLabels[hostType] ?? hostType}
             </span>
+            {(host as any).is_women_only && (
+              <span className="inline-flex items-center gap-1.5 bg-pink-50 text-pink-600 text-xs px-3 py-1.5 rounded-lg border border-pink-100 font-medium">
+                <Flower2 className="w-3.5 h-3.5" />
+                Groupe femmes
+              </span>
+            )}
             {host.capacity && (
               <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
                 <Users className="w-3.5 h-3.5" />
                 {host.capacity} places
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 font-medium">
-              <MessageCircle className="w-3.5 h-3.5" />
-              {contactLabels[host.contact_mode] ?? host.contact_mode}
-            </span>
           </div>
         </div>
 
@@ -123,7 +116,12 @@ export default async function AmbassadePage({ params }: Props) {
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-sm font-medium text-slate-800 mb-4">Demander à rejoindre</p>
-          <ContactForm hostProfileId={host.id} hostName={host.first_name} contactMode={host.contact_mode} eventId={activeEventId} />
+          <ContactForm
+            hostProfileId={host.id}
+            hostName={host.first_name}
+            eventId={activeEventId}
+            isWomenOnly={Boolean((host as any).is_women_only)}
+          />
         </div>
       </div>
     </main>

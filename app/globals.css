@@ -58,3 +58,13 @@ body {
 .phone-input .PhoneInputInput::placeholder {
   color: #94a3b8;
 }
+
+/* Apparition douce des champs quand le visiteur a sélectionné son genre
+   sur une fiche d'ambassade femmes-only (ContactForm progressive disclosure). */
+@keyframes form-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.form-reveal {
+  animation: form-reveal 220ms ease-out;
+}

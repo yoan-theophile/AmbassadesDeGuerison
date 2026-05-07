@@ -14,7 +14,7 @@ async function getAmbassadeurs(page: number, q: string, status: string) {
   let query = supabase
     .from('host_profiles')
     .select(
-      'id, first_name, last_name, email, city, country, host_type, status, contact_mode, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus, profile_photo_url, room_photo_urls',
+      'id, first_name, last_name, email, city, country, host_type, status, capacity, created_at, phone, healing_challenge_done, conferences_assistees, church_attendance, denomination, parcours_spirituel, livres_lus, profile_photo_url, room_photo_urls, is_women_only',
       { count: 'exact' }
     );
 

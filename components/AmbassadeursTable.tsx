@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, ChevronUp, User } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Flower2 } from 'lucide-react';
 
 interface Ambassadeur {
   id: string;
@@ -13,7 +13,6 @@ interface Ambassadeur {
   country: string;
   host_type: string;
   status: string;
-  contact_mode: string;
   capacity: number | null;
   created_at: string;
   phone: string | null;
@@ -25,6 +24,7 @@ interface Ambassadeur {
   livres_lus: string | null;
   profile_photo_signed_url: string | null;
   room_photo_signed_urls: string[];
+  is_women_only: boolean | null;
 }
 
 interface Props {
@@ -270,6 +270,15 @@ export default function AmbassadeursTable({
                               </div>
                             )}
                             <span>{a.first_name} {a.last_name}</span>
+                            {a.is_women_only && (
+                              <span
+                                title="Groupe femmes uniquement"
+                                className="inline-flex items-center gap-1 bg-pink-50 text-pink-600 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-pink-100"
+                              >
+                                <Flower2 className="w-2.5 h-2.5" />
+                                Femmes
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>

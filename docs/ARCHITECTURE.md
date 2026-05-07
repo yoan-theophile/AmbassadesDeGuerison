@@ -164,11 +164,11 @@ L'action `pre_approve` n'existe **plus** côté admin — la transition `pending
 ## Cycle de vie d'un live (de l'annonce aux pins)
 
 ```
-David crée le live dans /admin/planning
+David crée le live dans /admin/calendrier (section Lives)
   │  → INSERT INTO events (title, event_date, live_link, ...)
   │
   ▼
-David programme une campagne dans /admin/calendrier
+David programme une campagne dans /admin/calendrier (section Campagnes)
   │  → INSERT INTO scheduled_campaigns
   │  → INSERT INTO campaign_recipients (snapshot des hôtes validés à l'instant t)
   │
@@ -280,6 +280,45 @@ qui ne dépasse pas quelques dizaines de connexions simultanées.
 
 ---
 
+## Formatage des dates et fuseaux horaires
+
+Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server
+Component ou une API route formate une date sans `timeZone` explicite, l'heure affichée
+est celle de Washington — ce qui produit des emails avec une heure fausse pour les
+ambassadeurs réunionnais ou parisiens.
+
+### Règle : deux utilitaires, deux contextes
+
+| Contexte | Utilitaire | Comportement |
+|----------|-----------|-------------|
+| Server Component / API route (emails, pages serveur) | `lib/format-event-date.ts` → `formatEventDateDual()` | Hardcode `Indian/Reunion` + `Europe/Paris` — produit `"dimanche 15 novembre à 19:00 (La Réunion) · 16:00 (Paris)"` |
+| Client Component (EventBanner, Dashboard, MapPublique) | `lib/hooks/use-browser-timezone.ts` → `useBrowserTimezone()` | Lit `Intl.DateTimeFormat().resolvedOptions().timeZone` dans `useEffect` (SSR-safe, init `"heure locale"`) — produit `"heure de Paris"` / `"heure d'Abidjan"` |
+
+### `formatEventDateDual(isoDate)` — surfaces serveur
+
+Utilisé dans :
+- `app/api/cron/dispatch-campaigns/route.ts` — corps des emails de campagne ambassadeurs
+- `app/api/visit-requests/[token]/accept/route.ts` — email confirmation visite (adresse dévoilée)
+- `app/api/cron/check-activations/route.ts` — email alerte admin (La Réunion uniquement, `toLocaleString`)
+- `app/live/[event_id]/ambassade/[host_id]/page.tsx` — fiche live visiteur (Server Component)
+- `app/visitor/[token]/page.tsx` — page confirmation visiteur (Server Component)
+- `app/accueillir/[token]/page.tsx` — page acceptation hôte (Server Component)
+
+### `useBrowserTimezone()` — surfaces client
+
+Retourne un label comme `"heure de Paris"` ou `"heure d'Abidjan"`.
+Garde-fous : rejet des identifiants sans `/` (`UTC`, `GMT`), rejet des offsets (`GMT+5` → contient `+`), cache `localStorage['tz-city']` pour retour instantané sur les visites suivantes, `try/catch` complet (Safari mode privé).
+
+Utilisé dans :
+- `components/EventBanner.tsx` — état ≥ 7 jours : `"Prochain live le dimanche 17 mai à 09:55 · heure de Paris"`
+- `app/dashboard/page.tsx` — section "Mes lives" : `"dimanche 10 mai à 09:55 · heure de Paris"`
+- `components/MapPublique.tsx` — overlays "soon" et "upcoming" : `"à 09:55 · heure de Paris · dans 3 jours"`
+
+> **Note** : le countdown `"Prochain live dans 2j 23h 59min"` est un délai relatif (ms UTC)
+> — il est indépendant du fuseau et ne requiert aucun label.
+
+---
+
 ## Variables d'environnement clés
 
 | Variable | Côté | Rôle |
@@ -337,11 +376,12 @@ Mis à jour manuellement à chaque PR significative.
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
 | Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
-| Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
+| Blacklist | ✅ | `/admin/blacklist` + filtre dans `/api/visit-requests` et `/api/visitor-help-request` | Choix éthique : refus honnête (403) avec message neutre + voie de recours, pas de shadow-ban (faux 201 silencieux). Voir « Modération anti-abus visiteur » dans CLAUDE.md. |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
 | Geocoding (autocomplétion ville) | ✅ | `GET /api/geocode` | Proxy Nominatim, limite 1 req/s |
 | Preview emails (dev) | ✅ | `/dev/emails` | Requiert `EMAIL_PREVIEW=true` |
+| Badge OG (preview partage) | ✅ | `GET /ambassade/[id]/badge` | Image PNG 1200x630 générée via `next/og` ImageResponse pour previews WhatsApp/réseaux quand l'ambassadeur partage `/ambassade/[id]`, et bouton "Voir mon badge" dans `/dashboard`. Contenu : sous-titre "Live de guérison avec David Théry", emoji conditionnel (🏠 individual / ⛪ church), prénom de l'hôte, ville (+ quartier en sous-ligne si non redondant), pays, pill type ("Lieu de prière à domicile" / "Lieu de prière en église"), badge "Groupe femmes uniquement" si applicable, CTA "Rejoignez {first_name} pour la prière", trust line "Adresse dévoilée après acceptation". Cache CDN 24h via header `Cache-Control: public, max-age=86400`. **Contraintes satori strictes** — voir règles dans CLAUDE.md "Routes `next/og` ImageResponse". |
 
 ---
 
@@ -390,7 +430,7 @@ Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable sel
 
 **Conséquence intentionnelle :** le feed admin (`/admin/live`) voit un live "en cours" pendant 6h après son heure de début, tandis que la carte publique arrête d'afficher les pins après 4h. David peut continuer à surveiller les signaux même après la fermeture de la carte.
 
-**Point d'attention :** si David configure `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` à 6h (Q7 de `SCENARIOS_DEMO.md`), les deux familles seront alignées. Si la durée dépasse 6h, il faudra aussi ajuster `LIVE_WINDOW_PAST_HOURS` manuellement dans Vercel.
+**Point d'attention :** si David configure `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` à 6h (Q7 de `docs/SCENARIOS_DEMO.md`), les deux familles seront alignées. Si la durée dépasse 6h, il faudra aussi ajuster `LIVE_WINDOW_PAST_HOURS` manuellement dans Vercel.
 
 ---
 
@@ -443,6 +483,7 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
 | `DELETE /api/upload/ambassador-photo` | Suppression photo (ownership check path) | Session hôte | ✅ |
 | `POST /api/visitor-help-request` | Email aide visiteur | Non | ✅ |
+| `GET /ambassade/[id]/badge` | OG image PNG 1200x630 (preview WhatsApp/réseaux) | Non | ✅ |
 | `GET /dev/emails` | Preview emails (dev) | `EMAIL_PREVIEW=true` | ✅ |
 | `POST /api/dev/state` | Simulation états DB | `NODE_ENV=development` | ✅ |
 | `POST /api/auth/magic-link` | Génération magic link | Admin | ✅ |

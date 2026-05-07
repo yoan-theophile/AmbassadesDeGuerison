@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ alerted: false, activeHosts: count, event: nextEvent.title });
   }
 
-  const eventDate = new Date(nextEvent.event_date).toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  const eventDate = new Date(nextEvent.event_date).toLocaleString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Indian/Reunion',
   });
 
   await sendAdminAlertNoActivations(nextEvent.title, eventDate);

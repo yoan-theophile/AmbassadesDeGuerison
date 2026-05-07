@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import VisitRequestForm from './VisitRequestForm';
+import { formatEventDateDual } from '@/lib/format-event-date';
 
 interface Props {
   params: Promise<{ event_id: string; host_id: string }>;
@@ -19,7 +20,7 @@ export default async function VisitRequestPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, quartier, capacity, contact_mode, consignes')
+      .select('id, first_name, city, country, quartier, capacity, consignes')
       .eq('id', host_id)
       .eq('status', 'validated')
       .maybeSingle(),
@@ -35,10 +36,7 @@ export default async function VisitRequestPage({ params }: Props) {
 
   const isAvailable = activation?.is_active && !activation?.is_full;
 
-  const eventDate = new Date(event.event_date).toLocaleString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long',
-    hour: '2-digit', minute: '2-digit',
-  });
+  const eventDate = formatEventDateDual(event.event_date);
 
   return (
     <>
@@ -71,7 +69,6 @@ export default async function VisitRequestPage({ params }: Props) {
                   eventId={event_id}
                   hostProfileId={host_id}
                   hostName={host.first_name}
-                  contactMode={host.contact_mode}
                 />
               </>
             ) : (

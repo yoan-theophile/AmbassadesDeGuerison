@@ -6,6 +6,27 @@
 
 DavidTheryApp — Ambassades de Guérison. Next.js 15 + Supabase + Tailwind.
 
+## Phase actuelle — conception (pas encore en production)
+
+**L'app n'est pas encore lancée auprès de vrais utilisateurs.** Camille (assistante de David) n'est pas encore briefée. La DB Supabase ne contient que des données seed/démo.
+
+L'URL `https://ambassades-guerison.vercel.app` est techniquement une "production" Vercel mais sert d'**environnement de démo/preview** — pas de trafic réel, pas de vrais ambassadeurs, pas de vraies demandes de visite.
+
+**Implications pour les changements :**
+
+- Pas besoin de garantir zero-downtime ou backwards compat sur les changements DB — `supabase db query --linked --file scripts/reset-db.sql && node scripts/seed.js` repart toujours à zéro.
+- Les scripts `scripts/migration-*.sql` sont **forward-looking** : utiles le jour où Camille sera briefée et qu'on aura de vrais profils en DB qu'on ne voudra plus écraser. Pour l'instant, modifier `reset-db.sql` directement est OK.
+- Pas de canary, rolling release, ni feature flag requis pour les changements UX. Un push sur `main` actualise simplement la démo.
+- Le DevOverlay est rendu sur l'URL "production" (`NEXT_PUBLIC_DEV_OVERLAY=true`) précisément parce qu'on est encore en conception — David et nous testons les états DB depuis l'URL publique.
+
+**Ce qui change le jour où on quitte la phase de conception :**
+
+1. Camille reçoit un magic link et commence à valider de vrais profils → la DB a de vrais ambassadeurs
+2. Désactiver `NEXT_PUBLIC_DEV_OVERLAY` en prod (le DevOverlay disparaît)
+3. Désactiver les routes `/dev/*` (déjà gated par secret, mais à durcir)
+4. Activer les crons dans `vercel.json` (campaigns + feedback + check-activations)
+5. À partir de là : zero-downtime obligatoire, migrations idempotentes obligatoires, rollback plan pour chaque release.
+
 ## Testing
 
 ```bash
@@ -180,9 +201,9 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
-| `/admin/planning` | Gestion des événements (création, modification) |
-| `/admin/calendrier` | Campagnes email — liste des campagnes planifiées + formulaire pour programmer une campagne ambassadeurs ou visiteurs (`CalendrierCampaignSection`) |
+| `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |
 | `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
+| `/admin/blacklist` | Modération **côté visiteur** : bloque un email/téléphone d'envoyer toute demande (`/api/visit-requests` + `/api/visitor-help-request`). Distinct de la suspension d'ambassade (qui cible l'hôte). **Layout** : formulaire d'ajout en haut (action principale, reste accessible sans scroll), historique des blocages en bas. Voir « Modération anti-abus visiteur » plus bas pour le choix éthique. |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 
 `/admin/moderation` redirige vers `/admin/live`.
@@ -208,7 +229,7 @@ Carte Leaflet plein écran avec :
 - **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
 - **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Si `quartier` renseigné : affiché en dessous du type en `text-slate-400`. Couleurs des pins : domicile = indigo `#4f46e5`, église = violet `#7c3aed` (distinguables à l'œil sur la carte).
 - **Cluster de pins co-localisés** (`MapPublique` — `updatePins`) : les hôtes sont groupés par clé `"${lat},${lng}"` avant création des markers. Le géocodage Nominatim étant au niveau ville, plusieurs ambassadeurs dans la même ville partagent les mêmes coordonnées. 1 hôte → pin individuel teardrop existant. ≥ 2 hôtes → pin cercle indigo avec badge `N` (`makeClusterIcon`) + popup scrollable listant chaque ambassadeur (nom, type, places, quartier si renseigné, lien Contacter). Pas de dépendance externe (`leaflet.markercluster` non utilisé — alternative documentée au cas où le besoin "spiderfy" apparaîtrait).
-- **Géolocalisation auto au premier chargement** (`MapPublique` — `initMap`) : `map.locate({ setView: true, maxZoom: 9 })` est appelé après l'init. Si le visiteur accepte la permission navigateur → zoom direct sur sa zone (zoom 9 = vue métropole). Si refus → vue monde par défaut (`setView([20, 10], 3)`) conservée via `locationerror` handler silencieux. Le bouton GPS bas-droit reste disponible pour relancer manuellement.
+- **Géolocalisation auto au premier chargement** (`MapPublique` — `initMap`) : `map.locate({ enableHighAccuracy: false })` est appelé après l'init. Le listener `locationfound` déclenche `map.flyTo(latlng, zoom, { duration: 1.4 })` — animation douce au lieu du saut sec de `setView`. `enableHighAccuracy: false` cible 100-500 ms de résolution (triangulation Wi-Fi/cellulaire ~50 km) au lieu de 1-5 s GPS — précision largement suffisante pour zoom niveau métropole. Variable `nextLocateZoom` préserve les deux zooms : 9 auto-load (vue métropole), 7 bouton manuel (vue régionale). Si refus → vue monde par défaut (`setView([20, 10], 3)`) conservée via `locationerror` handler silencieux.
 - **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
   - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
 - **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
@@ -219,7 +240,7 @@ Carte Leaflet plein écran avec :
     - `lastEvent && !nextEvent` (`closed`, `past`) → "Dernier live [date] / Prochain live annoncé prochainement." + stats + "Partager un témoignage →"
     - Aucun event → "Pas encore de live prévu / Rejoignez la communauté..." + bouton "Devenir ambassadeur" (seul état avec ce CTA)
   - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
-  - `live_link` sur `events` : renseigné par David dans `/admin/planning` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
+  - `live_link` sur `events` : renseigné par David dans `/admin/calendrier` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
 
 ## DevOverlay — simulation d'états (dev local + prod gated)
 
@@ -292,11 +313,22 @@ Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieu
 - **Section "Modifier mes photos"** : affichée uniquement si `status === 'enrichment_pending'` OU si l'ambassadeur clique sur le bouton toggle. Section cachée par défaut pour un ambassadeur validé.
 - **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse privée + consignes + téléphone. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit. `PhoneInput` : valeur initialisée avec `.replace(/\s+/g, '')` pour normaliser les données legacy vers E.164.
 
-## Page planning admin (`/admin/planning`)
+## Page calendrier admin (`/admin/calendrier`) — section Lives
 
 - **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
 - Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
 - Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
+
+## Modération anti-abus visiteur
+
+Deux mécanismes de modération orthogonaux :
+
+1. **Suspendre une ambassade** (`/admin/ambassadeurs` → bouton Suspendre) : `host_profiles.status = 'suspended'`. Cible l'**hôte**. Disparaît de la carte, plus contactable.
+2. **Blacklist** (`/admin/blacklist`) : `INSERT blacklist (email, phone, reason)`. Cible le **visiteur**. Bloque ses futures demandes via `/api/visit-requests` et `/api/visitor-help-request`.
+
+**Choix éthique — pas de shadow-ban.** Quand un visiteur blacklisté envoie une demande, l'API retourne **403** avec un message neutre : *« Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe. »* Pas de faux 201 silencieux qui ferait croire au visiteur que sa demande est partie. Le pattern shadow-ban (Twitter/Reddit) est efficace contre l'énumération mais incompatible avec une éthique pastorale : David ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre pour ne pas confirmer le blacklistage, et offre une voie de recours en cas d'erreur.
+
+Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/api/visitor-help-request/route.ts](app/api/visitor-help-request/route.ts).
 
 ## Règles importantes
 
@@ -306,6 +338,12 @@ Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieu
 - Feature flags dans `config/features.ts`
 - `AdminLayout` contient un bouton "Se déconnecter" en bas de la sidebar (`supabase.auth.signOut()` + `router.replace('/auth')`)
 - `profile_photo_url` et `room_photo_urls` stockent un **chemin** Supabase Storage (ex : `ambassador-photos/uuid/photo.jpg`), pas une URL publique. Bucket privé. Toujours lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` (ambassadeur) ou `getAdminPhotoUrl(path)` (admin). Ne jamais exposer sur la carte publique.
+- **Routes `next/og` ImageResponse (ex : `/ambassade/[id]/badge`)** : règles strictes pour éviter `ERR_EMPTY_RESPONSE` :
+  1. **Satori multi-child** : tout `<div>` avec plus d'un node enfant doit avoir un `display: flex | contents | none` explicite, OU fusionner les enfants en template string. Erreur typique : `<div>{a}, {b}</div>` (3 text nodes) crashe ; `<div>{`${a}, ${b}`}</div>` (1 node) OK. **Cause #1 des crashs**.
+  2. **Pas de `@supabase/supabase-js`** dans le route handler — le contexte isolé satori ne supporte pas les libs avec side-effects au load. Utiliser `fetch()` direct vers `${SUPABASE_URL}/rest/v1/...` avec headers `apikey` + `Authorization: Bearer <service_key>`.
+  3. **Pas de `export const runtime = 'edge'`** — Node runtime par défaut OK, edge aggrave les deux symptômes.
+  4. **Cache-Control header** : toujours ajouter `'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600'` sur l'ImageResponse pour que le CDN serve l'image et économise les invocations Vercel.
+  5. **Si crash mystérieux après edits successifs en dev** : `rm -rf .next/dev` + restart `npm run dev` (cache Turbopack peut cacher du code corrompu, voir [docs/knowledge-transfer.md](docs/knowledge-transfer.md)).
 
 ## Skill routing
 

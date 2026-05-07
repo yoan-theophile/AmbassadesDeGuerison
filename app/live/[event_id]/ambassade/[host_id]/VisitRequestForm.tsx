@@ -9,10 +9,9 @@ interface Props {
   eventId: string;
   hostProfileId: string;
   hostName: string;
-  contactMode: string;
 }
 
-export default function VisitRequestForm({ eventId, hostProfileId, hostName, contactMode }: Props) {
+export default function VisitRequestForm({ eventId, hostProfileId, hostName }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<'identity' | 'logistics' | 'message' | 'consent'>('identity');
   const [form, setForm] = useState({

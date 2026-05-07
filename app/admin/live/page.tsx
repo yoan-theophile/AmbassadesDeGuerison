@@ -71,8 +71,8 @@ export default async function AdminLivePage() {
             <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-sm text-amber-800">
               Aucun live détecté dans les {futureHours} prochaines heures.{' '}
-              <Link href="/admin/planning" className="underline underline-offset-2 hover:text-amber-900">
-                Vérifiez le planning
+              <Link href="/admin/calendrier" className="underline underline-offset-2 hover:text-amber-900">
+                Vérifiez le calendrier
               </Link>{' '}
               — affichage du dernier événement connu.
             </p>

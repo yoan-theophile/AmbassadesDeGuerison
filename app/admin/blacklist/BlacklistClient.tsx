@@ -61,41 +61,8 @@ export default function BlacklistClient({ entries: initial }: Props) {
         <p className="text-slate-500 text-sm">{entries.length} entrée{entries.length > 1 ? 's' : ''}</p>
       </div>
 
-      {/* Liste */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        {entries.length === 0 ? (
-          <p className="px-6 py-8 text-slate-400 text-sm text-center">Aucune entrée</p>
-        ) : (
-          <ul className="divide-y divide-slate-50">
-            {entries.map((e) => (
-              <li key={e.id} className="flex items-start gap-4 px-5 py-4">
-                <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                  <UserX className="w-4 h-4 text-red-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800">
-                    {e.email ?? e.phone ?? '—'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">{e.reason}</p>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    {new Date(e.created_at).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleRemove(e.id)}
-                  disabled={removing === e.id}
-                  className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shrink-0"
-                  title="Retirer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Formulaire ajout */}
+      {/* Formulaire ajout — placé en haut : action principale, reste visible
+          sans scroller même quand l'historique des blocages s'allonge. */}
       <form onSubmit={handleAdd} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
         <div className="flex items-center gap-2 mb-2">
           <Ban className="w-4 h-4 text-red-500" />
@@ -143,6 +110,41 @@ export default function BlacklistClient({ entries: initial }: Props) {
           {adding ? 'Blocage…' : 'Bloquer cet utilisateur'}
         </button>
       </form>
+
+      {/* Liste — historique des blocages, en dessous du formulaire pour
+          permettre l'ajout rapide quel que soit le nombre d'entrées. */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        {entries.length === 0 ? (
+          <p className="px-6 py-8 text-slate-400 text-sm text-center">Aucune entrée</p>
+        ) : (
+          <ul className="divide-y divide-slate-50">
+            {entries.map((e) => (
+              <li key={e.id} className="flex items-start gap-4 px-5 py-4">
+                <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                  <UserX className="w-4 h-4 text-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800">
+                    {e.email ?? e.phone ?? '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">{e.reason}</p>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {new Date(e.created_at).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRemove(e.id)}
+                  disabled={removing === e.id}
+                  className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                  title="Retirer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

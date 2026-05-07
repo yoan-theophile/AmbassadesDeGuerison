@@ -65,6 +65,7 @@ CREATE TABLE host_profiles (
   lat                    DOUBLE PRECISION,
   lng                    DOUBLE PRECISION,
   quartier               TEXT        DEFAULT NULL,
+  is_women_only          BOOLEAN     NOT NULL DEFAULT FALSE,
   geocoding_failed       BOOLEAN     DEFAULT FALSE,
   address_private        TEXT,
   address_public         BOOLEAN     DEFAULT FALSE,
@@ -74,8 +75,6 @@ CREATE TABLE host_profiles (
       OR whatsapp_group_url LIKE 'https://chat.whatsapp.com/%'
       OR whatsapp_group_url LIKE 'https://wa.me/%'
     ),
-  contact_mode           TEXT        NOT NULL DEFAULT 'email'
-    CHECK (contact_mode IN ('email', 'whatsapp', 'telephone')),
   capacity               INT         NOT NULL DEFAULT 10 CHECK (capacity > 0),
   consignes              TEXT,
   -- Public sur la carte : "TV salon", "écran ordinateur", "téléphone projeté"
@@ -188,12 +187,12 @@ CREATE TABLE live_feedbacks (
 
 -- Blacklist email / téléphone (anti-spam, anti-abus)
 CREATE TABLE blacklist (
-  id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  email    TEXT,
-  phone    TEXT,
-  reason   TEXT        NOT NULL,
-  added_by UUID        REFERENCES auth.users(id),
-  added_at TIMESTAMPTZ DEFAULT NOW()
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      TEXT,
+  phone      TEXT,
+  reason     TEXT        NOT NULL,
+  added_by   UUID        REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Campagnes mail programmées (dispatched par GitHub Actions cron */5 min)
@@ -270,7 +269,7 @@ CREATE VIEW host_profiles_public AS
 SELECT
   id, user_id, first_name, last_name, host_type, church_subtype,
   city, country, lat, lng, geocoding_failed,
-  whatsapp_group_url, address_public, contact_mode,
+  whatsapp_group_url, address_public,
   capacity, consignes, viewing_setup, profile_photo_url,
   status, created_at
 FROM host_profiles;
