@@ -126,7 +126,7 @@ export async function GET(
             letterSpacing: '0.5px',
           }}
         >
-          Live de prière avec David Théry
+          Live de guérison avec David Théry
         </div>
 
         {/* Center — host identity */}

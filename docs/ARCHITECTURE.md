@@ -381,6 +381,7 @@ Mis à jour manuellement à chaque PR significative.
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
 | Geocoding (autocomplétion ville) | ✅ | `GET /api/geocode` | Proxy Nominatim, limite 1 req/s |
 | Preview emails (dev) | ✅ | `/dev/emails` | Requiert `EMAIL_PREVIEW=true` |
+| Badge OG (preview partage) | ✅ | `GET /ambassade/[id]/badge` | Image PNG 1200x630 générée via `next/og` ImageResponse pour previews WhatsApp/réseaux quand l'ambassadeur partage `/ambassade/[id]`, et bouton "Voir mon badge" dans `/dashboard`. Contenu : sous-titre "Live de guérison avec David Théry", emoji conditionnel (🏠 individual / ⛪ church), prénom de l'hôte, ville (+ quartier en sous-ligne si non redondant), pays, pill type ("Lieu de prière à domicile" / "Lieu de prière en église"), badge "Groupe femmes uniquement" si applicable, CTA "Rejoignez {first_name} pour la prière", trust line "Adresse dévoilée après acceptation". Cache CDN 24h via header `Cache-Control: public, max-age=86400`. **Contraintes satori strictes** — voir règles dans CLAUDE.md "Routes `next/og` ImageResponse". |
 
 ---
 
@@ -482,6 +483,7 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
 | `DELETE /api/upload/ambassador-photo` | Suppression photo (ownership check path) | Session hôte | ✅ |
 | `POST /api/visitor-help-request` | Email aide visiteur | Non | ✅ |
+| `GET /ambassade/[id]/badge` | OG image PNG 1200x630 (preview WhatsApp/réseaux) | Non | ✅ |
 | `GET /dev/emails` | Preview emails (dev) | `EMAIL_PREVIEW=true` | ✅ |
 | `POST /api/dev/state` | Simulation états DB | `NODE_ENV=development` | ✅ |
 | `POST /api/auth/magic-link` | Génération magic link | Admin | ✅ |
