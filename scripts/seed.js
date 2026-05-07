@@ -123,6 +123,7 @@ async function run() {
       consignes: 'Sonner à l\'interphone "Dubois". Ascenseur disponible. Parking Opéra à 200m.',
       viewing_setup: 'TV salon 55 pouces', healing_challenge_done: true,
       lat: 48.8698, lng: 2.3315, quartier: 'Paris 15e', status: 'validated',
+      is_women_only: true,
     },
     {
       first_name: 'Jean-Pierre', last_name: 'Martin', email: 'jp.martin@demo.fr',
