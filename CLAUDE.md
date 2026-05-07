@@ -338,6 +338,7 @@ Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/
 - Feature flags dans `config/features.ts`
 - `AdminLayout` contient un bouton "Se déconnecter" en bas de la sidebar (`supabase.auth.signOut()` + `router.replace('/auth')`)
 - `profile_photo_url` et `room_photo_urls` stockent un **chemin** Supabase Storage (ex : `ambassador-photos/uuid/photo.jpg`), pas une URL publique. Bucket privé. Toujours lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` (ambassadeur) ou `getAdminPhotoUrl(path)` (admin). Ne jamais exposer sur la carte publique.
+- **Routes `next/og` ImageResponse (ex : `/ambassade/[id]/badge`)** : interdit d'importer `@supabase/supabase-js` ou `createServiceClient()` dans le route handler. Le contexte isolé que satori utilise sous le capot crashe silencieusement (ERR_EMPTY_RESPONSE) avec ces libs sur Next.js 16. Utiliser un `fetch()` direct vers l'API REST PostgREST (`${SUPABASE_URL}/rest/v1/...` avec headers `apikey` + `Authorization: Bearer <service_key>`). Ne jamais déclarer `export const runtime = 'edge'` non plus — même symptôme. Toujours ajouter `Cache-Control: public, max-age=86400` sur la réponse pour que le CDN serve l'image au lieu de re-générer à chaque preview.
 
 ## Skill routing
 

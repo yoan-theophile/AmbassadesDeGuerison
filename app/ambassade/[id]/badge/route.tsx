@@ -73,6 +73,15 @@ export async function GET(
         </div>
       </div>
     ),
-    { width: 1200, height: 630 }
+    {
+      width: 1200,
+      height: 630,
+      headers: {
+        // Cache navigateur 24h + revalidation tolérée 1h. Le badge change
+        // rarement (nom/ville) : le coût Vercel devient négligeable car
+        // les previews WhatsApp/réseaux servent l'image depuis le CDN.
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600',
+      },
+    }
   );
 }
