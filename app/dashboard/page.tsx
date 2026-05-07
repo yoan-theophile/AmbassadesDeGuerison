@@ -12,6 +12,7 @@ import Dropzone from '@/components/ui/Dropzone';
 import StatusTimeline from '@/components/dashboard/StatusTimeline';
 import MissionDuMoment from '@/components/dashboard/MissionDuMoment';
 import MesInfosSection from '@/app/dashboard/MesInfosSection';
+import { useBrowserTimezone } from '@/lib/hooks/use-browser-timezone';
 
 const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? '4');
 import Link from 'next/link';
@@ -55,6 +56,7 @@ interface ContactRequest {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const tzLabel = useBrowserTimezone();
   const [profile, setProfile] = useState<HostProfile | null>(null);
   const [activations, setActivations] = useState<Activation[]>([]);
   const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
@@ -629,7 +631,7 @@ export default function DashboardPage() {
                             </p>
                             {dateLabel && (
                               <p className="text-slate-400 text-xs mt-0.5 capitalize">
-                                {dateLabel}{timeLabel ? ` à ${timeLabel}` : ''}
+                                {dateLabel}{timeLabel ? ` à ${timeLabel} · ${tzLabel}` : ''}
                               </p>
                             )}
                           </div>

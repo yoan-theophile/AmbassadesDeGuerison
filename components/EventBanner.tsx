@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
+import { useBrowserTimezone } from '@/lib/hooks/use-browser-timezone';
 
 interface EventInfo {
   id: string;
@@ -30,6 +31,7 @@ function formatCountdown(ms: number) {
 export default function EventBanner({ nextEvent, lastEvent, liveInProgress }: Props) {
   const [countdown, setCountdown] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const tzLabel = useBrowserTimezone();
 
   useEffect(() => {
     if (!nextEvent) return;
@@ -87,7 +89,7 @@ export default function EventBanner({ nextEvent, lastEvent, liveInProgress }: Pr
         weekday: 'short', day: 'numeric',
       });
       messageShort = `Live ${dateShort}`;
-      messageFull = `Prochain live le ${dateFull}`;
+      messageFull = `Prochain live le ${dateFull} · ${tzLabel}`;
     }
   } else if (lastEvent) {
     const daysAgo = Math.floor(

@@ -280,6 +280,45 @@ qui ne dépasse pas quelques dizaines de connexions simultanées.
 
 ---
 
+## Formatage des dates et fuseaux horaires
+
+Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server
+Component ou une API route formate une date sans `timeZone` explicite, l'heure affichée
+est celle de Washington — ce qui produit des emails avec une heure fausse pour les
+ambassadeurs réunionnais ou parisiens.
+
+### Règle : deux utilitaires, deux contextes
+
+| Contexte | Utilitaire | Comportement |
+|----------|-----------|-------------|
+| Server Component / API route (emails, pages serveur) | `lib/format-event-date.ts` → `formatEventDateDual()` | Hardcode `Indian/Reunion` + `Europe/Paris` — produit `"dimanche 15 novembre à 19:00 (La Réunion) · 16:00 (Paris)"` |
+| Client Component (EventBanner, Dashboard, MapPublique) | `lib/hooks/use-browser-timezone.ts` → `useBrowserTimezone()` | Lit `Intl.DateTimeFormat().resolvedOptions().timeZone` dans `useEffect` (SSR-safe, init `"heure locale"`) — produit `"heure de Paris"` / `"heure d'Abidjan"` |
+
+### `formatEventDateDual(isoDate)` — surfaces serveur
+
+Utilisé dans :
+- `app/api/cron/dispatch-campaigns/route.ts` — corps des emails de campagne ambassadeurs
+- `app/api/visit-requests/[token]/accept/route.ts` — email confirmation visite (adresse dévoilée)
+- `app/api/cron/check-activations/route.ts` — email alerte admin (La Réunion uniquement, `toLocaleString`)
+- `app/live/[event_id]/ambassade/[host_id]/page.tsx` — fiche live visiteur (Server Component)
+- `app/visitor/[token]/page.tsx` — page confirmation visiteur (Server Component)
+- `app/accueillir/[token]/page.tsx` — page acceptation hôte (Server Component)
+
+### `useBrowserTimezone()` — surfaces client
+
+Retourne un label comme `"heure de Paris"` ou `"heure d'Abidjan"`.
+Garde-fous : rejet des identifiants sans `/` (`UTC`, `GMT`), rejet des offsets (`GMT+5` → contient `+`), cache `localStorage['tz-city']` pour retour instantané sur les visites suivantes, `try/catch` complet (Safari mode privé).
+
+Utilisé dans :
+- `components/EventBanner.tsx` — état ≥ 7 jours : `"Prochain live le dimanche 17 mai à 09:55 · heure de Paris"`
+- `app/dashboard/page.tsx` — section "Mes lives" : `"dimanche 10 mai à 09:55 · heure de Paris"`
+- `components/MapPublique.tsx` — overlays "soon" et "upcoming" : `"à 09:55 · heure de Paris · dans 3 jours"`
+
+> **Note** : le countdown `"Prochain live dans 2j 23h 59min"` est un délai relatif (ms UTC)
+> — il est indépendant du fuseau et ne requiert aucun label.
+
+---
+
 ## Variables d'environnement clés
 
 | Variable | Côté | Rôle |

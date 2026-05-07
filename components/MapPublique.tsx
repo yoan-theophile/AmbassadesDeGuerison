@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Search } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap } from 'leaflet';
+import { useBrowserTimezone } from '@/lib/hooks/use-browser-timezone';
 
 interface EventInfo {
   id: string;
@@ -85,6 +86,7 @@ function StatsLine({ totalAmbassadors, totalCountries }: { totalAmbassadors: num
 }
 
 function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
+  const tzLabel = useBrowserTimezone();
   const daysUntilNext = nextEvent
     ? Math.ceil((new Date(nextEvent.event_date).getTime() - Date.now()) / 86_400_000)
     : null;
@@ -117,7 +119,7 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
       <>
         <p className="text-slate-500 text-[10px] uppercase tracking-wider font-medium mb-1">Prochain live</p>
         <p className="text-slate-800 text-sm font-semibold capitalize">{formatEventDate(nextEvent.event_date)}</p>
-        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · {label}</p>
+        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · {tzLabel} · {label}</p>
         <p className="text-slate-400 text-xs mt-2.5">Les ambassades confirment leur participation...</p>
         <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
         <a href="/temoignages" className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors">
@@ -133,7 +135,7 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
       <>
         <p className="text-slate-500 text-[10px] uppercase tracking-wider font-medium mb-1">Prochain live</p>
         <p className="text-slate-800 text-sm font-semibold capitalize">{formatEventDate(nextEvent.event_date)}</p>
-        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · dans {daysUntilNext} jours</p>
+        <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · {tzLabel} · dans {daysUntilNext} jours</p>
         <p className="text-slate-400 text-xs mt-2.5">
           Les ambassades s&apos;afficheront dès qu&apos;elles confirmeront leur participation.
         </p>
