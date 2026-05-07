@@ -201,8 +201,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | `/admin/stats` | Vue générale — KPIs ambassadeurs |
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
-| `/admin/planning` | Gestion des événements (création, modification) |
-| `/admin/calendrier` | Campagnes email — liste des campagnes planifiées + formulaire pour programmer une campagne ambassadeurs ou visiteurs (`CalendrierCampaignSection`) |
+| `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |
 | `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 
@@ -240,7 +239,7 @@ Carte Leaflet plein écran avec :
     - `lastEvent && !nextEvent` (`closed`, `past`) → "Dernier live [date] / Prochain live annoncé prochainement." + stats + "Partager un témoignage →"
     - Aucun event → "Pas encore de live prévu / Rejoignez la communauté..." + bouton "Devenir ambassadeur" (seul état avec ce CTA)
   - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
-  - `live_link` sur `events` : renseigné par David dans `/admin/planning` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
+  - `live_link` sur `events` : renseigné par David dans `/admin/calendrier` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
 
 ## DevOverlay — simulation d'états (dev local + prod gated)
 
@@ -313,7 +312,7 @@ Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieu
 - **Section "Modifier mes photos"** : affichée uniquement si `status === 'enrichment_pending'` OU si l'ambassadeur clique sur le bouton toggle. Section cachée par défaut pour un ambassadeur validé.
 - **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse privée + consignes + téléphone. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit. `PhoneInput` : valeur initialisée avec `.replace(/\s+/g, '')` pour normaliser les données legacy vers E.164.
 
-## Page planning admin (`/admin/planning`)
+## Page calendrier admin (`/admin/calendrier`) — section Lives
 
 - **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
 - Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.

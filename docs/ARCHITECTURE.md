@@ -164,11 +164,11 @@ L'action `pre_approve` n'existe **plus** côté admin — la transition `pending
 ## Cycle de vie d'un live (de l'annonce aux pins)
 
 ```
-David crée le live dans /admin/planning
+David crée le live dans /admin/calendrier (section Lives)
   │  → INSERT INTO events (title, event_date, live_link, ...)
   │
   ▼
-David programme une campagne dans /admin/calendrier
+David programme une campagne dans /admin/calendrier (section Campagnes)
   │  → INSERT INTO scheduled_campaigns
   │  → INSERT INTO campaign_recipients (snapshot des hôtes validés à l'instant t)
   │
