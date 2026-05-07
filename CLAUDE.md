@@ -203,7 +203,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |
 | `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
-| `/admin/blacklist` | Modération **côté visiteur** : bloque un email/téléphone d'envoyer toute demande (`/api/visit-requests` + `/api/visitor-help-request`). Distinct de la suspension d'ambassade (qui cible l'hôte). Voir « Modération anti-abus visiteur » plus bas pour le choix éthique. |
+| `/admin/blacklist` | Modération **côté visiteur** : bloque un email/téléphone d'envoyer toute demande (`/api/visit-requests` + `/api/visitor-help-request`). Distinct de la suspension d'ambassade (qui cible l'hôte). **Layout** : formulaire d'ajout en haut (action principale, reste accessible sans scroll), historique des blocages en bas. Voir « Modération anti-abus visiteur » plus bas pour le choix éthique. |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 
 `/admin/moderation` redirige vers `/admin/live`.

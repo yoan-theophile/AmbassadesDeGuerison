@@ -496,12 +496,15 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 20 — Admin : blacklist `/admin/blacklist`
+## Module 20 — Admin : blocages visiteurs `/admin/blacklist`
 
 - [ ] La page charge sans erreur
-- [ ] Formulaire d'ajout : email + motif
-- [ ] Ajouter un email → il apparaît dans la liste
-- [ ] La suppression d'un email de la liste fonctionne
+- [ ] **Layout** : formulaire d'ajout en haut, liste des blocages en bas
+- [ ] Formulaire d'ajout : champs email + téléphone (au moins un requis) + motif (obligatoire)
+- [ ] Ajouter un email → il apparaît dans la liste après reload (cf. `created_at` côté DB)
+- [ ] La suppression d'un email de la liste fonctionne (DELETE optimiste, sans reload)
+- [ ] Tester `POST /api/visit-requests` avec un email blacklisté → réponse `403` + message neutre, pas de demande créée, pas d'email envoyé à l'hôte
+- [ ] Tester `POST /api/visitor-help-request` avec un email blacklisté → même comportement (403, pas de notification admin)
 
 ---
 
