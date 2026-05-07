@@ -111,14 +111,14 @@ async function run() {
   // ── 2. Ambassadeurs ───────────────────────────────────────────────────────
   // Insérés AVANT les events → trigger trg_auto_activate_hosts crée les
   // host_activations (is_active=FALSE) dès qu'un event est inséré.
-  console.log('→ Ambassadeurs (12 validés + 2 enrichment_pending + 1 pending_review dont 5 cluster Paris)...');
+  console.log('→ Ambassadeurs (13 validés + 2 enrichment_pending + 1 pending_review dont 5 cluster Paris)...');
 
   const hostsData = [
     {
       first_name: 'Marie', last_name: 'Dubois', email: 'marie.dubois@demo.fr',
       phone: '+33 6 12 34 56 78',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'email', capacity: 15,
+      host_type: 'individual', capacity: 15,
       address_private: '12 rue de la Paix, 75001 Paris',
       consignes: 'Sonner à l\'interphone "Dubois". Ascenseur disponible. Parking Opéra à 200m.',
       viewing_setup: 'TV salon 55 pouces', healing_challenge_done: true,
@@ -129,7 +129,7 @@ async function run() {
       first_name: 'Jean-Pierre', last_name: 'Martin', email: 'jp.martin@demo.fr',
       phone: '+33 6 98 76 54 32',
       city: 'Lyon', country: 'France',
-      host_type: 'church', contact_mode: 'whatsapp', capacity: 80,
+      host_type: 'church', capacity: 80,
       address_private: '5 place Bellecour, 69002 Lyon',
       consignes: 'Entrée principale sur la place. Grande salle au premier étage. Accessible PMR.',
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupLyon123',
@@ -141,7 +141,7 @@ async function run() {
       first_name: 'Fatou', last_name: 'Diallo', email: 'fatou.diallo@demo.fr',
       phone: '+32 478 00 11 22',
       city: 'Bruxelles', country: 'Belgique',
-      host_type: 'individual', contact_mode: 'telephone', capacity: 40,
+      host_type: 'individual', capacity: 40,
       address_private: 'Avenue Louise 54, 1050 Bruxelles',
       consignes: 'Salle communautaire au rez-de-chaussée. Pas de parking sur place.',
       viewing_setup: 'Écran 40 pouces + enceinte Bluetooth',
@@ -151,7 +151,7 @@ async function run() {
       first_name: 'Samuel', last_name: 'Eko', email: 'samuel.eko@demo.fr',
       phone: '+1 514 123 4567',
       city: 'Montréal', country: 'Canada',
-      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
+      host_type: 'individual', capacity: 12,
       address_private: '1420 rue Sherbrooke O, Montréal, QC H3G 1K4',
       consignes: 'Appartement 4B. Buzzer : SAMUEL. Métro Guy-Concordia à 5 min.',
       viewing_setup: 'TV + projecteur portable',
@@ -161,7 +161,7 @@ async function run() {
       first_name: 'Claire', last_name: 'Bernard', email: 'claire.bernard@demo.fr',
       phone: '+41 78 901 23 45',
       city: 'Genève', country: 'Suisse',
-      host_type: 'individual', contact_mode: 'email', capacity: 8,
+      host_type: 'individual', capacity: 8,
       address_private: 'Rue du Rhône 10, 1204 Genève',
       consignes: 'Digicode : 4521. 3ème étage, porte droite.',
       viewing_setup: 'Ordinateur portable + Chromecast sur TV',
@@ -171,7 +171,7 @@ async function run() {
       first_name: 'Kofi', last_name: 'Asante', email: 'kofi.asante@demo.fr',
       phone: '+225 07 01 23 45 67',
       city: 'Abidjan', country: "Côte d'Ivoire",
-      host_type: 'church', contact_mode: 'whatsapp', capacity: 120,
+      host_type: 'church', capacity: 120,
       address_private: 'Carrefour Anono, Cocody, Abidjan',
       consignes: 'Temple évangélique Lumière. Grande salle climatisée.',
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupAbidjan456',
@@ -183,19 +183,32 @@ async function run() {
       first_name: 'Aminata', last_name: 'Sow', email: 'aminata.sow@demo.fr',
       phone: '+221 77 123 45 67',
       city: 'Dakar', country: 'Sénégal',
-      host_type: 'church', contact_mode: 'whatsapp', capacity: 60,
+      host_type: 'church', capacity: 60,
       address_private: 'Quartier Almadies, Dakar',
       consignes: 'Centre communautaire Foi & Vie. Salle principale, rez-de-chaussée.',
       church_subtype: 'occasional', denomination: 'protestant',
       viewing_setup: 'Vidéoprojecteur + écran de projection 3m',
       lat: 14.7645, lng: -17.3660, status: 'validated',
     },
+    // Nathalie : 2e profil women-only, isolé hors cluster Paris pour tester
+    // le pin rose actif et l'icône Lucide Flower2 sur un marker individuel.
+    {
+      first_name: 'Nathalie', last_name: 'Blanc', email: 'nathalie.blanc@demo.fr',
+      phone: '+33 6 87 65 43 21',
+      city: 'Nantes', country: 'France',
+      host_type: 'individual', capacity: 8,
+      address_private: '14 rue Crébillon, 44000 Nantes',
+      consignes: 'Sonner à l\'interphone "Blanc". Premier étage, accueil dans le salon.',
+      viewing_setup: 'TV 50 pouces + barre de son', healing_challenge_done: true,
+      lat: 47.2173, lng: -1.5534, quartier: 'Nantes Centre', status: 'validated',
+      is_women_only: true,
+    },
     // ── Cluster Paris (5 ambassadeurs supplémentaires pour tester le rendu dense) ──
     {
       first_name: 'Lucas', last_name: 'Dupont', email: 'lucas.dupont@demo.fr',
       phone: '+33 6 11 22 33 44',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'whatsapp', capacity: 10,
+      host_type: 'individual', capacity: 10,
       address_private: '34 rue de Rivoli, 75004 Paris',
       consignes: 'Code immeuble : B312. 2ème étage gauche.',
       viewing_setup: 'TV 50 pouces', healing_challenge_done: true,
@@ -205,7 +218,7 @@ async function run() {
       first_name: 'Camille', last_name: 'Petit', email: 'camille.petit@demo.fr',
       phone: '+33 6 22 33 44 55',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'email', capacity: 8,
+      host_type: 'individual', capacity: 8,
       address_private: '7 rue du Temple, 75003 Paris',
       consignes: 'Interphone "Petit". Pas d\'ascenseur, 3ème étage.',
       viewing_setup: 'Ordinateur + grand écran externe',
@@ -215,7 +228,7 @@ async function run() {
       first_name: 'Antoine', last_name: 'Moreau', email: 'antoine.moreau@demo.fr',
       phone: '+33 6 33 44 55 66',
       city: 'Paris', country: 'France',
-      host_type: 'church', contact_mode: 'telephone', capacity: 50,
+      host_type: 'church', capacity: 50,
       address_private: '22 boulevard Voltaire, 75011 Paris',
       consignes: 'Salle du bas, entrée latérale côté rue Roquette.',
       church_subtype: 'occasional', denomination: 'évangélique',
@@ -226,7 +239,7 @@ async function run() {
       first_name: 'Julie', last_name: 'Fontaine', email: 'julie.fontaine@demo.fr',
       phone: '+33 6 44 55 66 77',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
+      host_type: 'individual', capacity: 12,
       address_private: '58 avenue de la République, 75011 Paris',
       consignes: 'Digicode 1453. Appartement 6, bâtiment B.',
       viewing_setup: 'Smart TV 55 pouces',
@@ -236,7 +249,7 @@ async function run() {
       first_name: 'Théo', last_name: 'Garnier', email: 'theo.garnier@demo.fr',
       phone: '+33 6 55 66 77 88',
       city: 'Paris', country: 'France',
-      host_type: 'individual', contact_mode: 'email', capacity: 6,
+      host_type: 'individual', capacity: 6,
       address_private: '15 rue de la Roquette, 75011 Paris',
       consignes: 'Sonnette "Garnier". 1er étage, porte verte.',
       viewing_setup: 'TV + barre de son',
@@ -247,7 +260,7 @@ async function run() {
       first_name: 'Sophie', last_name: 'Leroux', email: 'sophie.leroux@demo.fr',
       phone: '+33 6 55 44 33 22',
       city: 'Bordeaux', country: 'France',
-      host_type: 'individual', contact_mode: 'email', capacity: 10,
+      host_type: 'individual', capacity: 10,
       address_private: "8 cours de l'Intendance, 33000 Bordeaux",
       consignes: null, viewing_setup: null,
       lat: 44.8378, lng: -0.5792, quartier: 'Bordeaux Chartrons', status: 'pending_review',
@@ -257,7 +270,7 @@ async function run() {
       first_name: 'Émilie', last_name: 'Rousseau', email: 'emilie.rousseau@demo.fr',
       phone: '+33 6 78 90 12 34',
       city: 'Toulouse', country: 'France',
-      host_type: 'individual', contact_mode: 'whatsapp', capacity: 12,
+      host_type: 'individual', capacity: 12,
       address_private: '24 rue Saint-Rome, 31000 Toulouse',
       consignes: 'Digicode 7842. 4ème étage sans ascenseur. Parking gratuit après 19h place du Capitole.',
       viewing_setup: 'TV 50 pouces + barre de son',
@@ -275,7 +288,7 @@ async function run() {
       first_name: 'Pascal', last_name: 'Nguyen', email: 'pascal.nguyen@demo.fr',
       phone: '+33 6 21 43 65 87',
       city: 'Strasbourg', country: 'France',
-      host_type: 'church', contact_mode: 'whatsapp', capacity: 50,
+      host_type: 'church', capacity: 50,
       address_private: '12 rue du Faubourg de Pierre, 67000 Strasbourg',
       consignes: 'Salle communautaire au sous-sol. Entrée par la cour intérieure côté gauche. Accessible PMR.',
       whatsapp_group_url: 'https://chat.whatsapp.com/DemoGroupStrasbourg789',
@@ -418,6 +431,7 @@ async function run() {
   const activatedForFutur = [
     'marie.dubois@demo.fr', 'jp.martin@demo.fr', 'kofi.asante@demo.fr',
     'lucas.dupont@demo.fr', 'camille.petit@demo.fr', 'antoine.moreau@demo.fr',
+    'nathalie.blanc@demo.fr',
   ];
   for (const email of activatedForFutur) {
     const hid = hostIds[email];
@@ -431,7 +445,7 @@ async function run() {
       console.log(`  ERR [J+10] ${email}: ${e.message.slice(0, 80)}`);
     }
   }
-  console.log(`  OK [J+10] 6/12 hôtes activés dont 3 parisiens (6 en attente de réponse)`);
+  console.log(`  OK [J+10] 7/13 hôtes activés dont 3 parisiens + Nathalie Nantes (femmes-only) (6 en attente)`);
 
   // ── 5. Demandes de contact (event J-7, hôtes actifs) ──────────────────────
   console.log('\n→ Demandes de contact...');
@@ -788,7 +802,7 @@ async function run() {
   console.log('   → /admin/temoignages   : 2 témoignages en attente de modération');
   console.log('   → /admin/feedback      : 1 signalement pending (Thomas B / Fatou)');
   console.log('   → /temoignages         : 10 publiés, filtre 3 events');
-  console.log('   → J+10 live            : 6/12 ambassades activées (Marie, JP, Kofi + 3 cluster Paris)');
+  console.log('   → J+10 live            : 7/13 ambassades activées (Marie, JP, Kofi + 3 cluster Paris + Nathalie Nantes femmes-only)');
 }
 
 run().catch(e => {

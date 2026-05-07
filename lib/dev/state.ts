@@ -2,6 +2,37 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type DevState = 'live' | 'live-zero' | 'soon' | 'soon-confirmed' | 'upcoming' | 'upcoming-confirmed' | 'past' | 'closed' | 'blank';
 
+// Active `count` host_activations pour un event donné, en priorisant les profils
+// women-only (visibles en rose pour la démo Feature B), puis par created_at ASC
+// pour un comportement déterministe entre les invocations.
+async function activateConfirmedSubset(
+  supabase: SupabaseClient,
+  eventId: string,
+  count: number,
+) {
+  const { data: activations } = await supabase
+    .from('host_activations')
+    .select('id, host_profiles!inner(is_women_only, created_at)')
+    .eq('event_id', eventId);
+
+  if (!activations?.length) return;
+
+  const sorted = [...activations].sort((a: any, b: any) => {
+    const ahp = Array.isArray(a.host_profiles) ? a.host_profiles[0] : a.host_profiles;
+    const bhp = Array.isArray(b.host_profiles) ? b.host_profiles[0] : b.host_profiles;
+    if (ahp.is_women_only !== bhp.is_women_only) return ahp.is_women_only ? -1 : 1;
+    return new Date(ahp.created_at).getTime() - new Date(bhp.created_at).getTime();
+  });
+
+  const toActivate = sorted.slice(0, count);
+  if (!toActivate.length) return;
+
+  await supabase
+    .from('host_activations')
+    .update({ is_active: true })
+    .in('id', toActivate.map((a: any) => a.id));
+}
+
 export async function applyState(supabase: SupabaseClient, state: DevState) {
   const { data: events, error } = await supabase
     .from('events')
@@ -141,17 +172,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
         .from('events')
         .update({ event_date: daysFromNow(3) })
         .eq('id', demoFutureEvent.id);
-      const { data: activations } = await supabase
-        .from('host_activations')
-        .select('id')
-        .eq('event_id', demoFutureEvent.id)
-        .limit(4);
-      if (activations?.length) {
-        await supabase
-          .from('host_activations')
-          .update({ is_active: true })
-          .in('id', activations.map((a) => a.id));
-      }
+      await activateConfirmedSubset(supabase, demoFutureEvent.id, 5);
     }
     return;
   }
@@ -172,17 +193,7 @@ export async function applyState(supabase: SupabaseClient, state: DevState) {
         .from('events')
         .update({ event_date: daysFromNow(10) })
         .eq('id', demoFutureEvent.id);
-      const { data: activations } = await supabase
-        .from('host_activations')
-        .select('id')
-        .eq('event_id', demoFutureEvent.id)
-        .limit(4);
-      if (activations?.length) {
-        await supabase
-          .from('host_activations')
-          .update({ is_active: true })
-          .in('id', activations.map((a) => a.id));
-      }
+      await activateConfirmedSubset(supabase, demoFutureEvent.id, 5);
     }
     return;
   }

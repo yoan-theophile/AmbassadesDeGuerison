@@ -20,7 +20,7 @@ export async function POST(_req: NextRequest, { params }: Props) {
       host_activations!inner(
         event_id,
         host_profiles!inner(
-          first_name, address_private, contact_mode,
+          first_name, address_private,
           email, phone, whatsapp_group_url
         ),
         events!inner(title, event_date)

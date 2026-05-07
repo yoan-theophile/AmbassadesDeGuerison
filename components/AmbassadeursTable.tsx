@@ -13,7 +13,6 @@ interface Ambassadeur {
   country: string;
   host_type: string;
   status: string;
-  contact_mode: string;
   capacity: number | null;
   created_at: string;
   phone: string | null;

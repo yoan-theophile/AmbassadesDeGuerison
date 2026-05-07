@@ -20,7 +20,7 @@ export default async function VisitRequestPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, quartier, capacity, contact_mode, consignes')
+      .select('id, first_name, city, country, quartier, capacity, consignes')
       .eq('id', host_id)
       .eq('status', 'validated')
       .maybeSingle(),
@@ -69,7 +69,6 @@ export default async function VisitRequestPage({ params }: Props) {
                   eventId={event_id}
                   hostProfileId={host_id}
                   hostName={host.first_name}
-                  contactMode={host.contact_mode}
                 />
               </>
             ) : (

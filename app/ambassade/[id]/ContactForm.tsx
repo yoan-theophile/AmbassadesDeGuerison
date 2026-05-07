@@ -8,12 +8,11 @@ import PhoneInput from '@/components/ui/PhoneInput';
 interface Props {
   hostProfileId: string;
   hostName: string;
-  contactMode: string;
   eventId: string | null;
   isWomenOnly?: boolean;
 }
 
-export default function ContactForm({ hostProfileId, hostName, contactMode, eventId, isWomenOnly = false }: Props) {
+export default function ContactForm({ hostProfileId, hostName, eventId, isWomenOnly = false }: Props) {
   const [form, setForm] = useState({
     visitor_first_name: '',
     visitor_email: '',
@@ -179,66 +178,70 @@ export default function ContactForm({ hostProfileId, hostName, contactMode, even
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
-        <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
-        <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
-      </div>
-      <PhoneInput
-        label="Téléphone (optionnel)"
-        id="visitor_phone"
-        value={form.visitor_phone}
-        onChange={(v) => set('visitor_phone', v)}
-        placeholder="+33 6 12 34 56 78"
-      />
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          value={form.nb_personnes}
-          onChange={(e) => set('nb_personnes', Math.max(1, parseInt(e.target.value) || 1))}
-          className={inputCls}
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
-        <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
-      </div>
+      {(!isWomenOnly || gender === 'female') && (
+        <div className={`space-y-3 ${isWomenOnly ? 'form-reveal' : ''}`}>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
+            <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
+            <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
+          </div>
+          <PhoneInput
+            label="Téléphone (optionnel)"
+            id="visitor_phone"
+            value={form.visitor_phone}
+            onChange={(v) => set('visitor_phone', v)}
+            placeholder="+33 6 12 34 56 78"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={form.nb_personnes}
+              onChange={(e) => set('nb_personnes', Math.max(1, parseInt(e.target.value) || 1))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Message (optionnel)</label>
+            <textarea value={form.visitor_message} onChange={(e) => set('visitor_message', e.target.value)} rows={2} className={inputCls} placeholder="Je serai avec ma famille de 3 personnes…" />
+          </div>
 
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.visitor_notifications_optin}
-          onChange={(e) => set('visitor_notifications_optin', e.target.checked)}
-          className="mt-0.5 accent-indigo-600"
-        />
-        <span className="text-xs text-slate-500">
-          Je souhaite être informé(e) des prochains lives de David Théry.
-        </span>
-      </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.visitor_notifications_optin}
+              onChange={(e) => set('visitor_notifications_optin', e.target.checked)}
+              className="mt-0.5 accent-indigo-600"
+            />
+            <span className="text-xs text-slate-500">
+              Je souhaite être informé(e) des prochains lives de David Théry.
+            </span>
+          </label>
 
-      {/* Honeypot — invisible */}
-      <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
+          {/* Honeypot — invisible */}
+          <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
 
-      {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-      <p className="text-slate-400 text-xs">
-        L'ambassadeur se réserve le droit d'accepter ou non votre demande.
-      </p>
+          <p className="text-slate-400 text-xs">
+            L'ambassadeur se réserve le droit d'accepter ou non votre demande.
+          </p>
 
-      <button
-        type="submit"
-        disabled={loading || (isWomenOnly && gender !== 'female')}
-        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-      >
-        <Send className="w-4 h-4" />
-        {loading ? 'Envoi…' : 'Envoyer la demande'}
-      </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            {loading ? 'Envoi…' : 'Envoyer la demande'}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
       country,
       host_type: type ?? 'individual',
       capacity: capacity ?? 10,
-      contact_mode: 'email',
       address_private,
       whatsapp_group_url: whatsapp_group_url || null,
       consignes: consignes || null,

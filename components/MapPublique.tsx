@@ -29,7 +29,6 @@ interface HostPin {
   country: string;
   lat: number;
   lng: number;
-  contact_mode: 'public' | 'form' | 'approval';
   is_active: boolean;
   is_full: boolean;
   accepted_count: number | null;
@@ -262,22 +261,37 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         maxZoom: 20,
       }).addTo(map);
 
+      // Cible de zoom pour le prochain `locationfound` — diffère entre l'auto-locate
+      // au chargement (vue métropole) et le bouton manuel (vue régionale).
+      let nextLocateZoom = 9;
+
       const LocateControl = L.Control.extend({
         onAdd() {
           const btn = L.DomUtil.create('button') as HTMLButtonElement;
           btn.title = 'Me localiser';
           btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8" stroke-opacity=".3"/></svg>`;
           btn.style.cssText = 'background:white;border:none;border-radius:8px;padding:8px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;';
-          L.DomEvent.on(btn, 'click', () => map.locate({ setView: true, maxZoom: 7 }));
+          L.DomEvent.on(btn, 'click', () => {
+            nextLocateZoom = 7;
+            map.locate({ enableHighAccuracy: false });
+          });
           return btn;
         },
       });
       new LocateControl({ position: 'bottomright' }).addTo(map);
       map.on('locationerror', () => { /* permission refusée — silencieux */ });
+      map.on('locationfound', (e: any) => {
+        // flyTo anime le pan + zoom au lieu du saut sec de setView.
+        map.flyTo(e.latlng, nextLocateZoom, { duration: 1.4 });
+        nextLocateZoom = 9; // reset pour le prochain auto-trigger éventuel
+      });
 
       // Géolocalisation automatique au premier chargement : zoome sur la zone
       // du visiteur s'il accepte la permission. Si refus → vue monde conservée.
-      map.locate({ setView: true, maxZoom: 9 });
+      // enableHighAccuracy: false → résolution ~50km (cell tower / Wi-Fi triangulation)
+      // au lieu de ~10m (GPS). Plus rapide (100-500 ms vs 1-5 s) et largement suffisant
+      // pour un zoom niveau métropole (zoom 9).
+      map.locate({ enableHighAccuracy: false });
 
       function updateViewport() {
         const bounds = map.getBounds();
