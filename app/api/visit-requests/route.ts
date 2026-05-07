@@ -22,7 +22,11 @@ export async function POST(req: NextRequest) {
   const emailLower = email.trim().toLowerCase();
   const phoneTrimmed = phone?.trim() || null;
 
-  // Blacklist — silent 201 pour éviter l'énumération
+  // Blacklist — refus honnête (403) sans dévoiler le mécanisme.
+  // Choix éthique : pas de shadow-ban (faux 201). David est pasteur, le produit
+  // ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre
+  // pour ne pas confirmer au visiteur qu'il est blacklisté ; une voie de recours
+  // est offerte si c'est une erreur.
   const blacklistFilter = phoneTrimmed
     ? `email.eq.${emailLower},phone.eq.${phoneTrimmed}`
     : `email.eq.${emailLower}`;
@@ -33,7 +37,10 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle();
   if (blocked) {
-    return NextResponse.json({ status: 'pending' }, { status: 201 });
+    return NextResponse.json(
+      { error: "Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe." },
+      { status: 403 },
+    );
   }
 
   // Vérifier que l'event existe et que les inscriptions ne sont pas fermées.

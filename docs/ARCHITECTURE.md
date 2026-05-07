@@ -376,7 +376,7 @@ Mis à jour manuellement à chaque PR significative.
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
 | Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
-| Blacklist | ✅ | `/admin/feedback` + filtre dans routes visiteur | |
+| Blacklist | ✅ | `/admin/blacklist` + filtre dans `/api/visit-requests` et `/api/visitor-help-request` | Choix éthique : refus honnête (403) avec message neutre + voie de recours, pas de shadow-ban (faux 201 silencieux). Voir « Modération anti-abus visiteur » dans CLAUDE.md. |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |
 | Configuration onboarding (vidéo, PDF) | ✅ | `GET/PATCH /api/admin/settings/onboarding` | |
 | Geocoding (autocomplétion ville) | ✅ | `GET /api/geocode` | Proxy Nominatim, limite 1 req/s |

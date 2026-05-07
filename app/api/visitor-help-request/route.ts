@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Vérifie blacklist silencieusement
+  // Blacklist — refus honnête (403). Voir /api/visit-requests pour le détail
+  // du choix éthique (pas de shadow-ban, message neutre, voie de recours).
   const { data: blocked } = await supabase
     .from('blacklist')
     .select('id')
@@ -28,7 +29,10 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (blocked) {
-    return NextResponse.json({ success: true }, { status: 201 });
+    return NextResponse.json(
+      { error: "Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe." },
+      { status: 403 },
+    );
   }
 
   await supabase.from('moderation_log').insert({

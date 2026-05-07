@@ -203,6 +203,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |
 | `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
+| `/admin/blacklist` | Modération **côté visiteur** : bloque un email/téléphone d'envoyer toute demande (`/api/visit-requests` + `/api/visitor-help-request`). Distinct de la suspension d'ambassade (qui cible l'hôte). Voir « Modération anti-abus visiteur » plus bas pour le choix éthique. |
 | `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
 
 `/admin/moderation` redirige vers `/admin/live`.
@@ -317,6 +318,17 @@ Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieu
 - **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
 - Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
 - Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
+
+## Modération anti-abus visiteur
+
+Deux mécanismes de modération orthogonaux :
+
+1. **Suspendre une ambassade** (`/admin/ambassadeurs` → bouton Suspendre) : `host_profiles.status = 'suspended'`. Cible l'**hôte**. Disparaît de la carte, plus contactable.
+2. **Blacklist** (`/admin/blacklist`) : `INSERT blacklist (email, phone, reason)`. Cible le **visiteur**. Bloque ses futures demandes via `/api/visit-requests` et `/api/visitor-help-request`.
+
+**Choix éthique — pas de shadow-ban.** Quand un visiteur blacklisté envoie une demande, l'API retourne **403** avec un message neutre : *« Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe. »* Pas de faux 201 silencieux qui ferait croire au visiteur que sa demande est partie. Le pattern shadow-ban (Twitter/Reddit) est efficace contre l'énumération mais incompatible avec une éthique pastorale : David ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre pour ne pas confirmer le blacklistage, et offre une voie de recours en cas d'erreur.
+
+Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/api/visitor-help-request/route.ts](app/api/visitor-help-request/route.ts).
 
 ## Règles importantes
 
