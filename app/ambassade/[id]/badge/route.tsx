@@ -55,7 +55,7 @@ export async function GET(
         </div>
         {host && (
           <div style={{ fontSize: '18px', opacity: 0.9, marginBottom: '4px' }}>
-            {host.city}, {host.country}
+            {`${host.city}, ${host.country}`}
           </div>
         )}
         <div
