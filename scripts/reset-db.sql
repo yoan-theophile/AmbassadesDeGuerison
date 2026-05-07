@@ -534,6 +534,10 @@ CREATE INDEX idx_campaign_recipients_activation ON campaign_recipients(activatio
 CREATE INDEX idx_campaign_recipients_unsub       ON campaign_recipients(unsubscribe_token) WHERE unsubscribe_token IS NOT NULL;
 CREATE INDEX idx_blacklist_email               ON blacklist(email);
 CREATE INDEX idx_blacklist_phone               ON blacklist(phone);
+-- Indexes pour /admin/stats (Briefing factuel) — getHostsToCheck performance à 1000+ ambassadeurs
+CREATE INDEX idx_host_activations_lookup       ON host_activations(host_profile_id, event_id, is_active);
+CREATE INDEX idx_contact_requests_activation_status ON contact_requests(host_activation_id, status);
+CREATE INDEX idx_testimonials_event_visible    ON testimonials(event_id, is_visible, created_at DESC) WHERE is_visible = TRUE;
 
 -- ============================================================
 -- 9. STORAGE BUCKETS

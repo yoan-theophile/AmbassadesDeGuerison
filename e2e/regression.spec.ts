@@ -46,4 +46,12 @@ test.describe('Régression — statut ambassadeur v2', () => {
     // Doit être redirigé vers /auth
     await expect(page).toHaveURL(/auth/);
   });
+
+  test('/admin/live continue de rediriger vers /auth post-refactor event-window', async ({ page }) => {
+    // Régression CRITIQUE : on a factorisé getCurrentEvent depuis /admin/live
+    // vers lib/admin/event-window.ts. Le comportement de la page admin/live
+    // doit rester strictement identique (auth gate + chargement).
+    await page.goto('/admin/live');
+    await expect(page).toHaveURL(/auth/);
+  });
 });

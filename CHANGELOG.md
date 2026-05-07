@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7.0] - 2026-05-07
+
+### Added
+- **`/admin/stats` refondue : "À noter depuis le dernier live"**. Panneau factuel sobre qui remplace les 4 KPIs incohérents par 4 sections actionnables :
+  - **À traiter** : pointeurs vers les pages d'action (candidats à valider, témoignages à modérer, signalements feedback). Camille trouve sa file en haut. Vide → "Rien à traiter en ce moment."
+  - **Témoignages récents** : 3 derniers témoignages publiés depuis le dernier live, avec extrait + prénom + ville. Section masquée si vide.
+  - **Ambassades à vérifier** : max 5 ambassadeurs avec un label de contexte factuel non-accusatoire (Profil incomplet, Validée mais jamais activée, Inactive depuis 2 lives, Ville sans demande visiteur ce live, Validée il y a ≥ 3 mois 0 accueil). Premier match wins. Click → fiche admin de l'ambassadeur.
+  - **Snapshot footer** : totaux globaux (N ambassades · N pays · N témoignages · N visiteurs accueillis).
+- **Helpers admin factorisés** :
+  - `lib/admin/event-window.ts` : `getCurrentEvent()` + `getCurrentEventWindow()` réutilisés par `/admin/live` et `/admin/stats` (factorisé depuis `app/admin/live/page.tsx`).
+  - `lib/admin/stats-helpers.ts` : 4 agrégats (`getActionQueue`, `getRecentFruits`, `getHostsToCheck`, `getSnapshotTotals`) avec try/catch fail-safe.
+  - `lib/admin/context-label.ts` : pure function `computeContextLabel()` + mapping FR. Premier match wins.
+  - `lib/admin/page-view-log.ts` : tracking d'usage en stdout JSON (queryable dans Vercel logs). Permet de mesurer si David ouvre vraiment la page après chaque live, avant d'enrichir vers une V2 (cf TODO-22).
+- **Indexes performance DB** : `idx_host_activations_lookup`, `idx_contact_requests_activation_status`, `idx_testimonials_event_visible`. Permettent à `getHostsToCheck` de scaler à 1000+ ambassadeurs.
+- **Tests** : 12 unit tests vitest (`tests/unit/admin/context-label.test.ts` couvrant les 5 conditions + premier match wins + multi-match + null edge case ; `tests/unit/admin/page-view-log.test.ts` couvrant écriture JSON + swallow errors + input dégénéré). 1 helper mock Supabase factorisé (`tests/unit/helpers/mock-supabase.ts`). 2 E2E playwright (`e2e/admin-stats-briefing.spec.ts` smoke tests + extension `e2e/regression.spec.ts` pour la régression `/admin/live`).
+
+### Changed
+- **`app/admin/live/page.tsx`** : `getCurrentEvent()` extrait et importé depuis `lib/admin/event-window.ts`. Comportement identique, mais helper réutilisable.
+
+### Rationale produit
+Pivot après CEO review du 2026-05-07 + Codex outside voice. La V1 originale du plan ("Le Briefing du Berger") proposait un narrative pastoral templaté + email digest hebdo + mailto pré-rempli. Codex a fait remonter un risque majeur : *« construire un OS pastoral avant de valider que le pasteur a l'habitude d'ouvrir cette page »*. Plus le risque "uncanny pastoral" du narrative templaté qui sonne faux à la 3e lecture. La V1 shippée est volontairement sobre et factuelle. L'usage sera mesuré (page_view stdout) avant d'enrichir vers une V2 (TODO-22 : narrative restraint validé par David + mailto avec templates pastoraux + email digest hebdo).
+
+### QA
+- ✅ Playwright MCP en local : page rend les 4 sections avec données seed réelles (2 candidats / 2 témoignages / 1 signalement / 3 témoignages cards / 5 ambassades à vérifier / footer 14 ambassades · 7 pays · 12 témoignages · 4 visiteurs).
+- ✅ Régression `/admin/live` : page charge sans erreur, `getCurrentEvent` factorisé fonctionne identiquement.
+- ✅ Build Next.js + 169/169 unit tests + ESLint + typecheck passent.
+
 ## [0.1.6.0] - 2026-05-07
 
 ### Added

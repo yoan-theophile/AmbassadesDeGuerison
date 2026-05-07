@@ -393,13 +393,16 @@ node scripts/magic-link.js david.thery@demo.fr
 
 ---
 
-## Module 14 — Admin : stats `/admin/stats`
+## Module 14 — Admin : Vue générale `/admin/stats` ("À noter depuis le dernier live")
 
 > Connexion admin requise.
 
-- [ ] La page charge sans erreur
-- [ ] KPIs affichés : nombre d'ambassadeurs, demandes, témoignages, signaux
-- [ ] Les chiffres correspondent aux données du seed (8 ambassadeurs, 10 demandes, 14 témoignages, 5 signaux)
+- [ ] La page charge sans erreur (titre "À noter depuis le dernier live" + sous-titre "Live du [date]" ou EmptyState selon état seed)
+- [ ] **Section "À traiter"** : 3 pointeurs visibles si counts > 0, ou "Rien à traiter en ce moment." sinon. Click sur "N candidats" → navigate vers `/admin/ambassadeurs?status=pending_review`
+- [ ] **Section "Témoignages récents"** : 0 ou 3 cartes (extrait + prénom + ville). Section masquée si aucun témoignage publié depuis le dernier live
+- [ ] **Section "Ambassades à vérifier"** : max 5 lignes avec label de contexte factuel à droite (Profil incomplet / Validée mais jamais activée / Inactive depuis 2 lives / Ville sans demande visiteur ce live / Validée il y a ≥ 3 mois, 0 accueil). Section masquée si liste vide. Click "Voir le profil →" → navigate vers `/admin/ambassadeurs?id=...`
+- [ ] **Snapshot footer** : `N ambassades · N pays · N témoignages · N visiteurs accueillis`. Click → `/admin/ambassadeurs`
+- [ ] Tracking page_view : une ligne JSON dans Vercel logs avec `event:'admin_page_view'`, `admin_id`, `path:'/admin/stats'`, `ts`
 
 ---
 

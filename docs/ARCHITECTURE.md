@@ -368,8 +368,9 @@ Mis à jour manuellement à chaque PR significative.
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
 | Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
 | Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | Colonne `events.feedback_sent` ajoutée au schéma. Reste : bug SQL join à corriger avant activation. Cron désactivé (hors production). |
-| Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
+| Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | Helper `getCurrentEvent()` factorisé dans `lib/admin/event-window.ts` (réutilisé par `/admin/stats`). |
 | Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. |
+| Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
@@ -427,8 +428,8 @@ Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable sel
 | Variable | Défaut | Utilisée dans | Rôle |
 |----------|--------|--------------|------|
 | `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` | 4h | `lib/homepage-data.ts`, `api/host-activations`, `dashboard/page.tsx`, `lib/dev/state.ts` | Fenêtre affichage pins sur carte publique |
-| `LIVE_WINDOW_PAST_HOURS` | **6h** | `app/admin/live/page.tsx` uniquement | Fenêtre rétroactive pour le feed admin |
-| `LIVE_WINDOW_FUTURE_HOURS` | 4h | `app/admin/live/page.tsx` uniquement | Fenêtre anticipée pour le feed admin |
+| `LIVE_WINDOW_PAST_HOURS` | **6h** | `lib/admin/event-window.ts` (consommé par `/admin/live` + `/admin/stats`) | Fenêtre rétroactive pour le feed admin |
+| `LIVE_WINDOW_FUTURE_HOURS` | 4h | `lib/admin/event-window.ts` (consommé par `/admin/live` + `/admin/stats`) | Fenêtre anticipée pour le feed admin |
 
 **Conséquence intentionnelle :** le feed admin (`/admin/live`) voit un live "en cours" pendant 6h après son heure de début, tandis que la carte publique arrête d'afficher les pins après 4h. David peut continuer à surveiller les signaux même après la fermeture de la carte.
 
