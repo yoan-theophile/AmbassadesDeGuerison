@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import { CheckCircle2, Clock, MapPin, AlertCircle } from 'lucide-react';
+import { formatEventDateDual } from '@/lib/format-event-date';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -65,12 +66,7 @@ export default async function VisitorConfirmationPage({ params }: Props) {
     },
   ];
 
-  const eventDate = event?.event_date
-    ? new Date(event.event_date).toLocaleString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long',
-        hour: '2-digit', minute: '2-digit',
-      })
-    : '';
+  const eventDate = event?.event_date ? formatEventDateDual(event.event_date) : '';
 
   return (
     <>

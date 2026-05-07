@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendAcceptationVisite } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
+import { formatEventDateDual } from '@/lib/format-event-date';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -54,10 +55,7 @@ export async function POST(_req: NextRequest, { params }: Props) {
 
     if (host && event) {
       const contactEquipeUrl = `${process.env.NEXT_PUBLIC_APP_URL}/contact-equipe?token=${token}`;
-      const eventDate = new Date(event.event_date).toLocaleString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-        timeZone: process.env.NEXT_PUBLIC_ADMIN_TZ_OFFSET ? undefined : 'Europe/Paris',
-      });
+      const eventDate = formatEventDateDual(event.event_date);
 
       Promise.allSettled([
         sendAcceptationVisite(

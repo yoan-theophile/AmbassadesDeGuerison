@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import AccueillirClient from './AccueillirClient';
+import { formatEventDateDual } from '@/lib/format-event-date';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -29,12 +30,7 @@ export default async function AccueillirPage({ params }: Props) {
   const event = Array.isArray(ha?.events) ? ha.events[0] : ha?.events;
   const host = Array.isArray(ha?.host_profiles) ? ha.host_profiles[0] : ha?.host_profiles;
 
-  const eventDate = event?.event_date
-    ? new Date(event.event_date).toLocaleString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long',
-        hour: '2-digit', minute: '2-digit',
-      })
-    : '';
+  const eventDate = event?.event_date ? formatEventDateDual(event.event_date) : '';
 
   return (
     <>

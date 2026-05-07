@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCampagneAmbassadeurs, sendCampagneVisiteurs } from '@/lib/email/templates';
+import { formatEventDateDual } from '@/lib/format-event-date';
 
 const BATCH_SIZE = 50;
 
@@ -68,9 +69,7 @@ async function dispatchCampaign(
 ) {
   if (!event) throw new Error('Événement introuvable');
 
-  const eventDate = new Date(event.event_date).toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-  });
+  const eventDate = formatEventDateDual(event.event_date);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
   if (campaign.type === 'ambassadeurs') {
