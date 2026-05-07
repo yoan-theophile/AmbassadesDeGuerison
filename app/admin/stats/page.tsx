@@ -1,104 +1,111 @@
-import { createServiceClient } from '@/lib/supabase/server';
-import { Home, Globe, Mail, MessageSquare, type LucideIcon } from 'lucide-react';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 import AdminLayout from '@/components/AdminLayout';
+import { getCurrentEventWindow } from '@/lib/admin/event-window';
+import {
+  getActionQueue,
+  getRecentFruits,
+  getHostsToCheck,
+  getSnapshotTotals,
+} from '@/lib/admin/stats-helpers';
+import { logPageView } from '@/lib/admin/page-view-log';
+import ActionQueue from './components/ActionQueue';
+import RecentFruits from './components/RecentFruits';
+import HostsToCheck from './components/HostsToCheck';
+import SnapshotFooter from './components/SnapshotFooter';
 
 export const dynamic = 'force-dynamic';
 
-async function getKpis() {
-  const supabase = createServiceClient();
+// ┌──────────────────────────────────────────────────────────────────┐
+// │  /admin/stats — "À noter depuis le dernier live"                  │
+// │                                                                   │
+// │  Pivot Codex : panneau factuel sobre, pas de narrative pastoral.  │
+// │  4 sections : À traiter / Témoignages récents / Ambassades à     │
+// │  vérifier / Snapshot footer.                                      │
+// │                                                                   │
+// │  Tracking : log page_view stdout (Vercel logs queryable).         │
+// │  Auth : middleware proxy.ts gate déjà /admin/* sur role=admin.   │
+// │                                                                   │
+// │  Flow :                                                           │
+// │    1. logPageView (best-effort)                                  │
+// │    2. eventWindow séquencé (5A — autres helpers en dépendent)    │
+// │    3. Promise.all des 4 helpers stats                            │
+// │    4. render 4 sections                                          │
+// └──────────────────────────────────────────────────────────────────┘
 
-  const { data: lastEvent } = await supabase
-    .from('events')
-    .select('id, title, event_date')
-    .lte('event_date', new Date().toISOString())
-    .order('event_date', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!lastEvent) {
-    return { lastEvent: null, kpis: null };
+async function getAdminUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll() {},
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
   }
-
-  const { data: acts } = await supabase
-    .from('host_activations')
-    .select('id')
-    .eq('event_id', lastEvent.id);
-
-  const actIds = (acts ?? []).map((a) => a.id);
-  const safeActIds = actIds.length > 0 ? actIds : ['00000000-0000-0000-0000-000000000000'];
-
-  const [activations, countries, contacts, testimonials] = await Promise.all([
-    supabase.from('host_activations').select('id', { count: 'exact' }).eq('event_id', lastEvent.id).eq('is_active', true),
-    supabase.from('host_profiles').select('country').eq('status', 'validated'),
-    supabase.from('contact_requests').select('id', { count: 'exact', head: true }).in('host_activation_id', safeActIds),
-    supabase.from('testimonials').select('id', { count: 'exact' }).eq('is_visible', true),
-  ]);
-
-  const uniqueCountries = new Set((countries.data ?? []).map((h) => h.country)).size;
-
-  return {
-    lastEvent,
-    kpis: {
-      activeAmbassades: activations.count ?? 0,
-      uniqueCountries,
-      contactRequests: contacts.count ?? 0,
-      testimonials: testimonials.count ?? 0,
-    },
-  };
 }
 
 export default async function AdminStatsPage() {
-  const { lastEvent, kpis } = await getKpis();
+  const adminId = await getAdminUserId();
+  logPageView(adminId ?? 'unknown', '/admin/stats');
+
+  const eventWindow = await getCurrentEventWindow();
+
+  const [queue, fruits, hostsToCheck, totals] = await Promise.all([
+    getActionQueue(),
+    getRecentFruits(eventWindow.lastEvent?.id ?? null),
+    getHostsToCheck(eventWindow.lastEventIds),
+    getSnapshotTotals(),
+  ]);
+
+  const headerLabel = headerLabelFromWindow(eventWindow);
 
   return (
     <AdminLayout>
-      <div className="px-6 py-8">
-        <h1 className="text-base font-semibold text-slate-800 mb-1">Vue générale</h1>
+      <div className="px-6 py-8 max-w-3xl">
+        <h1 className="text-base font-semibold text-slate-800 mb-1">À noter depuis le dernier live</h1>
+        <p className="text-sm text-slate-500 mb-6">{headerLabel}</p>
 
-        {lastEvent ? (
-          <>
-            <div className="flex items-center gap-2 mb-6">
-              <span className="w-2 h-2 bg-emerald-400 rounded-full" />
-              <p className="text-sm text-slate-500">
-                Dernier live : <span className="font-medium text-slate-700">{lastEvent.title}</span>
-                {' '}·{' '}
-                <span>{new Date(lastEvent.event_date).toLocaleDateString('fr-FR')}</span>
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl">
-              <KpiCard label="Ambassades actives" value={kpis!.activeAmbassades} Icon={Home} color="indigo" />
-              <KpiCard label="Pays représentés" value={kpis!.uniqueCountries} Icon={Globe} color="violet" />
-              <KpiCard label="Demandes de contact" value={kpis!.contactRequests} Icon={Mail} color="sky" />
-              <KpiCard label="Témoignages visibles" value={kpis!.testimonials} Icon={MessageSquare} color="emerald" />
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-20">
-            <p className="text-slate-400 text-sm">Aucun live passé.</p>
-          </div>
-        )}
+        <div className="space-y-4">
+          <ActionQueue queue={queue} />
+          <RecentFruits fruits={fruits} />
+          <HostsToCheck hosts={hostsToCheck} />
+          <SnapshotFooter totals={totals} />
+        </div>
       </div>
     </AdminLayout>
   );
 }
 
-const colorMap = {
-  indigo: { bg: 'bg-indigo-50', icon: 'text-indigo-600', value: 'text-indigo-700' },
-  violet: { bg: 'bg-violet-50', icon: 'text-violet-600', value: 'text-violet-700' },
-  sky:    { bg: 'bg-sky-50',    icon: 'text-sky-600',    value: 'text-sky-700'    },
-  emerald:{ bg: 'bg-emerald-50',icon: 'text-emerald-600',value: 'text-emerald-700'},
-};
+function headerLabelFromWindow(w: Awaited<ReturnType<typeof getCurrentEventWindow>>): string {
+  const { current, lastEvent } = w;
 
-function KpiCard({ label, value, Icon, color }: { label: string; value: number; Icon: LucideIcon; color: keyof typeof colorMap }) {
-  const c = colorMap[color];
-  return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <div className={`w-9 h-9 ${c.bg} rounded-lg flex items-center justify-center mb-3`}>
-        <Icon className={`w-4.5 h-4.5 ${c.icon}`} style={{ width: 18, height: 18 }} />
-      </div>
-      <p className={`text-2xl font-bold ${c.value}`}>{value}</p>
-      <p className="text-xs text-slate-500 mt-1 leading-tight">{label}</p>
-    </div>
-  );
+  if (current.isCurrentLive && current.event) {
+    return `Live en cours — ${formatDate(current.event.event_date)}`;
+  }
+  if (lastEvent) {
+    return `Live du ${formatDate(lastEvent.event_date)}`;
+  }
+  if (current.event && !current.isCurrentLive) {
+    // current.event est un futur event (fallback 3 dans getCurrentEvent)
+    return `Aucun live passé. Prochain live le ${formatDate(current.event.event_date)}.`;
+  }
+  return 'Aucun live encore programmé. Crée le premier dans le calendrier.';
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }

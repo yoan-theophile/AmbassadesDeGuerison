@@ -155,9 +155,16 @@ DevOverlay → revenir en **`🔴 Live`**.
 
 Connexion : magic link `david.thery@demo.fr` (DevOverlay > Magic Link, ou terminal).
 
-### 3a — Stats (2 min)
+### 3a — Vue générale "À noter depuis le dernier live" (2 min)
 
-`/admin/stats` — KPIs : 7 ambassades actives, 6 pays, 10 demandes, 12 témoignages.
+`/admin/stats` — panneau factuel sobre, 4 sections :
+
+- **À traiter** : pointeurs ordonnés vers les pages d'action (candidats à valider, témoignages à modérer, signalements feedback). Vide → "Rien à traiter en ce moment."
+- **Témoignages récents** : 3 dernières citations publiées depuis le dernier live (extraits, prénom + ville). Section masquée si liste vide.
+- **Ambassades à vérifier** : max 5 ambassadeurs avec un label de contexte factuel non-accusatoire (profil incomplet, jamais activée, inactive depuis 2 lives, ville sans demande, ancienne sans accueil). Premier match wins. Section masquée si liste vide.
+- **Snapshot footer** : totaux globaux (N ambassades · N pays · N témoignages · N visiteurs accueillis).
+
+Pas de narrative pastoral templaté en V1 — l'usage de la page sera mesuré (tracking page_view stdout dans Vercel logs) avant d'enrichir vers une V2 (cf TODO-22).
 
 ### 3b — Pipeline candidat (3 min)
 

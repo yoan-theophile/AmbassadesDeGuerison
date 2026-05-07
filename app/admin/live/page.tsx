@@ -1,57 +1,12 @@
-import { createServiceClient } from '@/lib/supabase/server';
 import AdminFeed from '@/components/AdminFeed';
 import LiveTestimonialsCounter from '@/components/LiveTestimonialsCounter';
 import AdminLayout from '@/components/AdminLayout';
 import LiveCloseButton from '@/components/LiveCloseButton';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
+import { getCurrentEvent } from '@/lib/admin/event-window';
 
 export const dynamic = 'force-dynamic';
-
-type Event = { id: string; title: string; event_date: string };
-
-async function getCurrentEvent(): Promise<{ event: Event | null; isCurrentLive: boolean }> {
-  const supabase = createServiceClient();
-  const now = new Date();
-  const pastHours = Number(process.env.LIVE_WINDOW_PAST_HOURS ?? 6);
-  const futureHours = Number(process.env.LIVE_WINDOW_FUTURE_HOURS ?? 4);
-  const windowStart = new Date(now.getTime() - pastHours * 60 * 60 * 1000).toISOString();
-  const windowEnd = new Date(now.getTime() + futureHours * 60 * 60 * 1000).toISOString();
-
-  // Événement dans la fenêtre active : démarré il y a moins de LIVE_WINDOW_PAST_HOURS ou dans les LIVE_WINDOW_FUTURE_HOURS
-  const { data: current } = await supabase
-    .from('events')
-    .select('id, title, event_date')
-    .gte('event_date', windowStart)
-    .lte('event_date', windowEnd)
-    .order('event_date', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (current) return { event: current, isCurrentLive: true };
-
-  // Fallback : dernier événement passé
-  const { data: last } = await supabase
-    .from('events')
-    .select('id, title, event_date')
-    .lte('event_date', now.toISOString())
-    .order('event_date', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (last) return { event: last, isCurrentLive: false };
-
-  // Dernier recours : prochain événement futur
-  const { data: next } = await supabase
-    .from('events')
-    .select('id, title, event_date')
-    .gt('event_date', now.toISOString())
-    .order('event_date', { ascending: true })
-    .limit(1)
-    .single();
-
-  return { event: next ?? null, isCurrentLive: false };
-}
 
 export default async function AdminLivePage() {
   const { event, isCurrentLive } = await getCurrentEvent();

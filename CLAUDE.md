@@ -198,7 +198,7 @@ Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
 
 | Route | Description |
 |-------|-------------|
-| `/admin/stats` | Vue générale — KPIs ambassadeurs |
+| `/admin/stats` | Vue générale — "À noter depuis le dernier live". Panneau factuel sobre (pas de narrative pastoral) : action queue (candidats à valider, témoignages à modérer, signalements feedback) + 3 témoignages récents + max 5 ambassades à vérifier (label de contexte factuel : profil incomplet, jamais activée, inactive depuis 2 lives, ville sans demande, ancienne sans accueil — **premier match wins**) + snapshot footer (totaux globaux). Helpers factorisés dans `lib/admin/event-window.ts` + `lib/admin/stats-helpers.ts` + `lib/admin/context-label.ts`. Tracking d'usage via `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs queryable). Pivot post-CEO/Codex : V1 sobre, V2 enrichie (narrative + mailto + digest) conditionnelle à la mesure d'usage — cf TODO-22. |
 | `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
 | `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
 | `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |

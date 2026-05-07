@@ -367,9 +367,10 @@ Mis à jour manuellement à chaque PR significative.
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
 | Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
-| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | 3 gaps : `feedback_sent` absent du schéma, bug SQL join — cron désactivé (hors production) |
-| Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | |
-| Clôture live | ❌ | — | Pas de bouton admin. DevOverlay uniquement (dev). **Décision D1 : créer bouton dans `/admin/live`** |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | Colonne `events.feedback_sent` ajoutée au schéma. Reste : bug SQL join à corriger avant activation. Cron désactivé (hors production). |
+| Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | Helper `getCurrentEvent()` factorisé dans `lib/admin/event-window.ts` (réutilisé par `/admin/stats`). |
+| Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. |
+| Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
@@ -387,10 +388,12 @@ Mis à jour manuellement à chaque PR significative.
 
 ### Gaps schéma confirmés
 
-| Table | Colonne manquante | Impact | Fix |
-|-------|------------------|--------|-----|
-| `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | Cron `send-feedback-emails` plante au premier run | Ajouter dans `reset-db.sql` + migration |
-| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | Seuil "soon" hardcodé dans `MapPublique.tsx` (ligne 101) | Ajouter colonne + lire depuis DB **Décision D3** |
+Aucun à ce jour. Les colonnes précédemment manquantes ont été ajoutées :
+
+| Table | Colonne | Statut |
+|-------|---------|--------|
+| `events` | `feedback_sent BOOLEAN DEFAULT FALSE` | ✅ Présente dans `reset-db.sql` |
+| `event_timing_config` | `soon_threshold_days INTEGER DEFAULT 2` | ✅ Présente, consommée par `MapPublique.tsx` (prop `soonThresholdDays`) |
 
 ---
 
@@ -425,8 +428,8 @@ Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable sel
 | Variable | Défaut | Utilisée dans | Rôle |
 |----------|--------|--------------|------|
 | `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS` | 4h | `lib/homepage-data.ts`, `api/host-activations`, `dashboard/page.tsx`, `lib/dev/state.ts` | Fenêtre affichage pins sur carte publique |
-| `LIVE_WINDOW_PAST_HOURS` | **6h** | `app/admin/live/page.tsx` uniquement | Fenêtre rétroactive pour le feed admin |
-| `LIVE_WINDOW_FUTURE_HOURS` | 4h | `app/admin/live/page.tsx` uniquement | Fenêtre anticipée pour le feed admin |
+| `LIVE_WINDOW_PAST_HOURS` | **6h** | `lib/admin/event-window.ts` (consommé par `/admin/live` + `/admin/stats`) | Fenêtre rétroactive pour le feed admin |
+| `LIVE_WINDOW_FUTURE_HOURS` | 4h | `lib/admin/event-window.ts` (consommé par `/admin/live` + `/admin/stats`) | Fenêtre anticipée pour le feed admin |
 
 **Conséquence intentionnelle :** le feed admin (`/admin/live`) voit un live "en cours" pendant 6h après son heure de début, tandis que la carte publique arrête d'afficher les pins après 4h. David peut continuer à surveiller les signaux même après la fermeture de la carte.
 
@@ -477,7 +480,7 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 | `POST /api/cron/send-feedback-emails` | Feedback post-live | `CRON_SECRET` | ⏸ Désactivé — bug SQL join |
 | `POST /api/cron/check-activations` | Alerte 0 hôtes actifs | `CRON_SECRET` | ⏸ Désactivé (hors prod) |
 | `POST /api/cron/auto-decline` | Auto-déclin visiteurs | `CRON_SECRET` | 💀 Supprimé |
-| `POST /api/admin/live/close` | Clôturer le live | Admin | ❌ À créer |
+| `POST /api/admin/live/close` | Clôturer le live | Admin | ✅ |
 | `GET /api/geocode` | Proxy Nominatim | Non | ✅ |
 | `GET /api/unsubscribe/[token]` | Désabonnement email | Token | ✅ |
 | `POST /api/upload/ambassador-photo` | Upload photo (`type=profile` ou `room`, max 5) | Session hôte | ✅ |
