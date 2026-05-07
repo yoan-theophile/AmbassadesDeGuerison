@@ -30,12 +30,20 @@ interface HostPin {
   lat: number;
   lng: number;
   contact_mode: 'public' | 'form' | 'approval';
+  is_active: boolean;
   is_full: boolean;
   accepted_count: number | null;
   capacity: number | null;
   whatsapp_group_url?: string;
   host_type: string;
   quartier?: string | null;
+  is_women_only: boolean;
+}
+
+// SVG inline de l'icône Lucide `Flower2` pour les popups Leaflet (HTML strings,
+// le composant React lucide-react n'est pas utilisable ici).
+function flowerIconHtml(color: string, size = 10): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;display:inline-block;"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1"/><circle cx="12" cy="8" r="2"/><path d="M12 10v12"/></svg>`;
 }
 
 function makeClusterIcon(L: any, count: number) {
@@ -48,12 +56,30 @@ function makeClusterIcon(L: any, count: number) {
   });
 }
 
-function makeIcon(L: any, hostType: string, isFull: boolean) {
+function makeIcon(L: any, hostType: string, isFull: boolean, isActive: boolean, isWomenOnly: boolean) {
   const isChurch = hostType === 'eglise' || hostType === 'church';
-  const bg = isFull ? '#ef4444' : isChurch ? '#7c3aed' : '#4f46e5';
+  // Précédence de couleur :
+  // 1. Inactif (grisé) — prime sur tout (full ignoré, women-only en pastel rose pâle)
+  // 2. Actif + complet — rouge (ou pink-800 si women-only)
+  // 3. Actif + women-only — rose (pink-500)
+  // 4. Actif + église — violet
+  // 5. Actif + domicile — indigo
+  let bg: string;
+  if (!isActive) {
+    bg = isWomenOnly ? '#f9a8d4' : '#94a3b8';
+  } else if (isFull) {
+    bg = isWomenOnly ? '#be185d' : '#ef4444';
+  } else if (isWomenOnly) {
+    bg = '#ec4899';
+  } else if (isChurch) {
+    bg = '#7c3aed';
+  } else {
+    bg = '#4f46e5';
+  }
+  const stroke = isActive ? 'white' : '#e2e8f0';
   const symbol = isChurch
-    ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M9 5h6M3 21h18M5 21V10l7-4 7 4v11M10 21v-5h4v5"/></svg>`
-    : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M9 5h6M3 21h18M5 21V10l7-4 7 4v11M10 21v-5h4v5"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
 
   return L.divIcon({
     html: `<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${bg};border:2px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);display:flex;">${symbol}</span></div>`,
@@ -137,7 +163,7 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
         <p className="text-slate-800 text-sm font-semibold capitalize">{formatEventDate(nextEvent.event_date)}</p>
         <p className="text-slate-500 text-xs mt-0.5">à {formatEventTime(nextEvent.event_date)} · {tzLabel} · dans {daysUntilNext} jours</p>
         <p className="text-slate-400 text-xs mt-2.5">
-          Les ambassades s&apos;afficheront dès qu&apos;elles confirmeront leur participation.
+          Les ambassades ci-dessus confirmeront leur participation prochainement.
         </p>
         <StatsLine totalAmbassadors={totalAmbassadors} totalCountries={totalCountries} />
         <a href="/temoignages" className="mt-3 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors">
@@ -293,53 +319,102 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         grouped.get(key)!.push(host);
       });
 
+      const inactiveMessage = liveInProgress
+        ? 'Pas disponible pour ce live'
+        : 'Pas encore confirmé pour le prochain live';
+
       grouped.forEach((group, key) => {
         const [lat, lng] = key.split(',').map(Number);
 
         if (group.length === 1) {
-          // Pin individuel — comportement existant
+          // Pin individuel
           const host = group[0];
-          const fullBadge = host.is_full
-            ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
+          // is_full sur un pin grisé est sans objet (D2) — forcer false pour
+          // éviter d'afficher rouge sur fond gris.
+          const effectiveIsFull = host.is_active ? host.is_full : false;
+          const womenBadge = host.is_women_only
+            ? `<p class="text-xs mt-1" style="color:#ec4899;font-weight:600;display:inline-flex;align-items:center;gap:4px;">${flowerIconHtml('#ec4899', 12)}Groupe femmes</p>`
             : '';
+          let bodyHtml: string;
+          if (!host.is_active) {
+            bodyHtml = `<p class="text-xs text-slate-400 mt-1">${inactiveMessage}</p>${womenBadge}`;
+          } else {
+            const fullBadge = effectiveIsFull
+              ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
+              : '';
+            bodyHtml = `
+              <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
+              ${womenBadge}
+              ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
+              ${!effectiveIsFull ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
+            `;
+          }
           const popup = `
             <div style="min-width:190px;padding:2px 0">
               <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
               <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
               ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${host.quartier}</p>` : ''}
-              <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
-              <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
-              ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
-              ${!host.is_full ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
+              ${bodyHtml}
             </div>
           `;
-          L.marker([lat, lng], { icon: makeIcon(L, host.host_type, host.is_full) })
+          L.marker([lat, lng], { icon: makeIcon(L, host.host_type, effectiveIsFull, host.is_active, host.is_women_only) })
             .addTo(mapRef.current!)
             .bindPopup(popup, { maxWidth: 280 });
         } else {
           // Pin groupé — plusieurs ambassades à la même localisation
           const city = group[0].city;
-          const rows = group.map((host) => {
+          const activeGroup = group.filter((h) => h.is_active);
+          const inactiveGroup = group.filter((h) => !h.is_active);
+
+          function renderActiveRow(host: HostPin) {
             const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
-            const fullBadge = host.is_full
+            const effectiveIsFull = host.is_full;
+            const fullBadge = effectiveIsFull
               ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">Complet</span>'
               : '';
-            const cta = !host.is_full
+            const womenBadge = host.is_women_only
+              ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
+              : '';
+            const cta = !effectiveIsFull
               ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
               : '';
             return `
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}</p>
+                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}${womenBadge}</p>
                 <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
                 ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${host.quartier}</p>` : ''}
                 ${cta}
               </div>
             `;
-          }).join('');
+          }
+
+          function renderInactiveRow(host: HostPin) {
+            const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
+            const womenBadge = host.is_women_only
+              ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
+              : '';
+            return `
+              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
+                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${host.first_name}${womenBadge}</p>
+                <p style="font-size:11px;color:#94a3b8;margin:2px 0 0;">${typeLabel}</p>
+                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${host.quartier}</p>` : ''}
+              </div>
+            `;
+          }
+
+          const activeSection = activeGroup.length > 0
+            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>${activeGroup.map(renderActiveRow).join('')}`
+            : '';
+          const inactiveSection = inactiveGroup.length > 0
+            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">${inactiveMessage} (${inactiveGroup.length})</p>${inactiveGroup.map(renderInactiveRow).join('')}`
+            : '';
+
           const popup = `
             <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
               <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${city}</p>
-              ${rows}
+              ${activeSection}
+              ${inactiveSection}
             </div>
           `;
           L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
@@ -435,7 +510,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         )}
       </div>
       {/* Carte vide — overlay contextuel selon l'état de l'app */}
-      {loaded && hosts.length === 0 && (
+      {/* D7 : conditionné sur le nombre de pins ACTIFS (les grisés ne comptent pas */}
+      {/* comme une carte "remplie") — sinon l'overlay disparaîtrait dès qu'il y a */}
+      {/* un seul ambassadeur validé non-confirmé pour le live. */}
+      {loaded && hosts.filter((h) => h.is_active).length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-lg px-6 py-5 text-center max-w-xs pointer-events-auto">
             <EmptyMapContent

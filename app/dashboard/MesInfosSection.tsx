@@ -13,6 +13,8 @@ interface Profile {
   consignes?: string | null;
   phone?: string | null;
   quartier?: string | null;
+  host_type?: string | null;
+  is_women_only?: boolean | null;
 }
 
 export default function MesInfosSection({ profile }: { profile: Profile }) {
@@ -25,6 +27,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     consignes: profile.consignes ?? '',
     phone: (profile.phone ?? '').replace(/\s+/g, ''),
     quartier: profile.quartier ?? '',
+    is_women_only: Boolean(profile.is_women_only),
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,6 +62,10 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
       phone: form.phone,
       quartier: form.quartier,
     };
+
+    if (profile.host_type === 'individual') {
+      payload.is_women_only = form.is_women_only;
+    }
 
     if (form.city !== profile.city && cityConfirmed) {
       payload.city = form.city;
@@ -155,6 +162,21 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           value={form.phone}
           onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
         />
+
+        {profile.host_type === 'individual' && (
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.is_women_only}
+              onChange={(e) => { setForm((f) => ({ ...f, is_women_only: e.target.checked })); setSaved(false); }}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-pink-500 focus:ring-pink-500"
+            />
+            <span className="text-sm text-slate-700">
+              Ce groupe est réservé aux femmes uniquement
+              <span className="block text-xs text-slate-400 mt-0.5">Une mention « Groupe femmes » apparaîtra sur ta fiche publique.</span>
+            </span>
+          </label>
+        )}
 
         {error && (
           <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>

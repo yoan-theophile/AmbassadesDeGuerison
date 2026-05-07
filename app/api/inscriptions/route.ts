@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     lat,
     lng,
     quartier,
+    is_women_only,
   } = body;
 
   if (!email || !first_name || !last_name || !phone?.trim() || !city || !country || !address_private || lat == null || lng == null) {
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
       lat: lat ?? null,
       lng: lng ?? null,
       quartier: quartier || null,
+      is_women_only: (type ?? 'individual') === 'individual' ? Boolean(is_women_only) : false,
       status: 'pending_review',
     })
     .select('id')

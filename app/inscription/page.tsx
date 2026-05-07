@@ -35,6 +35,7 @@ export default function InscriptionPage() {
     whatsapp_group_url: '',
     consignes: '',
     quartier: '',
+    is_women_only: false,
   });
 
   function set(field: string, value: string) {
@@ -220,6 +221,20 @@ export default function InscriptionPage() {
                 <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder="Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30." />
                 <p className="text-xs text-slate-400 mt-1">Sera transmis aux visiteurs acceptés. Tout détail qui facilite leur arrivée.</p>
               </Field>
+              {form.type === 'individual' && (
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_women_only}
+                    onChange={(e) => setForm((prev) => ({ ...prev, is_women_only: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-pink-500 focus:ring-pink-500"
+                  />
+                  <span className="text-sm text-slate-700">
+                    Ce groupe est réservé aux femmes uniquement
+                    <span className="block text-xs text-slate-400 mt-0.5">Une mention « Groupe femmes » apparaîtra sur votre fiche publique.</span>
+                  </span>
+                </label>
+              )}
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)} className={btnSecondary}>
                   <ArrowLeft className="w-4 h-4" />
