@@ -30,8 +30,11 @@ function ConfirmContent() {
         setErrorMsg(error.message);
       } else {
         setStatus('success');
-        if (data.user?.user_metadata?.role === 'admin') {
+        const role = data.user?.user_metadata?.role;
+        if (role === 'admin') {
           router.replace('/admin/stats');
+        } else if (role === 'visitor') {
+          router.replace('/mon-espace');
         } else {
           router.replace('/dashboard');
         }

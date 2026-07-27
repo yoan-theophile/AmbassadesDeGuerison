@@ -3,6 +3,50 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sendNewContactRequestHost } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+// Compte visiteur créé silencieusement à la première demande — Supabase Auth
+// (pas de token UUID custom, cf learning management-token-lost-link-problem :
+// un lien perdu = ticket support inévitable pour un profil permanent).
+// user_metadata.role='visitor' distingue ce compte des hôtes/admins pour le
+// routage post-login (/auth/confirm).
+async function createOrUpdateVisitorProfile(
+  supabase: ServiceClient,
+  email: string,
+  phone: string | null,
+): Promise<void> {
+  const { data: existingProfile } = await supabase
+    .from('visitor_profiles')
+    .select('id, user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    if (phone) {
+      await supabase.from('visitor_profiles').update({ phone }).eq('id', existingProfile.id);
+    }
+    return;
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { role: 'visitor' },
+  });
+
+  let userId: string | undefined = authData?.user?.id;
+
+  if (authError) {
+    if (!authError.message.toLowerCase().includes('already')) return; // best-effort, ne bloque jamais la demande
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    userId = existingUsers?.users.find((u) => u.email === email)?.id;
+  }
+
+  if (!userId) return;
+
+  await supabase.from('visitor_profiles').insert({ user_id: userId, email, phone });
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -98,6 +142,11 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Phase 2bis — profil visiteur silencieux (aucune étape "créer un compte"
+  // visible). Best-effort : un échec ici ne doit jamais faire échouer la
+  // demande de visite elle-même, c'est un confort en plus, pas une dépendance.
+  createOrUpdateVisitorProfile(supabase, emailLower, phoneTrimmed).catch(() => {});
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     const { data: host } = await supabase

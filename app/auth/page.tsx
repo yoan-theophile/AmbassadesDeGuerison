@@ -71,7 +71,7 @@ export default function AuthPage() {
             <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mb-4">
               <Mail className="w-5 h-5 text-indigo-600" />
             </div>
-            <h1 className="text-xl font-semibold text-slate-800">Espace ambassadeur</h1>
+            <h1 className="text-xl font-semibold text-slate-800">Connexion</h1>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

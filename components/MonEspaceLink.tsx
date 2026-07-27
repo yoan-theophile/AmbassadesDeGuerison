@@ -11,8 +11,11 @@ export default function MonEspaceLink() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.user_metadata?.role === 'admin') {
+      const role = data.user?.user_metadata?.role;
+      if (role === 'admin') {
         setHref('/admin/stats');
+      } else if (role === 'visitor') {
+        setHref('/mon-espace');
       }
     });
   }, []);

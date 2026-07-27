@@ -144,6 +144,20 @@ CREATE TABLE contact_requests (
   created_at                  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Phase 2bis : profil visiteur réutilisable (téléphone), créé silencieusement
+-- à la première demande de visite via un compte Supabase Auth (magic link,
+-- même mécanisme que host_profiles/admin_users — cf learning
+-- management-token-lost-link-problem : éviter les tokens UUID pour des
+-- profils permanents). Photo volontairement hors scope (aucune UI d'upload
+-- visiteur n'existe aujourd'hui, cf /plan-eng-review).
+CREATE TABLE visitor_profiles (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID        NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT        NOT NULL UNIQUE,
+  phone      TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE testimonials (
   id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   host_profile_id    UUID        REFERENCES host_profiles(id) ON DELETE CASCADE,
@@ -425,6 +439,7 @@ ALTER TABLE host_profiles       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE host_activations    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_requests    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE visitor_profiles    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE testimonials        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_signals        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_feedbacks      ENABLE ROW LEVEL SECURITY;
@@ -449,6 +464,12 @@ CREATE POLICY "host_profiles_owner_full" ON host_profiles
   FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "host_profiles_admin_full" ON host_profiles
   FOR ALL USING (is_admin(auth.uid()));
+
+-- visitor_profiles : le visiteur ne voit et ne modifie que son propre profil
+-- (aucune lecture publique, aucun accès admin — pas de valeur pastorale à ce
+-- que David/Camille consultent le téléphone d'un visiteur hors contexte)
+CREATE POLICY "visitor_profiles_owner_full" ON visitor_profiles
+  FOR ALL USING (auth.uid() = user_id);
 
 -- admin_users : super_admin uniquement
 CREATE POLICY "admin_users_super_admin" ON admin_users

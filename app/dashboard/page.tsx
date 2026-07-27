@@ -109,6 +109,11 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace('/auth'); return; }
 
+    // Un visiteur connecté (Phase 2bis) n'a pas de host_profile — le renvoyer
+    // vers son propre espace plutôt que vers /auth (qui bouclerait : déjà
+    // connecté, rien à confirmer).
+    if (user.user_metadata?.role === 'visitor') { router.replace('/mon-espace'); return; }
+
     const { data: prof } = await supabase
       .from('host_profiles')
       .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls, address_private, consignes, phone, quartier, presentation_message, host_type, is_women_only')

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
   hostProfileId: string;
@@ -30,6 +31,23 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
   function set<K extends keyof typeof form>(field: K, value: typeof form[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
+
+  // Pré-remplissage (Phase 2bis) : si un visiteur déjà venu est connecté,
+  // récupère son email/téléphone enregistrés — pas de re-saisie.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user?.user_metadata?.role !== 'visitor') return;
+      const res = await fetch('/api/visitor/profile').catch(() => null);
+      if (!res?.ok) return;
+      const profile = await res.json();
+      setForm((prev) => ({
+        ...prev,
+        visitor_email: profile.email ?? prev.visitor_email,
+        visitor_phone: (profile.phone ?? '').replace(/\s+/g, '') || prev.visitor_phone,
+      }));
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -244,6 +262,10 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
             <Send className="w-4 h-4" />
             {loading ? 'Envoi…' : 'Envoyer la demande'}
           </button>
+
+          <p className="text-center text-xs text-slate-400">
+            Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link> pour ne pas tout retaper.
+          </p>
         </div>
       )}
     </form>
