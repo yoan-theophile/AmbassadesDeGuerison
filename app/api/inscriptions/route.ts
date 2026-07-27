@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
     consignes,
     lat,
     lng,
+    lat_precise,
+    lng_precise,
     quartier,
     is_women_only,
   } = body;
@@ -52,6 +54,24 @@ export async function POST(req: NextRequest) {
   }
   if ((lat == null) !== (lng == null)) {
     return NextResponse.json({ error: 'lat et lng doivent être fournis ensemble.' }, { status: 400 });
+  }
+
+  // lat_precise/lng_precise : optionnelles (adresse non géocodable en zone rurale
+  // ne doit jamais bloquer l'inscription), mais validées si fournies.
+  if ((lat_precise == null) !== (lng_precise == null)) {
+    return NextResponse.json({ error: 'lat_precise et lng_precise doivent être fournis ensemble.' }, { status: 400 });
+  }
+  if (lat_precise != null) {
+    const v = Number(lat_precise);
+    if (Number.isNaN(v) || v < -90 || v > 90) {
+      return NextResponse.json({ error: 'Latitude précise invalide.' }, { status: 400 });
+    }
+  }
+  if (lng_precise != null) {
+    const v = Number(lng_precise);
+    if (Number.isNaN(v) || v < -180 || v > 180) {
+      return NextResponse.json({ error: 'Longitude précise invalide.' }, { status: 400 });
+    }
   }
 
   const supabase = createServiceClient();
@@ -97,6 +117,8 @@ export async function POST(req: NextRequest) {
       phone: phone.trim(),
       lat: lat ?? null,
       lng: lng ?? null,
+      lat_precise: lat_precise ?? null,
+      lng_precise: lng_precise ?? null,
       quartier: quartier || null,
       is_women_only: (type ?? 'individual') === 'individual' ? Boolean(is_women_only) : false,
       status: 'pending_review',

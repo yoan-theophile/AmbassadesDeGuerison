@@ -3,8 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ambassades-guerison.fr';
 
+// Quartier/arrondissement — priorité à ce qui identifie le mieux une zone
+// dans une grande ville (Paris/Lyon/Marseille ont des city_district), avec
+// repli sur suburb/neighbourhood pour les autres villes.
+function extractQuartier(addr: Record<string, string | undefined>): string | undefined {
+  return addr.city_district ?? addr.suburb ?? addr.neighbourhood ?? addr.quarter;
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim();
+  const mode = req.nextUrl.searchParams.get('mode'); // 'address' — Phase 2 (adresse précise ambassadeur)
   if (!q || q.length < 2) {
     return NextResponse.json([]);
   }
@@ -14,8 +22,10 @@ export async function GET(req: NextRequest) {
     format: 'json',
     limit: '6',
     addressdetails: '1',
-    featuretype: 'city',
   });
+  if (mode !== 'address') {
+    params.set('featuretype', 'city');
+  }
 
   const res = await fetch(`${NOMINATIM_URL}?${params}`, {
     headers: {
@@ -28,6 +38,26 @@ export async function GET(req: NextRequest) {
   if (!res?.ok) return NextResponse.json([]);
 
   const raw: any[] = await res.json();
+
+  if (mode === 'address') {
+    const results = raw
+      .filter((r) => r.lat && r.lon)
+      .map((r) => {
+        const addr = r.address ?? {};
+        const city = addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? '';
+        const country = addr.country ?? '';
+        return {
+          label: r.display_name as string,
+          address: r.display_name as string,
+          city,
+          country,
+          quartier: extractQuartier(addr) ?? null,
+          lat_precise: parseFloat(r.lat),
+          lng_precise: parseFloat(r.lon),
+        };
+      });
+    return NextResponse.json(results);
+  }
 
   const seen = new Set<string>();
   const results = raw

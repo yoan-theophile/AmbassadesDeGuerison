@@ -64,12 +64,18 @@ CREATE TABLE host_profiles (
   country                TEXT        NOT NULL,
   lat                    DOUBLE PRECISION,
   lng                    DOUBLE PRECISION,
+  -- Coordonnées précises (Phase 2) — PRIVÉES, jamais exposées sur une route
+  -- publique. Servent uniquement au calcul de distance visiteur↔ambassadeur
+  -- (calcul serveur, cf /api/distance). lat/lng ci-dessus restent la version
+  -- publique grossière (ville ou arrondissement-rounded) — ne jamais les
+  -- écraser directement avec la valeur du geocoding précis.
+  lat_precise            DOUBLE PRECISION,
+  lng_precise            DOUBLE PRECISION,
   quartier               TEXT        DEFAULT NULL,
   presentation_message   TEXT        DEFAULT NULL CHECK (char_length(presentation_message) <= 240),
   is_women_only          BOOLEAN     NOT NULL DEFAULT FALSE,
   geocoding_failed       BOOLEAN     DEFAULT FALSE,
   address_private        TEXT,
-  address_public         BOOLEAN     DEFAULT FALSE,
   whatsapp_group_url     TEXT        DEFAULT NULL
     CHECK (
       whatsapp_group_url IS NULL
@@ -270,7 +276,7 @@ CREATE VIEW host_profiles_public AS
 SELECT
   id, user_id, first_name, last_name, host_type, church_subtype,
   city, country, lat, lng, geocoding_failed,
-  whatsapp_group_url, address_public,
+  whatsapp_group_url,
   capacity, consignes, viewing_setup, profile_photo_url,
   status, created_at
 FROM host_profiles;

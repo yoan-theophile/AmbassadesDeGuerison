@@ -5,6 +5,7 @@ import { Settings, CheckCircle2, Loader2 } from 'lucide-react';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 import PhoneInput from '@/components/ui/PhoneInput';
+import AddressInput from '@/components/ui/AddressInput';
 
 interface Profile {
   city: string;
@@ -29,9 +30,12 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     phone: (profile.phone ?? '').replace(/\s+/g, ''),
     quartier: profile.quartier ?? '',
     presentation_message: profile.presentation_message ?? '',
+    lat_precise: undefined as number | undefined,
+    lng_precise: undefined as number | undefined,
     is_women_only: Boolean(profile.is_women_only),
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
+  const [addressChanged, setAddressChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -65,6 +69,11 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
       quartier: form.quartier,
       presentation_message: form.presentation_message,
     };
+
+    if (addressChanged && form.lat_precise != null && form.lng_precise != null) {
+      payload.lat_precise = form.lat_precise;
+      payload.lng_precise = form.lng_precise;
+    }
 
     if (profile.host_type === 'individual') {
       payload.is_women_only = form.is_women_only;
@@ -156,12 +165,25 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
 
         <div>
           <label className="block text-sm text-slate-700 mb-1.5">Adresse privée</label>
-          <textarea
+          <AddressInput
             value={form.address_private}
-            onChange={(e) => { setForm((f) => ({ ...f, address_private: e.target.value })); setSaved(false); }}
-            rows={2}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, address_private: v, lat_precise: undefined, lng_precise: undefined }));
+              setAddressChanged(false);
+              setSaved(false);
+            }}
+            onSelect={(sel) => {
+              setForm((f) => ({
+                ...f,
+                address_private: sel.address,
+                lat_precise: sel.lat_precise,
+                lng_precise: sel.lng_precise,
+                quartier: f.quartier || (sel.quartier ?? ''),
+              }));
+              setAddressChanged(true);
+              setSaved(false);
+            }}
             placeholder="12 rue de la Paix, 75001 Paris"
-            className={inputCls}
           />
           <p className="text-xs text-slate-400 mt-1">Partagée uniquement avec les visiteurs que vous acceptez.</p>
         </div>
