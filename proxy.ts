@@ -9,6 +9,7 @@ const RATE_LIMITED_ROUTES = [
   '/api/temoignages',
   '/api/inscriptions',
   '/api/visitor-help-request',
+  '/api/distance',
 ];
 
 const LIMITS: Record<string, { max: number; windowMs: number }> = {
@@ -17,6 +18,10 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   '/api/temoignages':          { max: 3, windowMs: 60_000 },
   '/api/inscriptions':         { max: 2, windowMs: 60_000 },
   '/api/visitor-help-request': { max: 3, windowMs: 60_000 },
+  // Mitigation "oracle de position" (cf /plan-eng-review, Codex) : un visiteur
+  // légitime clique "Trier par distance" une poignée de fois max par minute ;
+  // un rate-limit serré rend la triangulation par requêtes répétées impraticable.
+  '/api/distance':              { max: 8, windowMs: 60_000 },
 };
 
 // Stockage en mémoire (ne persiste pas entre instances serverless — suffisant pour démo)
@@ -108,5 +113,6 @@ export const config = {
     '/api/temoignages/:path*',
     '/api/inscriptions/:path*',
     '/api/visitor-help-request/:path*',
+    '/api/distance/:path*',
   ],
 };

@@ -41,6 +41,64 @@ interface HostPin {
   is_women_only: boolean;
 }
 
+// "Trier par distance" — géolocalisation navigateur ÉPHÉMÈRE déclenchée par une
+// action utilisateur explicite (jamais automatique, cf design doc Phase 2 :
+// piggybacker sur l'auto-locate de la carte violerait le consentement). La
+// position n'est envoyée qu'une fois à /api/distance, jamais stockée, jamais
+// ré-exposée : seule la distance arrondie au km revient.
+async function sortClusterByDistance(
+  activeGroup: HostPin[],
+  btn: HTMLButtonElement,
+  hint: HTMLElement | null,
+  rowsContainer: HTMLElement | null,
+  renderRow: (host: HostPin, distanceKm?: number | null) => string,
+) {
+  btn.disabled = true;
+  btn.textContent = 'Localisation…';
+  if (hint) hint.style.display = 'none';
+
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) { reject(new Error('unsupported')); return; }
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10_000 });
+    });
+
+    const res = await fetch('/api/distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        host_ids: activeGroup.map((h) => h.id),
+      }),
+    });
+
+    if (!res.ok) throw new Error('distance_api_failed');
+    const distances: Record<string, number | null> = await res.json();
+
+    const sorted = [...activeGroup].sort((a, b) => {
+      const da = distances[a.id];
+      const db = distances[b.id];
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da - db;
+    });
+
+    if (rowsContainer) {
+      rowsContainer.innerHTML = sorted.map((h) => renderRow(h, distances[h.id] ?? null)).join('');
+    }
+    btn.style.display = 'none';
+  } catch {
+    btn.disabled = false;
+    btn.textContent = '📍 Trier par distance';
+    if (hint) {
+      hint.textContent = "Localisation refusée ou indisponible — les ambassades restent visibles sans tri par distance.";
+      hint.style.display = 'block';
+    }
+  }
+}
+
 // Avatar en popup (jamais sur le pin — cf design C.1, évite la surcharge
 // visuelle sur les clusters denses type Paris et le glissement "annonce").
 // Fallback initiale + couleur si pas de photo (accompagnement pastoral, pas
@@ -422,7 +480,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
           const activeGroup = group.filter((h) => h.is_active);
           const inactiveGroup = group.filter((h) => !h.is_active);
 
-          function renderActiveRow(host: HostPin) {
+          function renderActiveRow(host: HostPin, distanceKm?: number | null) {
             const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
             const effectiveIsFull = host.is_full;
             const fullBadge = effectiveIsFull
@@ -431,6 +489,9 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
             const womenBadge = host.is_women_only
               ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
               : '';
+            const distanceBadge = distanceKm != null
+              ? `<span style="display:inline-block;background:#eef2ff;color:#4f46e5;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">≈ ${distanceKm} km</span>`
+              : '';
             const cta = !effectiveIsFull
               ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
               : '';
@@ -438,7 +499,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:flex-start;">
                 ${avatarHtml(host, 28)}
                 <div style="min-width:0;flex:1;">
-                  <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}</p>
+                  <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}${distanceBadge}</p>
                   <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
                   ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
                   ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
@@ -462,8 +523,26 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
             `;
           }
 
+          // Identifiant DOM stable pour ce cluster (pas de . ni - : getElementById
+          // n'a pas besoin d'échappement CSS, mais on reste prudent).
+          const idSafe = key.replace(/[^a-zA-Z0-9]/g, '_');
+          const rowsContainerId = `dist-rows-${idSafe}`;
+          const sortButtonId = `dist-btn-${idSafe}`;
+          const sortHintId = `dist-hint-${idSafe}`;
+
+          const sortButtonHtml = activeGroup.length > 1
+            ? `
+              <button id="${sortButtonId}" type="button" style="display:flex;align-items:center;gap:5px;background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:none;cursor:pointer;margin:4px 0 2px;">
+                📍 Trier par distance
+              </button>
+              <p id="${sortHintId}" style="display:none;font-size:10px;color:#94a3b8;margin:2px 0 4px;"></p>
+            `
+            : '';
+
           const activeSection = activeGroup.length > 0
-            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>${activeGroup.map(renderActiveRow).join('')}`
+            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>
+               ${sortButtonHtml}
+               <div id="${rowsContainerId}">${activeGroup.map((h) => renderActiveRow(h)).join('')}</div>`
             : '';
           const inactiveSection = inactiveGroup.length > 0
             ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">${inactiveMessage} (${inactiveGroup.length})</p>${inactiveGroup.map(renderInactiveRow).join('')}`
@@ -476,9 +555,20 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               ${inactiveSection}
             </div>
           `;
-          L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
+          const clusterMarker = L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
             .addTo(mapRef.current!)
             .bindPopup(popup, { maxWidth: 300 });
+
+          if (activeGroup.length > 1) {
+            clusterMarker.on('popupopen', () => {
+              const btn = document.getElementById(sortButtonId) as HTMLButtonElement | null;
+              const hint = document.getElementById(sortHintId);
+              const rowsContainer = document.getElementById(rowsContainerId);
+              if (!btn || btn.dataset.bound) return;
+              btn.dataset.bound = '1';
+              btn.addEventListener('click', () => sortClusterByDistance(activeGroup, btn, hint, rowsContainer, renderActiveRow));
+            });
+          }
         }
       });
     }
