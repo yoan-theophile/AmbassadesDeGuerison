@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getPublicMapPhotoUrls } from '@/lib/storage/photo-url';
 
 // Polling 30s depuis la carte publique
 export const revalidate = 0;
@@ -37,7 +38,7 @@ export async function GET() {
       host_profiles!inner (
         id, first_name, city, country, lat, lng,
         whatsapp_group_url, geocoding_failed, host_type, quartier, is_women_only,
-        presentation_message
+        presentation_message, profile_photo_url
       )
     `)
     .eq('event_id', lastEvent.id);
@@ -46,32 +47,41 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const pins = (data ?? [])
-    .filter((a) => {
-      const hp = a.host_profiles as any;
-      return hp && hp.lat && hp.lng && !hp.geocoding_failed;
-    })
-    .map((a) => {
-      const hp = a.host_profiles as any;
-      return {
-        id: hp.id,
-        first_name: hp.first_name,
-        city: hp.city,
-        country: hp.country,
-        lat: hp.lat,
-        lng: hp.lng,
-        is_active: a.is_active,
-        is_full: a.is_full,
-        accepted_count: a.accepted_count,
-        capacity: a.capacity,
-        whatsapp_group_url: hp.whatsapp_group_url ?? null,
-        host_type: hp.host_type ?? 'domicile',
-        quartier: hp.quartier ?? null,
-        presentation_message: hp.presentation_message ?? null,
-        is_women_only: hp.is_women_only ?? false,
-        activation_id: a.id,
-      };
-    });
+  const rows = (data ?? []).filter((a) => {
+    const hp = a.host_profiles as any;
+    return hp && hp.lat && hp.lng && !hp.geocoding_failed;
+  });
+
+  // Signed URLs uniquement pour les hôtes actifs (photo affichée en popup,
+  // jamais sur le pin) — pas de coût de signature pour les pins grisés.
+  const activePhotoPaths = rows
+    .filter((a) => a.is_active)
+    .map((a) => (a.host_profiles as any).profile_photo_url)
+    .filter(Boolean);
+  const photoUrls = await getPublicMapPhotoUrls(activePhotoPaths);
+
+  const pins = rows.map((a) => {
+    const hp = a.host_profiles as any;
+    return {
+      id: hp.id,
+      first_name: hp.first_name,
+      city: hp.city,
+      country: hp.country,
+      lat: hp.lat,
+      lng: hp.lng,
+      is_active: a.is_active,
+      is_full: a.is_full,
+      accepted_count: a.accepted_count,
+      capacity: a.capacity,
+      whatsapp_group_url: hp.whatsapp_group_url ?? null,
+      host_type: hp.host_type ?? 'domicile',
+      quartier: hp.quartier ?? null,
+      presentation_message: hp.presentation_message ?? null,
+      is_women_only: hp.is_women_only ?? false,
+      photo_url: a.is_active && hp.profile_photo_url ? (photoUrls[hp.profile_photo_url] ?? null) : null,
+      activation_id: a.id,
+    };
+  });
 
   return NextResponse.json(pins);
 }

@@ -37,7 +37,20 @@ interface HostPin {
   host_type: string;
   quartier?: string | null;
   presentation_message?: string | null;
+  photo_url?: string | null;
   is_women_only: boolean;
+}
+
+// Avatar en popup (jamais sur le pin — cf design C.1, évite la surcharge
+// visuelle sur les clusters denses type Paris et le glissement "annonce").
+// Fallback initiale + couleur si pas de photo (accompagnement pastoral, pas
+// un blocage technique — cf design doc R2).
+function avatarHtml(host: { first_name: string; photo_url?: string | null }, size = 40): string {
+  if (host.photo_url) {
+    return `<img src="${escapeHtml(host.photo_url)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;border-radius:9999px;object-fit:cover;flex-shrink:0;" />`;
+  }
+  const initial = escapeHtml((host.first_name || '?').trim().charAt(0).toUpperCase());
+  return `<div style="width:${size}px;height:${size}px;border-radius:9999px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:${Math.round(size * 0.4)}px;flex-shrink:0;">${initial}</div>`;
 }
 
 // Échappe les caractères HTML dangereux avant interpolation dans les popups
@@ -377,11 +390,25 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               ${!effectiveIsFull ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             `;
           }
-          const popup = `
-            <div style="min-width:190px;padding:2px 0">
+          const headerHtml = host.is_active
+            ? `
+              <div style="display:flex;align-items:flex-start;gap:8px;">
+                ${avatarHtml(host)}
+                <div style="min-width:0;">
+                  <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+                  ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+                </div>
+              </div>
+            `
+            : `
               <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
               ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+            `;
+          const popup = `
+            <div style="min-width:190px;padding:2px 0">
+              ${headerHtml}
               ${host.is_active && host.presentation_message ? `<p class="text-xs text-slate-500 mt-1.5" style="line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
               ${bodyHtml}
             </div>
@@ -408,12 +435,15 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
               : '';
             return `
-              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}</p>
-                <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
-                ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
-                ${cta}
+              <div style="padding:8px 0;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:flex-start;">
+                ${avatarHtml(host, 28)}
+                <div style="min-width:0;flex:1;">
+                  <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}</p>
+                  <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+                  ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
+                  ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
+                  ${cta}
+                </div>
               </div>
             `;
           }
