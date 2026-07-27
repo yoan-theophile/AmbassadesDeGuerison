@@ -543,25 +543,64 @@ CREATE INDEX idx_testimonials_event_visible    ON testimonials(event_id, is_visi
 -- 9. STORAGE BUCKETS
 -- ============================================================
 
+-- Bucket privé (public = false) — corrigé le 2026-07-27 (/plan-eng-review a détecté que
+-- reset-db.sql n'avait jamais été aligné sur le pivot vie-privée de migration-photos-private.sql ;
+-- un `supabase start` local frais recréait un bucket réellement public). Photos accessibles
+-- uniquement via signed URL générée côté serveur (lib/storage/photo-url.ts).
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'ambassador-photos',
   'ambassador-photos',
-  true,
+  false,
   5242880,
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 )
 ON CONFLICT (id) DO NOTHING;
 
-DROP POLICY IF EXISTS "ambassador_photos_public_read"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_public_read"    ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_service_insert" ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_select"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_insert"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_update"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_delete"   ON storage.objects;
 
--- Lecture publique via URL (bucket public)
-CREATE POLICY "ambassador_photos_public_read"
+-- L'ambassadeur peut lire ses propres fichiers (pour createSignedUrl côté client)
+CREATE POLICY "ambassador_photos_owner_select"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'ambassador-photos');
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);
 
--- Upload réservé au service_role (bypass RLS) — policy de sécurité pour les clés anon
-CREATE POLICY "ambassador_photos_service_insert"
+-- L'ambassadeur peut uploader (le contrôle d'ownership est dans la route API)
+CREATE POLICY "ambassador_photos_owner_insert"
 ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'ambassador-photos');
+WITH CHECK (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+);
+
+-- L'ambassadeur peut écraser ses propres fichiers (upsert)
+CREATE POLICY "ambassador_photos_owner_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);
+
+-- L'ambassadeur peut supprimer ses propres fichiers
+CREATE POLICY "ambassador_photos_owner_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);
