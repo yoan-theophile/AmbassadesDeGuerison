@@ -146,6 +146,7 @@ export default function InscriptionPage() {
               </Field>
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
+                <p className="text-xs text-slate-400 mt-1">Sert à vous connecter (lien de connexion, sans mot de passe) et à recevoir les notifications de demandes de visite.</p>
               </Field>
               <Field label="Téléphone (WhatsApp de préférence)" required>
                 <PhoneInput

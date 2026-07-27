@@ -187,14 +187,18 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
             <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
+            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
           </div>
-          <PhoneInput
-            label="Téléphone (optionnel)"
-            id="visitor_phone"
-            value={form.visitor_phone}
-            onChange={(v) => set('visitor_phone', v)}
-            placeholder="+33 6 12 34 56 78"
-          />
+          <div>
+            <PhoneInput
+              label="Téléphone (optionnel)"
+              id="visitor_phone"
+              value={form.visitor_phone}
+              onChange={(v) => set('visitor_phone', v)}
+              placeholder="+33 6 12 34 56 78"
+            />
+            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input

@@ -177,12 +177,15 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           />
         </div>
 
-        <PhoneInput
-          label="Téléphone (WhatsApp de préférence)"
-          id="phone"
-          value={form.phone}
-          onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
-        />
+        <div>
+          <PhoneInput
+            label="Téléphone (WhatsApp de préférence)"
+            id="phone"
+            value={form.phone}
+            onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
+          />
+          <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
+        </div>
 
         {profile.host_type === 'individual' && (
           <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">

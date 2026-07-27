@@ -86,6 +86,7 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
               className={inputCls}
               placeholder="marie@exemple.com"
             />
+            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
           </div>
         </div>
       </fieldset>
@@ -94,13 +95,16 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
       <fieldset>
         <legend className="text-xs text-slate-400 uppercase tracking-wide mb-3">Logistique</legend>
         <div className="space-y-3">
-          <PhoneInput
-            label="Téléphone (optionnel)"
-            id="visitor_phone"
-            value={form.visitor_phone}
-            onChange={(v) => set('visitor_phone', v)}
-            placeholder="+33 6 12 34 56 78"
-          />
+          <div>
+            <PhoneInput
+              label="Téléphone (optionnel)"
+              id="visitor_phone"
+              value={form.visitor_phone}
+              onChange={(v) => set('visitor_phone', v)}
+              placeholder="+33 6 12 34 56 78"
+            />
+            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input
