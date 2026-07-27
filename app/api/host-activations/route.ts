@@ -36,7 +36,8 @@ export async function GET() {
       id, is_active, is_full, capacity, accepted_count,
       host_profiles!inner (
         id, first_name, city, country, lat, lng,
-        whatsapp_group_url, geocoding_failed, host_type, quartier, is_women_only
+        whatsapp_group_url, geocoding_failed, host_type, quartier, is_women_only,
+        presentation_message
       )
     `)
     .eq('event_id', lastEvent.id);
@@ -66,6 +67,7 @@ export async function GET() {
         whatsapp_group_url: hp.whatsapp_group_url ?? null,
         host_type: hp.host_type ?? 'domicile',
         quartier: hp.quartier ?? null,
+        presentation_message: hp.presentation_message ?? null,
         is_women_only: hp.is_women_only ?? false,
         activation_id: a.id,
       };

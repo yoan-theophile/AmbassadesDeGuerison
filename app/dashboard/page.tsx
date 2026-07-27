@@ -111,7 +111,7 @@ export default function DashboardPage() {
 
     const { data: prof } = await supabase
       .from('host_profiles')
-      .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls, address_private, consignes, phone, quartier, host_type, is_women_only')
+      .select('id, first_name, city, country, status, email, profile_photo_url, room_photo_urls, address_private, consignes, phone, quartier, presentation_message, host_type, is_women_only')
       .eq('user_id', user.id)
       .single();
 

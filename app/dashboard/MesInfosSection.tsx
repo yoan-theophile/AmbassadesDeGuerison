@@ -13,6 +13,7 @@ interface Profile {
   consignes?: string | null;
   phone?: string | null;
   quartier?: string | null;
+  presentation_message?: string | null;
   host_type?: string | null;
   is_women_only?: boolean | null;
 }
@@ -27,6 +28,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     consignes: profile.consignes ?? '',
     phone: (profile.phone ?? '').replace(/\s+/g, ''),
     quartier: profile.quartier ?? '',
+    presentation_message: profile.presentation_message ?? '',
     is_women_only: Boolean(profile.is_women_only),
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
@@ -61,6 +63,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
       consignes: form.consignes,
       phone: form.phone,
       quartier: form.quartier,
+      presentation_message: form.presentation_message,
     };
 
     if (profile.host_type === 'individual') {
@@ -130,6 +133,24 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           />
           <p className="text-xs text-slate-400 mt-1">
             Aide les visiteurs à te retrouver s'ils sont dans le même quartier.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-700 mb-1.5">
+            Message de présentation
+            <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel, visible sur la carte)</span>
+          </label>
+          <textarea
+            value={form.presentation_message}
+            onChange={(e) => { setForm((f) => ({ ...f, presentation_message: e.target.value.slice(0, 240) })); setSaved(false); }}
+            rows={2}
+            maxLength={240}
+            placeholder="Ex. : Chez nous, c'est simple et chaleureux — on prie ensemble avant le live autour d'un café."
+            className={inputCls}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            {form.presentation_message.length}/240 — Donne envie aux visiteurs de venir chez toi.
           </p>
         </div>
 

@@ -36,7 +36,20 @@ interface HostPin {
   whatsapp_group_url?: string;
   host_type: string;
   quartier?: string | null;
+  presentation_message?: string | null;
   is_women_only: boolean;
+}
+
+// Échappe les caractères HTML dangereux avant interpolation dans les popups
+// Leaflet (chaînes HTML brutes, pas de JSX) — first_name/quartier/presentation_message
+// sont du texte libre saisi par l'ambassadeur, jamais fait confiance tel quel.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // SVG inline de l'icône Lucide `Flower2` pour les popups Leaflet (HTML strings,
@@ -366,9 +379,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
           }
           const popup = `
             <div style="min-width:190px;padding:2px 0">
-              <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
-              <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
-              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${host.quartier}</p>` : ''}
+              <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+              ${host.is_active && host.presentation_message ? `<p class="text-xs text-slate-500 mt-1.5" style="line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
               ${bodyHtml}
             </div>
           `;
@@ -395,9 +409,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               : '';
             return `
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}${womenBadge}</p>
+                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}</p>
                 <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${host.quartier}</p>` : ''}
+                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
+                ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
                 ${cta}
               </div>
             `;
@@ -410,9 +425,9 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               : '';
             return `
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${host.first_name}${womenBadge}</p>
+                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${escapeHtml(host.first_name)}${womenBadge}</p>
                 <p style="font-size:11px;color:#94a3b8;margin:2px 0 0;">${typeLabel}</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${host.quartier}</p>` : ''}
+                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
               </div>
             `;
           }
@@ -426,7 +441,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
 
           const popup = `
             <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
-              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${city}</p>
+              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${escapeHtml(city)}</p>
               ${activeSection}
               ${inactiveSection}
             </div>
