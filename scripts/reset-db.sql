@@ -111,7 +111,7 @@ CREATE TABLE host_profiles (
 -- Table multi-admins (source de vérité pour is_admin / is_super_admin)
 CREATE TABLE admin_users (
   user_id  UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role     TEXT NOT NULL CHECK (role IN ('super_admin', 'moderator')),
+  role     TEXT NOT NULL CHECK (role IN ('super_admin', 'admin')),
   added_by UUID REFERENCES auth.users(id),
   added_at TIMESTAMPTZ DEFAULT NOW()
 );
