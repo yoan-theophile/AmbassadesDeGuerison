@@ -30,6 +30,7 @@ export default function PhoneInput({
       <PhoneInputLib
         id={id}
         international
+        countryCallingCodeEditable={false}
         defaultCountry="FR"
         value={value as Value}
         onChange={(v) => onChange(v ?? '')}
