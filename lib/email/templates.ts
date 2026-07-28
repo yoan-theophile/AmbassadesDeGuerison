@@ -5,7 +5,6 @@ import { getMailer } from './send';
 import MagicLink from '@/emails/magic-link';
 import NouvelleInscriptionAdmin from '@/emails/nouvelle-inscription-admin';
 import AideVisiteurAdmin from '@/emails/aide-visiteur-admin';
-import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
@@ -30,18 +29,6 @@ export async function sendMagicLink(to: string, magicLinkUrl: string) {
     from: FROM(), to,
     subject: 'Votre lien de connexion — Ambassades de Guérison',
     react: React.createElement(MagicLink, { magicLinkUrl }),
-  });
-}
-
-export async function sendBienvenueAmbassadeur(to: string, firstName: string) {
-  return getMailer().emails.send({
-    from: FROM(), to,
-    subject: `Bienvenue, ${firstName} — votre ambassade est active !`,
-    react: React.createElement(BienvenueAmbassadeur, {
-      firstName,
-      dashboardUrl: `${APP_URL()}/dashboard`,
-      carteUrl: APP_URL(),
-    }),
   });
 }
 

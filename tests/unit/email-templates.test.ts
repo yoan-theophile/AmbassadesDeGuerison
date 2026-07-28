@@ -25,14 +25,12 @@ process.env.RESEND_ADMIN_EMAIL = 'admin@test.fr';
 
 import {
   sendMagicLink,
-  sendBienvenueAmbassadeur,
   sendAcceptationVisite,
   sendCampagneAmbassadeurs,
   sendAdminAlertNoActivations,
 } from '@/lib/email/templates';
 
 import MagicLink from '@/emails/magic-link';
-import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ContactAccepted from '@/emails/acceptation-visite';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
@@ -64,18 +62,6 @@ describe('sendMagicLink', () => {
     await sendMagicLink('user@test.fr', 'https://magic.link/abc');
     const { react } = lastCallPayload();
     expect((react as React.ReactElement<Record<string, unknown>>).props.magicLinkUrl).toBe('https://magic.link/abc');
-  });
-});
-
-describe('sendBienvenueAmbassadeur', () => {
-  it('construit dashboardUrl et carteUrl depuis APP_URL', async () => {
-    await sendBienvenueAmbassadeur('marie@test.fr', 'Marie');
-    const { react } = lastCallPayload();
-    const props = (react as React.ReactElement<Record<string, unknown>>).props;
-    expect(props.dashboardUrl).toBe('https://test.app/dashboard');
-    expect(props.carteUrl).toBe('https://test.app');
-    expect(props.firstName).toBe('Marie');
-    expect((react as React.ReactElement).type).toBe(BienvenueAmbassadeur);
   });
 });
 

@@ -87,6 +87,7 @@ Templates **supprimés** (orphelins — jamais appelés depuis une route) :
 - `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
 - `contact-reserved.tsx` — "place réservée" envoyée au visiteur avant acceptation de l'hôte ; supprimée quand le flux a été corrigé (seul `acceptation-visite` est envoyé, après acceptation explicite de l'hôte)
 - `pre-validation-accordee.tsx` — déclenchée par l'admin pre_approve. Supprimée quand la transition `pending_review → pre_approved` est passée en self-service (le candidat est sur le dashboard, le questionnaire s'affiche immédiatement, pas besoin d'email)
+- `bienvenue-ambassadeur.tsx` — jamais appelée (`sendBienvenueAmbassadeur` n'avait aucun caller hors `templates.ts`). Contenu par ailleurs incorrect : annonçait "vous apparaissez sur la carte" dès la validation admin, alors que l'ambassadeur doit encore s'auto-activer par live via le lien de campagne (`sendValidationFinale`, réellement envoyée par `PATCH /api/admin/ambassadeurs/[id]/status`, décrit correctement ce flux). Trouvé par /qa le 2026-07-28.
 
 **Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
 Ajouter dans `.env.local` :

@@ -4,7 +4,6 @@ import * as React from 'react';
 import { MOCKS } from '@/emails/__mocks__';
 
 import MagicLink from '@/emails/magic-link';
-import BienvenueAmbassadeur from '@/emails/bienvenue-ambassadeur';
 import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
@@ -27,7 +26,6 @@ export default async function EmailPreviewPage() {
 
   const [
     htmlMagicLink,
-    htmlBienvenue,
     htmlValidation,
     htmlRegistration,
     htmlCampagneAmb,
@@ -44,7 +42,6 @@ export default async function EmailPreviewPage() {
     htmlAlerte,
   ] = await Promise.all([
     render(<MagicLink magicLinkUrl={m.magicLink} />),
-    render(<BienvenueAmbassadeur firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
     render(<ValidationFinale firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
     render(<RegistrationConfirmation firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} />),
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
@@ -63,7 +60,6 @@ export default async function EmailPreviewPage() {
 
   const ambassadeur = [
     { label: 'Magic link (connexion standard)', html: htmlMagicLink },
-    { label: 'Bienvenue ambassadeur (validation finale)', html: htmlBienvenue },
     { label: 'Validation finale — ambassade active', html: htmlValidation },
     { label: 'Confirmation inscription', html: htmlRegistration },
     { label: 'Campagne — invitation au prochain live', html: htmlCampagneAmb },
