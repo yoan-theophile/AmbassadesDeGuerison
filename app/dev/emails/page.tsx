@@ -9,6 +9,7 @@ import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
+import FeedbackPostLiveHost from '@/emails/feedback-post-live-host';
 import ContactReceivedHost from '@/emails/contact-received-host';
 import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
@@ -32,6 +33,7 @@ export default async function EmailPreviewPage() {
     htmlRegistration,
     htmlCampagneAmb,
     htmlFeedback,
+    htmlFeedbackHost,
     htmlContactHost,
     htmlContactReserved,
     htmlContactDeclined,
@@ -49,6 +51,7 @@ export default async function EmailPreviewPage() {
     render(<RegistrationConfirmation firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} />),
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
+    render(<FeedbackPostLiveHost firstName={m.host.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
     render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} />),
     render(<ContactReserved visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostCity={m.jp.city} hostEmail={m.host.email} hostWhatsappGroupUrl={m.host.whatsappGroupUrl} accueilUrl={m.accueilUrl} availableAt={m.availableAt} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
@@ -68,6 +71,7 @@ export default async function EmailPreviewPage() {
     { label: 'Confirmation inscription', html: htmlRegistration },
     { label: 'Campagne — invitation au prochain live', html: htmlCampagneAmb },
     { label: 'Feedback post-live', html: htmlFeedback },
+    { label: 'Feedback post-live — hôte (nouveau)', html: htmlFeedbackHost },
     { label: 'Ambassadeur — demande de visite reçue', html: htmlContactHost },
   ];
 

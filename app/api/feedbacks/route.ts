@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     event_id, host_profile_id, contact_request_id,
     visitor_email, direction,
     ratings,
+    would_host_again,
     free_text, reported, report_reason,
   } = body;
 
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
       rating_friendliness: validateRating(ratings?.friendliness),
       rating_listening:    validateRating(ratings?.listening),
       rating_prayer:       validateRating(ratings?.prayer),
+      would_host_again: direction === 'host_to_visitor' ? Boolean(would_host_again) : null,
       free_text: free_text?.trim() || null,
       reported: !!reported,
       report_reason: reported ? (report_reason?.trim() || null) : null,

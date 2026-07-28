@@ -198,6 +198,10 @@ CREATE TABLE live_feedbacks (
   rating_listening    SMALLINT    CHECK (rating_listening    BETWEEN 1 AND 5),
   rating_prayer       SMALLINT    CHECK (rating_prayer       BETWEEN 1 AND 5),
   free_text           TEXT,
+  -- Direction host_to_visitor uniquement (Phase 3 PR2) : "seriez-vous à
+  -- l'aise que cette personne revienne chez vous ?". Sert aussi de donnée
+  -- d'entrée au blocage visiteur (Phase 3 PR3) — pas de colonne dupliquée.
+  would_host_again    BOOLEAN,
   reported            BOOLEAN     DEFAULT FALSE,
   report_reason       TEXT,
   report_status       TEXT        DEFAULT 'pending'

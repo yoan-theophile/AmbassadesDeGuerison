@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getTimingConfig } from '@/lib/timing-config';
-import { sendFeedbackPostLive } from '@/lib/email/templates';
+import { sendFeedbackPostLive, sendFeedbackPostLiveHost } from '@/lib/email/templates';
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-cron-secret');
@@ -29,14 +29,32 @@ export async function POST(req: NextRequest) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-  let totalSent = 0;
+  let visitorsSent = 0;
+  let hostsSent = 0;
 
   for (const event of events) {
+    // BUG FIX (documenté dans docs/ARCHITECTURE.md) : l'ancien .eq('host_activations.event_id', ...)
+    // sur une requête contact_requests sans jointure embarquée ne filtrait rien —
+    // retournait TOUS les contact_requests acceptés, tous events confondus.
+    // Fix : résoudre d'abord les host_activations de CET event, puis filtrer
+    // contact_requests par host_activation_id IN (...).
+    const { data: activations } = await supabase
+      .from('host_activations')
+      .select('id, host_profile_id, host_profiles!inner(email, first_name)')
+      .eq('event_id', event.id);
+
+    if (!activations?.length) {
+      await supabase.from('events').update({ feedback_sent: true }).eq('id', event.id);
+      continue;
+    }
+
+    const activationIds = activations.map((a) => a.id);
+
     const { data: contacts } = await supabase
       .from('contact_requests')
-      .select('id, visitor_email, visitor_first_name, action_token')
+      .select('id, visitor_email, visitor_first_name, action_token, host_activation_id')
       .eq('status', 'accepted')
-      .eq('host_activations.event_id', event.id);
+      .in('host_activation_id', activationIds);
 
     if (contacts?.length) {
       await Promise.allSettled(
@@ -49,7 +67,30 @@ export async function POST(req: NextRequest) {
           )
         )
       );
-      totalSent += contacts.length;
+      visitorsSent += contacts.length;
+    }
+
+    // Un email hôte par activation ayant accueilli au moins un visiteur accepté
+    // (pas un email par visiteur — la page /feedback/host liste tous ses
+    // visiteurs sur une seule page, un seul lien à envoyer).
+    const activationsWithContacts = activations.filter((a) =>
+      contacts?.some((c) => c.host_activation_id === a.id)
+    );
+
+    if (activationsWithContacts.length) {
+      await Promise.allSettled(
+        activationsWithContacts.map((a) => {
+          const hp = Array.isArray(a.host_profiles) ? a.host_profiles[0] : a.host_profiles;
+          if (!hp) return Promise.resolve();
+          return sendFeedbackPostLiveHost(
+            hp.email,
+            hp.first_name,
+            event.title,
+            `${appUrl}/feedback/host/${a.id}`
+          );
+        })
+      );
+      hostsSent += activationsWithContacts.length;
     }
 
     // Marque l'event comme feedback_sent (colonne idempotence)
@@ -59,5 +100,5 @@ export async function POST(req: NextRequest) {
       .eq('id', event.id);
   }
 
-  return NextResponse.json({ sent: totalSent });
+  return NextResponse.json({ visitorsSent, hostsSent });
 }

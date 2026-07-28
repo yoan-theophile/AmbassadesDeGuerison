@@ -9,6 +9,7 @@ import ValidationFinale from '@/emails/validation-finale';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
+import FeedbackPostLiveHost from '@/emails/feedback-post-live-host';
 import ContactReceivedHost from '@/emails/contact-received-host';
 import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
@@ -91,6 +92,14 @@ export async function sendFeedbackPostLive(to: string, firstName: string, eventT
     from: FROM(), to,
     subject: `Comment s'est passé votre soirée ? — ${eventTitle}`,
     react: React.createElement(FeedbackPostLive, { firstName, eventTitle, feedbackUrl }),
+  });
+}
+
+export async function sendFeedbackPostLiveHost(to: string, firstName: string, eventTitle: string, feedbackUrl: string) {
+  return getResend().emails.send({
+    from: FROM(), to,
+    subject: `Comment s'est passé votre accueil ? — ${eventTitle}`,
+    react: React.createElement(FeedbackPostLiveHost, { firstName, eventTitle, feedbackUrl }),
   });
 }
 
