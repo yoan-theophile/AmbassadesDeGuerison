@@ -465,7 +465,7 @@ async function run() {
     },
     {
       host: 'marie.dubois@demo.fr', first: 'Nathalie', email: 'nathalie.v@mail.com',
-      phone: null, nb_personnes: 1,
+      phone: '+33645789632', nb_personnes: 1,
       msg: null, status: 'pending',
     },
     {
@@ -480,12 +480,12 @@ async function run() {
     },
     {
       host: 'jp.martin@demo.fr', first: 'Isabelle', email: 'isabelle.r@mail.com',
-      phone: null, nb_personnes: 5,
+      phone: '+33671234598', nb_personnes: 5,
       msg: "Ma famille sera là aussi, 5 personnes.", status: 'pending',
     },
     {
       host: 'fatou.diallo@demo.fr', first: 'Laure', email: 'laure.d@mail.com',
-      phone: null, nb_personnes: 1,
+      phone: '+32488334455', nb_personnes: 1,
       msg: null, status: 'declined',
     },
     {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
@@ -48,6 +49,10 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidPhoneNumber(form.visitor_phone)) {
+      setError('Merci de renseigner un numéro de téléphone valide.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -59,7 +64,7 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
         host_profile_id: hostProfileId,
         first_name: form.visitor_first_name,
         email: form.visitor_email,
-        phone: form.visitor_phone || null,
+        phone: form.visitor_phone,
         nb_personnes: form.nb_personnes,
         message: form.visitor_message || null,
         consent: form.visitor_notifications_optin,
@@ -114,8 +119,9 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
         <div className="space-y-3">
           <div>
             <PhoneInput
-              label="Téléphone (optionnel)"
+              label="Téléphone"
               id="visitor_phone"
+              required
               value={form.visitor_phone}
               onChange={(v) => set('visitor_phone', v)}
               placeholder="+33 6 12 34 56 78"

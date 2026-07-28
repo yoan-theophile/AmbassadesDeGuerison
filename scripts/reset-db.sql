@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS blacklist             CASCADE;
 DROP TABLE IF EXISTS live_signals          CASCADE;
 DROP TABLE IF EXISTS testimonials          CASCADE;
 DROP TABLE IF EXISTS contact_requests      CASCADE;
+DROP TABLE IF EXISTS visitor_profiles      CASCADE;
 DROP TABLE IF EXISTS host_activations      CASCADE;
 DROP TABLE IF EXISTS admin_users           CASCADE;
 DROP TABLE IF EXISTS host_profiles         CASCADE;
@@ -133,7 +134,10 @@ CREATE TABLE contact_requests (
   host_activation_id          UUID        NOT NULL REFERENCES host_activations(id) ON DELETE CASCADE,
   visitor_first_name          TEXT        NOT NULL,
   visitor_email               TEXT        NOT NULL,
-  visitor_phone               TEXT,
+  -- Obligatoire (Phase 3 PR1, validé David : "l'ambassadeur ouvre sa porte,
+  -- le visiteur donne juste sa présence — pas symétrique en risque. Un
+  -- téléphone permet à l'hôte d'appeler en cas d'imprévu, pas de checkpoint.")
+  visitor_phone               TEXT        NOT NULL,
   nb_personnes                INT         NOT NULL DEFAULT 1 CHECK (nb_personnes > 0),
   visitor_message             TEXT,
   status                      TEXT        NOT NULL DEFAULT 'pending'

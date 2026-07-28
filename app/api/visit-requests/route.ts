@@ -58,13 +58,19 @@ export async function POST(req: NextRequest) {
   if (!event_id || !host_profile_id || !first_name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
   }
+  // Obligatoire depuis Phase 3 PR1 (validé David, cf CLAUDE.md "Modération
+  // anti-abus visiteur" / design doc R1) — permet à l'hôte d'appeler en cas
+  // d'imprévu, pas un checkpoint.
+  if (!phone?.trim()) {
+    return NextResponse.json({ error: 'Téléphone requis' }, { status: 400 });
+  }
   if (!consent) {
     return NextResponse.json({ error: 'Consentement requis' }, { status: 400 });
   }
 
   const supabase = createServiceClient();
   const emailLower = email.trim().toLowerCase();
-  const phoneTrimmed = phone?.trim() || null;
+  const phoneTrimmed = phone.trim();
 
   // Blacklist — refus honnête (403) sans dévoiler le mécanisme.
   // Choix éthique : pas de shadow-ban (faux 201). David est pasteur, le produit

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
@@ -55,6 +56,10 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
     // Garde anti-bypass (touche Entrée) : si l'ambassade est femmes-only,
     // refuser tout submit qui n'a pas explicitement coché "Femme".
     if (isWomenOnly && gender !== 'female') return;
+    if (!isValidPhoneNumber(form.visitor_phone)) {
+      setError('Merci de renseigner un numéro de téléphone valide.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -209,8 +214,9 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
           </div>
           <div>
             <PhoneInput
-              label="Téléphone (optionnel)"
+              label="Téléphone"
               id="visitor_phone"
+              required
               value={form.visitor_phone}
               onChange={(v) => set('visitor_phone', v)}
               placeholder="+33 6 12 34 56 78"
