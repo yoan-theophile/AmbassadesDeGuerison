@@ -238,7 +238,19 @@ ORDER BY ls.created_at DESC;
 
 ### Voir les emails envoyés
 
-Resend Dashboard → Logs → filtrer par email ou date.
+**En production** : Resend Dashboard → Logs → filtrer par email ou date.
+
+**En local, sans dépendre de Resend ni d'adresses e-mail réelles** : Mailhog capture tous les e-mails du flux applicatif réel sur un SMTP local.
+
+```bash
+npm run mailhog          # démarre le conteneur Docker (docker-compose.yml)
+# .env.local : USE_MAILHOG=true
+npm run dev
+```
+
+Dashboard Mailhog : http://localhost:8025 — liste tous les e-mails envoyés par l'app (magic link, campagnes, notifications admin…) avec destinataire, sujet, HTML rendu et liens cliquables. `lib/email/send.ts` fait le routage Mailhog/Resend selon `USE_MAILHOG` ; `lib/email/templates.ts` n'a pas connaissance de la destination. Arrêter le conteneur : `npm run mailhog:stop`.
+
+Différence avec `/dev/emails` : `/dev/emails` affiche les templates avec des données mock (`emails/__mocks__/index.ts`) sans jamais passer par `lib/email/templates.ts` — utile pour le design visuel. Mailhog capture les e-mails **réellement déclenchés par un flux applicatif** (ex : cliquer "S'inscrire" sur `/inscription`) — utile pour vérifier bout-en-bout qu'une action envoie le bon e-mail avec le bon contenu.
 
 ---
 

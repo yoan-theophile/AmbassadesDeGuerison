@@ -385,6 +385,8 @@ Utilisé dans :
 | `NEXT_PUBLIC_ADMIN_TZ_OFFSET` | Client | Offset UTC pour l'admin planning (La Réunion = +4) |
 | `CRON_SECRET` | Server uniquement | Authentification des jobs Vercel Cron |
 | `EMAIL_PREVIEW` | Server uniquement | Active `/dev/emails` (doit valoir exactement `"true"`) |
+| `USE_MAILHOG` | Server uniquement | `"true"` route tous les envois (`lib/email/send.ts`) vers Mailhog (SMTP local) au lieu de Resend — test des vrais flux applicatifs sans dépendre d'adresses e-mail réelles |
+| `MAILHOG_SMTP_HOST` / `MAILHOG_SMTP_PORT` | Server uniquement | Hôte/port du conteneur Mailhog (défaut : `localhost:1025`) |
 | `NODE_ENV` | Server + Build | `development` active le DevOverlay et `/api/dev/*` |
 
 ---

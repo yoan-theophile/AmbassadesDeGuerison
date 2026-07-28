@@ -97,11 +97,32 @@ La route retourne 404 en production (sans cette variable).
 
 Données mock dans `emails/__mocks__/index.ts` — basées sur les profils seed (Marie, JP, Sophie).
 
+### Mailhog — capture SMTP locale des e-mails réellement envoyés
+
+`/dev/emails` montre les templates avec des données mock, mais ne teste pas le vrai chemin d'envoi (`lib/email/templates.ts` → Resend). Pour vérifier qu'un flux applicatif (inscription, validation, campagne…) déclenche bien le bon e-mail avec le bon contenu, sans dépendre de Resend ni d'adresses e-mail réelles :
+
+```bash
+npm run mailhog        # docker compose up -d mailhog
+```
+
+Puis dans `.env.local` :
+```
+USE_MAILHOG=true
+```
+
+`lib/email/send.ts` route alors **tous** les envois (`getMailer().emails.send(...)`, utilisé par toutes les fonctions `sendXxx` de `lib/email/templates.ts`) vers le SMTP local de Mailhog au lieu de l'API Resend — aucun changement de code applicatif requis, juste la variable d'env. Dashboard web : **http://localhost:8025** — chaque e-mail capturé (destinataire, sujet, HTML rendu, liens cliquables).
+
+`USE_MAILHOG` absent ou `false` → comportement inchangé (Resend réel). Arrêter le conteneur : `npm run mailhog:stop`.
+
+**Tests automatisés** : `tests/unit/email-send-router.test.ts` mocke `resend` et `nodemailer` pour vérifier le routage (Mailhog vs Resend) sans dépendance réseau. `tests/unit/email-templates.test.ts` mocke `resend` directement pour vérifier le contenu (destinataire, props, composant) de chaque `sendXxx`.
+
 ### Connexion admin sans e-mail (Resend sandbox)
 
 `RESEND_FROM_EMAIL=onboarding@resend.dev` ne livre qu'à l'e-mail du propriétaire du compte Resend. Les adresses de démo (`david.thery@demo.fr`) ne reçoivent rien.
 
-Générer un lien de connexion directement via le terminal :
+Deux solutions :
+1. **Mailhog** (ci-dessus) — capture l'e-mail réel envoyé par le flux applicatif (ex : magic link cliqué depuis `/auth`), consultable sur http://localhost:8025
+2. **Génération directe du lien**, sans passer par un e-mail :
 
 ```bash
 node scripts/magic-link.js david.thery@demo.fr
