@@ -7,7 +7,7 @@ interface Member {
   user_id: string;
   role: string;
   email: string;
-  created_at: string;
+  added_at: string;
 }
 
 interface Props {

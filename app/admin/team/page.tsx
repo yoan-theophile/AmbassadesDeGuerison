@@ -9,8 +9,8 @@ export default async function AdminTeamPage() {
 
   const { data: adminUsers } = await supabase
     .from('admin_users')
-    .select('user_id, role, created_at')
-    .order('created_at', { ascending: true });
+    .select('user_id, role, added_at')
+    .order('added_at', { ascending: true });
 
   // Enrichir avec les emails depuis auth.users (service role)
   const { data: { users } } = await supabase.auth.admin.listUsers();
@@ -20,7 +20,7 @@ export default async function AdminTeamPage() {
     user_id: a.user_id,
     role: a.role as string,
     email: userMap.get(a.user_id) ?? 'Inconnu',
-    created_at: a.created_at as string,
+    added_at: a.added_at as string,
   }));
 
   return (
