@@ -75,9 +75,13 @@ export async function GET(req: NextRequest) {
       };
     })
     .filter((r) => {
-      const key = `${r.lat}-${r.lng}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+      // Dédup par label plutôt que par coordonnées : Nominatim retourne parfois
+      // deux entités distinctes (ex: ville + relation administrative) pour la
+      // même ville avec des lat/lng légèrement différents, ce qui produisait
+      // deux options "Marseille, France" identiques et indiscernables dans le
+      // dropdown d'autocomplétion.
+      if (seen.has(r.label)) return false;
+      seen.add(r.label);
       return true;
     });
 
