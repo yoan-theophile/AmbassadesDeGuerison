@@ -299,6 +299,22 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   const [searchResults, setSearchResults] = useState<{ lat: string; lon: string; display_name: string }[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // CTA "première fois" (Phase 4) — masquable, mémorisé en localStorage
+  // (même pattern que tz-city) pour ne pas fatiguer les visiteurs récurrents.
+  const [discoverDismissed, setDiscoverDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('discover-cta-dismissed') === '1') setDiscoverDismissed(true);
+    } catch {
+      // Safari mode privé — pas de crash, bandeau visible par défaut
+    }
+  }, []);
+
+  function dismissDiscoverCta() {
+    setDiscoverDismissed(true);
+    try { localStorage.setItem('discover-cta-dismissed', '1'); } catch { /* ignore */ }
+  }
 
   // Polling 30s pour les activations
   useEffect(() => {
@@ -686,6 +702,29 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
             >
               Sois le premier ambassadeur ici →
+            </a>
+          </div>
+        </div>
+      )}
+      {/* CTA "première fois" (Phase 4) — coin bas-droit pour ne pas chevaucher
+          le hint "pas d'ambassade" (centré) ni la recherche (haut-gauche) */}
+      {!discoverDismissed && (
+        <div className="absolute bottom-6 right-3 z-[500] max-w-[220px]">
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 relative">
+            <button
+              type="button"
+              onClick={dismissDiscoverCta}
+              aria-label="Fermer"
+              className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-slate-500 transition-colors"
+            >
+              ×
+            </button>
+            <p className="text-slate-600 text-xs pr-4">C&apos;est votre première fois&nbsp;?</p>
+            <a
+              href="/decouvrir"
+              className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
+            >
+              Découvrir comment ça se passe →
             </a>
           </div>
         </div>
