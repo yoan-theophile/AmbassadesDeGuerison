@@ -215,8 +215,15 @@ CREATE TABLE live_feedbacks (
 );
 
 -- Blacklist email / téléphone (anti-spam, anti-abus)
+-- host_profile_id NULL = blocage global (admin, /admin/blacklist).
+-- host_profile_id renseigné = blocage par-ambassadeur uniquement (Phase 3
+-- PR3, déclenché depuis le feedback post-live). Décision /plan-eng-review :
+-- même table/pattern que le blocage global plutôt qu'un système parallèle —
+-- pas de dépendance sur visitor_profiles.id (email/phone bruts, comme le
+-- blocage global existant).
 CREATE TABLE blacklist (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_profile_id UUID        REFERENCES host_profiles(id) ON DELETE CASCADE,
   email      TEXT,
   phone      TEXT,
   reason     TEXT        NOT NULL,

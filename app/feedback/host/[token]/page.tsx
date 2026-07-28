@@ -31,7 +31,7 @@ export default async function HostFeedbackPage({ params }: Props) {
 
   const { data: contacts } = await supabase
     .from('contact_requests')
-    .select('id, visitor_first_name, visitor_email')
+    .select('id, visitor_first_name, visitor_email, visitor_phone')
     .eq('host_activation_id', activation.id)
     .eq('status', 'accepted');
 
@@ -71,6 +71,7 @@ export default async function HostFeedbackPage({ params }: Props) {
                 hostProfileId={activation.host_profile_id}
                 contactRequestId={c.id}
                 visitorEmail={c.visitor_email}
+                visitorPhone={c.visitor_phone}
                 visitorFirstName={c.visitor_first_name}
               />
             ))

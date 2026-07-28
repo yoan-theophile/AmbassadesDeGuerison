@@ -8,15 +8,17 @@ interface Props {
   hostProfileId: string;
   contactRequestId: string;
   visitorEmail: string;
+  visitorPhone: string;
   visitorFirstName: string;
 }
 
 // V1 minimal (design doc D.3) : 1-2 questions, pas les 4 critères étoilés du
 // formulaire visiteur — le sens de la question est différent ("est-ce que je
 // veux revoir cette personne", pas "comment était l'accueil que j'ai reçu").
-export default function HostFeedbackForm({ eventId, hostProfileId, contactRequestId, visitorEmail, visitorFirstName }: Props) {
+export default function HostFeedbackForm({ eventId, hostProfileId, contactRequestId, visitorEmail, visitorPhone, visitorFirstName }: Props) {
   const [wouldHostAgain, setWouldHostAgain] = useState<boolean | null>(null);
   const [freeText, setFreeText] = useState('');
+  const [blockVisitor, setBlockVisitor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +43,8 @@ export default function HostFeedbackForm({ eventId, hostProfileId, contactReques
         direction: 'host_to_visitor',
         would_host_again: wouldHostAgain,
         free_text: freeText.trim() || null,
+        block_visitor: wouldHostAgain === false && blockVisitor,
+        visitor_phone: visitorPhone,
         website: '', // honeypot
       }),
     });
@@ -86,6 +90,20 @@ export default function HostFeedbackForm({ eventId, hostProfileId, contactReques
           </button>
         </div>
       </div>
+
+      {wouldHostAgain === false && (
+        <label className="flex items-start gap-2.5 cursor-pointer bg-amber-50 border border-amber-100 rounded-lg p-3">
+          <input
+            type="checkbox"
+            checked={blockVisitor}
+            onChange={(e) => setBlockVisitor(e.target.checked)}
+            className="mt-0.5 accent-amber-600"
+          />
+          <span className="text-xs text-amber-800 leading-relaxed">
+            Ne plus recevoir de demande de la part de cette personne. Elle pourra toujours contacter d'autres ambassades.
+          </span>
+        </label>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">Sinon, avez-vous quelque chose à partager ? (optionnel)</label>

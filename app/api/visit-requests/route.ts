@@ -77,15 +77,20 @@ export async function POST(req: NextRequest) {
   // ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre
   // pour ne pas confirmer au visiteur qu'il est blacklisté ; une voie de recours
   // est offerte si c'est une erreur.
+  // Vérifie à la fois le blocage global (host_profile_id NULL, /admin/blacklist)
+  // et le blocage par-ambassadeur (Phase 3 PR3, déclenché depuis le feedback
+  // post-live) — un visiteur bloqué par un hôte reste libre de contacter
+  // les autres.
   const blacklistFilter = phoneTrimmed
     ? `email.eq.${emailLower},phone.eq.${phoneTrimmed}`
     : `email.eq.${emailLower}`;
-  const { data: blocked } = await supabase
+  const { data: blockRows } = await supabase
     .from('blacklist')
-    .select('id')
-    .or(blacklistFilter)
-    .limit(1)
-    .maybeSingle();
+    .select('host_profile_id')
+    .or(blacklistFilter);
+  const blocked = (blockRows ?? []).some(
+    (r) => r.host_profile_id === null || r.host_profile_id === host_profile_id
+  );
   if (blocked) {
     return NextResponse.json(
       { error: "Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe." },

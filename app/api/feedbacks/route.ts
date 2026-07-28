@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     visitor_email, direction,
     ratings,
     would_host_again,
+    block_visitor, visitor_phone,
     free_text, reported, report_reason,
   } = body;
 
@@ -64,6 +65,18 @@ export async function POST(req: NextRequest) {
       action_type: 'feedback_reported',
       target_id: data.id,
       notes: report_reason?.trim() || null,
+    }).then(() => {});
+  }
+
+  // Blocage par-ambassadeur (Phase 3 PR3, D.4) — uniquement direction
+  // host_to_visitor, non-bloquant (un échec ici ne doit pas faire échouer
+  // l'envoi du feedback lui-même).
+  if (direction === 'host_to_visitor' && block_visitor) {
+    supabase.from('blacklist').insert({
+      host_profile_id,
+      email: visitor_email.trim().toLowerCase(),
+      phone: visitor_phone?.trim() || null,
+      reason: 'Blocage post-feedback ambassadeur',
     }).then(() => {});
   }
 
