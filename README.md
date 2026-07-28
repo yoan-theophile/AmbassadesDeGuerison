@@ -9,22 +9,25 @@ Lors de chaque live, des milliers de personnes regardent seules chez elles. Les 
 ## Ce que fait l'application
 
 **Pour les visiteurs**
-- Trouver une ambassade près de chez soi sur une carte mondiale interactive
+- Trouver une ambassade près de chez soi sur une carte mondiale interactive, triable par distance (géolocalisation éphémère, jamais stockée)
+- Découvrir comment se passe une première visite (`/decouvrir`) avant de se lancer
 - Envoyer une demande de visite à un ambassadeur pour un live précis
 - Recevoir l'adresse par e-mail dès que l'ambassadeur accepte la demande
+- Retrouver ses infos (email, téléphone) sans les retaper à chaque demande, via un espace visiteur minimal (`/mon-espace`, connexion par magic link)
 - Soumettre un témoignage après le live (lien public, sans compte requis)
 
 **Pour les ambassadeurs**
-- S'inscrire et gérer son profil (lieu, capacité, consignes)
+- S'inscrire et gérer son profil (lieu, capacité, consignes, message de présentation, adresse précise privée)
 - Recevoir les demandes de visiteurs pour chaque live
 - Envoyer un signal "main levée" pendant le live
+- Donner un retour sur les visiteurs reçus après un live
 - Partager des témoignages
 
 **Pour David (admin)**
 - Planifier les lives
 - Voir en direct les signaux des ambassadeurs pendant le live
 - Modérer et publier les témoignages
-- Suivre les KPIs : ambassades actives, pays, demandes, témoignages
+- Suivre un panneau factuel d'actions à traiter depuis le dernier live (candidats à valider, témoignages à modérer, ambassades à vérifier)
 
 ## Stack technique
 
@@ -32,7 +35,7 @@ Lors de chaque live, des milliers de personnes regardent seules chez elles. Les 
 - **Supabase** — PostgreSQL, Auth (magic links), RLS
 - **Tailwind CSS** — design system
 - **Leaflet + OpenStreetMap** — carte publique
-- **Resend + React Email v6** — e-mails transactionnels (17 templates TSX dans `emails/*.tsx`)
+- **Resend + React Email v6** — e-mails transactionnels (20 templates TSX dans `emails/*.tsx`)
 - **Nominatim** — géocodage des villes
 
 ## Lancer en local

@@ -11,7 +11,6 @@ import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
 import FeedbackPostLiveHost from '@/emails/feedback-post-live-host';
 import ContactReceivedHost from '@/emails/contact-received-host';
-import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
 import AcceptationVisite from '@/emails/acceptation-visite';
 import RefusVisite from '@/emails/refus-visite';
@@ -118,26 +117,6 @@ export async function sendNewContactRequestHost(
     subject: `${visitorFirstName} souhaite rejoindre votre ambassade`,
     react: React.createElement(ContactReceivedHost, {
       hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
-    }),
-  });
-}
-
-
-export async function sendContactRequestReserved(
-  to: string,
-  visitorFirstName: string,
-  hostFirstName: string,
-  hostCity: string,
-  hostEmail: string,
-  hostWhatsappGroupUrl: string | null,
-  accueilUrl: string,
-  availableAt: Date,
-) {
-  return getResend().emails.send({
-    from: FROM(), to,
-    subject: `Votre place est réservée — Ambassade de ${hostFirstName}`,
-    react: React.createElement(ContactReserved, {
-      visitorFirstName, hostFirstName, hostCity, hostEmail, hostWhatsappGroupUrl, accueilUrl, availableAt,
     }),
   });
 }

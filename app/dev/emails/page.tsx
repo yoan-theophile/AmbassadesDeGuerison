@@ -11,7 +11,6 @@ import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
 import FeedbackPostLiveHost from '@/emails/feedback-post-live-host';
 import ContactReceivedHost from '@/emails/contact-received-host';
-import ContactReserved from '@/emails/contact-reserved';
 import ContactDeclined from '@/emails/contact-declined';
 import AcceptationVisite from '@/emails/acceptation-visite';
 import RefusVisite from '@/emails/refus-visite';
@@ -35,7 +34,6 @@ export default async function EmailPreviewPage() {
     htmlFeedback,
     htmlFeedbackHost,
     htmlContactHost,
-    htmlContactReserved,
     htmlContactDeclined,
     htmlAcceptation,
     htmlRefus,
@@ -53,7 +51,6 @@ export default async function EmailPreviewPage() {
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
     render(<FeedbackPostLiveHost firstName={m.host.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
     render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} />),
-    render(<ContactReserved visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostCity={m.jp.city} hostEmail={m.host.email} hostWhatsappGroupUrl={m.host.whatsappGroupUrl} accueilUrl={m.accueilUrl} availableAt={m.availableAt} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
     render(<AcceptationVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostAddress={m.host.address} hostPhone={m.host.phone} eventTitle={m.liveTitle} eventDate={m.liveDate} contactEquipeUrl={m.contactEquipeUrl} />),
     render(<RefusVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} carteUrl={m.carteUrl} />),
@@ -76,7 +73,6 @@ export default async function EmailPreviewPage() {
   ];
 
   const visiteur = [
-    { label: 'Place réservée — coordonnées partielles', html: htmlContactReserved },
     { label: 'Demande refusée', html: htmlContactDeclined },
     { label: 'Confirmation de visite — adresse dévoilée', html: htmlAcceptation },
     { label: 'Visite refusée', html: htmlRefus },

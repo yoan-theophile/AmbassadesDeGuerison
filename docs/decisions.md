@@ -224,6 +224,29 @@ Format : `YYYY-MM-DD | Décision | Pourquoi | Alternatives écartées`
 
 ---
 
+### 2026-07 | Distance visiteur ↔ ambassadeur sans jamais stocker l'adresse du visiteur
+
+**Décision :** Pas de champ "adresse" côté visiteur. Le tri "ambassade la plus proche" utilise `navigator.geolocation.getCurrentPosition()` déclenché explicitement (bouton "Trier par distance"), envoyé à `POST /api/distance` qui calcule une distance Haversine côté serveur, **arrondie à l'entier km**, sans jamais retourner ni stocker de coordonnées. Rate-limité 8 req/min/IP.
+
+**Pourquoi :** La proposition initiale (David, retours réels sur le design doc) demandait une adresse précise du visiteur pour calculer les distances. En creusant (« steel-man complet » demandé explicitement), le besoin réel de l'ambassadeur n'est pas l'adresse du visiteur — c'est son téléphone (déjà collecté, obligatoire) pour le joindre directement. Stocker une adresse visiteur aurait créé une surface de risque (PII sensible, sans bénéfice pastoral) pour un besoin déjà couvert autrement. La géolocalisation éphémère résout le vrai problème ("quelle ambassade est proche de moi maintenant") sans persister aucune donnée de localisation visiteur.
+
+**Mitigation oracle de triangulation :** un `POST /api/distance` répété depuis plusieurs points permettrait en théorie de trianguler la position approximative d'un ambassadeur. L'arrondi au km (au lieu de la distance exacte) et le rate-limit rendent cette attaque peu rentable — elle ne reconstruirait qu'une position à ±500m, pas les coordonnées précises stockées en DB (`lat_precise`/`lng_precise`, jamais exposées).
+
+**Alternatives écartées :**
+- Adresse visiteur stockée en DB pour calcul de distance : rejetée après steel-man — introduit un risque PII sans bénéfice (l'ambassadeur peut déjà appeler le visiteur via son téléphone).
+- Distance exacte (mètres) au lieu de l'arrondi au km : plus précis mais facilite la triangulation ; l'arrondi suffit largement pour l'usage ("est-ce que cette ambassade est dans ma ville ou à 200km").
+- Espace visiteur complet (profil enrichi, historique des visites) : pas un besoin identifié par David. `/mon-espace` reste minimal (email + téléphone) pour éviter la friction de création de compte.
+
+### 2026-07 | Profil visiteur créé automatiquement (magic link), pas de formulaire d'inscription visiteur
+
+**Décision :** Aucune page d'inscription visiteur dédiée. `POST /api/visit-requests` crée silencieusement un compte Supabase Auth + une ligne `visitor_profiles` (best-effort, `.catch(() => {})`) à la première demande de visite. Le visiteur peut ensuite se connecter par magic link pour retrouver `/mon-espace` (email + téléphone préremplis sur ses prochaines demandes).
+
+**Pourquoi :** Sans compte, un visiteur qui contacte plusieurs ambassades retape ses coordonnées à chaque fois. Un formulaire d'inscription classique (email + mot de passe) ajoute de la friction avant même la première interaction utile. Réutiliser le mécanisme magic link déjà en place pour les ambassadeurs évite d'introduire un second système d'auth.
+
+**Alternatives écartées :**
+- Formulaire d'inscription visiteur explicite avant la première demande : friction inutile, le besoin (ne pas retaper ses infos) n'apparaît qu'à la 2e demande.
+- Cookie/localStorage pour préremplir sans compte : ne survit pas au changement d'appareil, pas de vraie continuité si le visiteur change de navigateur.
+
 ## À compléter
 
 Ajouter ici chaque décision significative prise lors du développement :

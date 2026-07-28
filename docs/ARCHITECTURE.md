@@ -203,13 +203,58 @@ Après le live
 
 ---
 
+## Profil visiteur réutilisable + distance éphémère
+
+Ajouté en juillet 2026 pour répondre à un besoin concret : un visiteur qui contacte
+plusieurs hôtes ne devrait pas retaper son téléphone/adresse à chaque demande, et un
+visiteur devrait pouvoir trouver l'ambassade la plus proche sans que l'app ne stocke
+jamais où il habite.
+
+```
+POST /api/visit-requests (première demande)
+  │  createOrUpdateVisitorProfile() — best-effort, .catch(() => {})
+  │  → crée un compte Supabase Auth (user_metadata.role='visitor') si l'email est neuf
+  │  → upsert visitor_profiles (email, phone)
+  ▼
+Visiteur reçoit un magic link (même mécanisme que les ambassadeurs)
+  │  → /auth/confirm route sur user_metadata.role : admin → /admin/stats,
+  │     visitor → /mon-espace, sinon → /dashboard
+  ▼
+/mon-espace — espace minimal (email, téléphone éditable, déconnexion)
+  │  PAS un dashboard complet — juste assez pour ne pas retaper ses infos
+  ▼
+Prochaine visite sur /ambassade/[id] ou /live/.../ambassade/[id]
+  │  ContactForm / VisitRequestForm préremplissent email + téléphone
+  │  depuis GET /api/visitor/profile si une session existe
+```
+
+**Distance ambassadeur ↔ visiteur — jamais de stockage d'adresse visiteur.**
+`components/MapPublique.tsx` (bouton "Trier par distance" dans les popups de cluster)
+appelle explicitement `navigator.geolocation.getCurrentPosition()` (jamais auto-déclenché,
+jamais piggybacké sur la géolocalisation d'ouverture de carte) puis POST `/api/distance`
+avec les coordonnées + une liste d'`host_profile_id` (max 20). `lib/geo/distance.ts:haversineKm()`
+calcule côté serveur et **arrondit à l'entier km** — mitigation volontaire contre un
+oracle de triangulation (interroger la distance à répétition depuis plusieurs points ne
+permettrait de reconstruire qu'une position à ±500m, pas les coordonnées précises).
+`proxy.ts` rate-limite la route à 8 req/min/IP. Les coordonnées du visiteur ne sont
+jamais persistées — la géolocalisation est éphémère, calculée à la demande.
+
+**`lat_precise` / `lng_precise` (ambassadeur)** — distinct de `quartier` : `quartier`
+est un texte libre public (ex: "Paris 15e"), affiché sur la carte pour donner un signal
+de proximité. `lat_precise`/`lng_precise` viennent de l'adresse complète saisie via
+`AddressInput` (Nominatim `mode=address`), **jamais publics**, utilisés uniquement par
+`/api/distance` pour le calcul de proximité.
+
+---
+
 ## Routes API — carte des domaines
 
 | Préfixe | Domaine | Auth requise |
 |---------|---------|-------------|
 | `/api/host-activations` | Pins carte publique | Non (lecture publique) |
-| `/api/contact-requests` | Visiteur → hôte | Non (token dans l'URL) |
-| `/api/visit-requests` | Visiteur → hôte (v2) | Non |
+| `/api/visit-requests` | Visiteur → hôte — route unique de création (l'ancienne `/api/contact-requests` a été supprimée, code mort) | Non |
+| `/api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, arrondi au km) | Non (rate-limité 8 req/min/IP) |
+| `/api/visitor/profile` | Lecture/édition du profil visiteur réutilisable (`visitor_profiles`) | Session visiteur |
 | `/api/temoignages` | Soumission témoignage public | Non |
 | `/api/testimonials` | Lecture/modération témoignages | Admin |
 | `/api/live-signals` | Signaux live depuis dashboard hôte | Session hôte |
@@ -217,12 +262,13 @@ Après le live
 | `/api/onboarding/complete` | Self-service : pending_review → pre_approved (CGU acceptées) | Session candidat |
 | `/api/onboarding/config` | Config vidéo + PDF onboarding | Public (lecture) / Admin (écriture) |
 | `/api/ambassadeur/enrichissement` | Enrichissement profil (questionnaire) | Session hôte |
-| `/api/ambassadeur/profile` | Édition profil (ville, adresse, consignes, téléphone) | Session hôte |
+| `/api/ambassadeur/profile` | Édition profil (ville, adresse précise, consignes, téléphone) | Session hôte |
+| `/api/feedbacks` | Feedback bidirectionnel post-live (visiteur↔hôte) + blocage visiteur | Token (visiteur) / Session hôte |
 | `/api/admin/*` | Toutes les actions admin | Admin uniquement |
 | `/api/campaign-activations` | Activation hôte via lien email | Token signé |
 | `/api/cron/*` | Jobs planifiés Vercel Cron | `CRON_SECRET` header |
-| `/api/auth/magic-link` | Génération lien de connexion | Admin |
-| `/api/geocode` | Proxy Nominatim (autocomplétion ville) | Non |
+| `/api/auth/magic-link` | Génération lien de connexion | Admin (rate-limité 3 req/min/IP) |
+| `/api/geocode` | Proxy Nominatim (autocomplétion ville + `mode=address` pour adresse précise) | Non |
 | `/api/unsubscribe/[token]` | Désabonnement email campagne | Token |
 | `/api/dev/*` | Simulation états DB | Dev uniquement (`NODE_ENV=development`) |
 
@@ -255,7 +301,11 @@ sensible (génère un lien admin pour n'importe quel email) — sans secret, 403
 variable d'environnement n'est pas exactement `"true"` (la chaîne `"false"` est truthy
 en JS — le guard utilise `=== 'true'`).
 
-**Photos hôtes — bucket privé.** Le bucket Supabase `ambassador-photos` est `public: false`. Les colonnes `profile_photo_url` et `room_photo_urls` dans `host_profiles` stockent un *chemin* Supabase Storage, pas une URL publique. Lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` pour l'ambassadeur lui-même (signed URL courte), `getAdminPhotoUrl(path)` pour la fiche admin. Jamais exposées sur la carte publique ni les pages `/ambassade/[id]`.
+**Photos hôtes — bucket privé.** Le bucket Supabase `ambassador-photos` est `public: false`. Les colonnes `profile_photo_url` et `room_photo_urls` dans `host_profiles` stockent un *chemin* Supabase Storage, pas une URL publique. Lire via `lib/storage/photo-url.ts` : `getOwnerPhotoUrl(path)` pour l'ambassadeur lui-même (signed URL courte), `getAdminPhotoUrl(path)` pour la fiche admin. Jamais exposées sur la carte publique ni les pages `/ambassade/[id]`. Photo dans le popup carte : `getPublicMapPhotoUrls()` (signed URLs 24h, cache en mémoire) — uniquement pour les hôtes actifs, jamais l'adresse.
+
+**`/api/auth/magic-link` rate-limité** (3 req/min/IP, `proxy.ts`) — génère un lien de connexion admin pour n'importe quel email ; sans rate-limit, un attaquant pourrait épuiser la quota Resend ou sonder l'existence de comptes.
+
+**`/api/distance` — jamais de coordonnées en retour, jamais de stockage.** Voir « Profil visiteur réutilisable + distance éphémère » ci-dessus. Rate-limité 8 req/min/IP, arrondi au km (anti-triangulation), max 20 `host_profile_id` par requête. `e2e/rls-isolation.spec.ts` vérifie que `lat_precise`/`lng_precise` ne fuient jamais dans `/api/host-activations` ni dans la réponse de `/api/distance`.
 
 ---
 
@@ -272,7 +322,9 @@ en JS — le guard utilise `=== 'true'`).
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
 | `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
 | `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
-| `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse + consignes + tel) |
+| `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse précise + consignes + tel) |
+| `AddressInput` | Client Component | Autocomplétion Nominatim `mode=address` — calqué sur `CityInput` |
+| `FaqAccordion` | Client Component | Accordéon accessible (`<button aria-expanded>`), état local d'ouverture |
 
 **Polling** : `MapPublique` et `AdminFeed` refetchent toutes les 5 secondes.
 Pas de WebSocket — Supabase Realtime ajouterait de la complexité pour un usage
@@ -352,7 +404,8 @@ Mis à jour manuellement à chaque PR significative.
 
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
-| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto pour pins co-localisés (groupement par clé `lat,lng`). Champ `quartier` affiché dans les popups (cluster + pin individuel) si renseigné. |
+| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto pour pins co-localisés (groupement par clé `lat,lng`). Champ `quartier` + message de présentation (`presentation_message`, 240 car. max) + photo de profil (avatar 28px, signed URL 24h) affichés dans les popups (cluster + pin individuel) si renseignés. Bouton "Trier par distance" dans les clusters (géolocalisation éphémère, voir section dédiée). |
+| Page de préparation visiteur (`/decouvrir`) | ✅ | `app/decouvrir/page.tsx` | Réassurance + 3 étapes + FAQ accessible (`FaqAccordion`) + témoignage vedette (fallback global si aucun pour le prochain live) + CTA retour carte. CTA discret "C'est votre première fois ?" sur `MapPublique` (coin bas-droit, masquable, mémorisé `localStorage`). |
 | Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). |
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |
 | Overlay carte vide contextuel (7 états) | ✅ | `components/MapPublique.tsx` → `EmptyMapContent` | |
@@ -362,12 +415,18 @@ Mis à jour manuellement à chaque PR significative.
 | Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
-| Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse, consignes, téléphone. Email admin si ville change. |
-| Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte) |
+| Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse précise (`lat_precise`/`lng_precise` via `AddressInput`/Nominatim), consignes, téléphone. Email admin si ville change. |
+| Photo compressée (upload ambassadeur) | ✅ | `POST /api/upload/ambassador-photo` | `lib/image/compress-photo.ts` (Sharp) : profil → 512×512 WebP cover-fit ; lieu → max 1200px WebP contain-fit sans upscale. Toutes les photos converties en `.webp`. |
+| Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte). Téléphone visiteur **obligatoire** (contrainte `NOT NULL` + validation `isValidPhoneNumber` client). Best-effort : crée/upsert un `visitor_profiles` (compte Auth + profil réutilisable) sans jamais bloquer la demande. |
+| Profil visiteur réutilisable | ✅ | `GET/PATCH /api/visitor/profile`, `/mon-espace` | Créé automatiquement à la première demande de visite (magic link, pas de mot de passe). Préremplit email/téléphone sur les demandes suivantes (`ContactForm`, `VisitRequestForm`). Voir section dédiée. |
+| Distance visiteur ↔ ambassadeur | ✅ | `POST /api/distance` | Géolocalisation navigateur éphémère (jamais persistée) + Haversine arrondi au km. Rate-limité 8 req/min/IP. Ne retourne jamais de coordonnées. |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
 | Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
-| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | Colonne `events.feedback_sent` ajoutée au schéma. Reste : bug SQL join à corriger avant activation. Cron désactivé (hors production). |
+| Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | **Bug SQL join corrigé** (juillet 2026, cf commit `cb02f84`) — requête en deux temps via `host_activation_id IN (...)` au lieu du `.eq()` no-op sur relation non jointe. Cron reste désactivé (hors production). |
+| Feedback bidirectionnel ambassadeur → visiteur | ✅ | `/feedback/host/[token]` + `POST /api/feedbacks` | Token = `host_activations.id` (réutilisé, pas de nouvelle colonne). Formulaire V1 : "seriez-vous à l'aise que cette personne revienne" (Oui/Non) + texte libre optionnel. `would_host_again=false` propose une case "Bloquer ce visiteur" → insère dans `blacklist` avec `host_profile_id` (blocage scopé à cet hôte, pas global). |
+| Blacklist par-ambassadeur | ✅ | `blacklist.host_profile_id` (nullable) | `NULL` = blocage global (`/admin/blacklist`), renseigné = blocage scopé à un hôte (déclenché depuis le formulaire de feedback). Le check dans `/api/visit-requests` matche les deux. |
+| Notation admin filtrable | ✅ | `/admin/feedback` (`FeedbackModerationClient`) | 2 onglets : "Signalements" (modération) et "Toutes les notations" (filtres event/direction/tri). |
 | Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | Helper `getCurrentEvent()` factorisé dans `lib/admin/event-window.ts` (réutilisé par `/admin/stats`). |
 | Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. |
 | Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
@@ -402,7 +461,7 @@ Aucun à ce jour. Les colonnes précédemment manquantes ont été ajoutées :
 | Cron | Route | Schedule | Statut prod |
 |------|-------|----------|-------------|
 | Dispatch campagnes | `/api/cron/dispatch-campaigns` | `0 8 * * *` | ⏸ Désactivé (hors production) |
-| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⏸ Désactivé — **bug SQL join** à corriger avant activation |
+| Feedback post-live | `/api/cron/send-feedback-emails` | `0 10 * * *` | ⏸ Désactivé (hors production) — bug SQL join corrigé juillet 2026 |
 | Alerte 0 hôtes actifs | `/api/cron/check-activations` | `0 9 * * *` | ⏸ Désactivé (hors production) |
 | Auto-decline visiteurs | `/api/cron/auto-decline` | — | 💀 **Supprimé** (David ne l'a pas demandé) |
 
@@ -414,7 +473,7 @@ Aucun à ce jour. Les colonnes précédemment manquantes ont été ajoutées :
 |-----------------------------|-------------------|------|
 | `campaign_ambassadors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
 | `campaign_visitors_days_before` | `/api/cron/dispatch-campaigns` | ✅ Actif (mais non schedulé) |
-| `feedback_days_after` | `/api/cron/send-feedback-emails` | ⚠️ Bug + non schedulé |
+| `feedback_days_after` | `/api/cron/send-feedback-emails` | ✅ Actif (bug SQL corrigé), non schedulé |
 | `host_reminder_days_before` | — | 💀 Aucun cron correspondant |
 | `visitor_auto_decline_days_before` | `/api/cron/auto-decline` | 💀 Cron supprimé |
 | `queue_aging_days` | — | 💀 Aucun cron correspondant |
@@ -437,19 +496,24 @@ Le calcul "est-ce qu'un live est en cours ?" n'utilise pas la même variable sel
 
 ---
 
-### Bug connu — send-feedback-emails (ligne 38)
+### Bug résolu — send-feedback-emails (corrigé juillet 2026, commit `cb02f84`)
 
 ```typescript
-// BUG : .eq('host_activations.event_id', event.id) sans join Supabase
-// → filtre ignoré, retourne TOUS les contact_requests acceptés toutes events confondues
+// AVANT (bug) : .eq('host_activations.event_id', event.id) sans join Supabase
+// → filtre ignoré, retournait TOUS les contact_requests acceptés toutes events confondues
 const { data: contacts } = await supabase
   .from('contact_requests')
   .select('id, visitor_email, visitor_first_name, action_token')
   .eq('status', 'accepted')
-  .eq('host_activations.event_id', event.id); // ← ne fait rien sans .select('...host_activations(*)')
+  .eq('host_activations.event_id', event.id); // ← ne faisait rien sans .select('...host_activations(*)')
 ```
 
-Fix requis avant activation du cron : utiliser un join explicite ou filtrer via `host_activation_id IN (SELECT id FROM host_activations WHERE event_id = ...)`.
+**Fix appliqué** : requête en deux temps — d'abord récupérer les `host_activations` de l'event,
+puis filtrer `contact_requests` via `.in('host_activation_id', activationIds)`. Le cron envoie
+désormais aussi un email hôte (`sendFeedbackPostLiveHost`, une fois par activation ayant ≥ 1
+visiteur accepté) en plus du feedback visiteur existant. Cron toujours désactivé dans
+`vercel.json` (hors production) — le bug ne bloque plus l'activation, seule la phase de
+conception le fait.
 
 ---
 
@@ -459,8 +523,11 @@ Fix requis avant activation du cron : utiliser un join explicite ou filtrer via 
 |---------|---------|------|--------|
 | `GET /api/host-activations` | Pins carte publique | Non | ✅ |
 | `PATCH /api/host-activations/[id]` | Toggle self-activation hôte | Session hôte (RLS) | ✅ |
-| `POST /api/visit-requests` | Visiteur → demande contact hôte | Non | ✅ |
-| `POST /api/contact-requests` | (alias legacy) | Non | ✅ |
+| `POST /api/visit-requests` | Visiteur → demande contact hôte (téléphone obligatoire) | Non | ✅ |
+| ~~`POST /api/contact-requests`~~ | **Supprimée** (juillet 2026) — référençait une colonne inexistante (`visitor_whatsapp`), jamais appelée par le frontend | — | 💀 Supprimée |
+| `POST /api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, km arrondi) | Non (rate-limité) | ✅ |
+| `GET/PATCH /api/visitor/profile` | Profil visiteur réutilisable (email, téléphone) | Session visiteur | ✅ |
+| `POST /api/feedbacks` | Feedback bidirectionnel post-live + blocage visiteur | Token / Session hôte | ✅ |
 | `POST /api/campaign-activations` | Activation hôte via lien email | Token signé | ✅ |
 | `POST /api/temoignages` | Soumission témoignage public | Non | ✅ |
 | `GET /api/testimonials` | Lecture témoignages (admin) | Admin | ✅ |
