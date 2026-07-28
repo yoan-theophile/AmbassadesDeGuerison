@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS blacklist             CASCADE;
 DROP TABLE IF EXISTS live_signals          CASCADE;
 DROP TABLE IF EXISTS testimonials          CASCADE;
 DROP TABLE IF EXISTS contact_requests      CASCADE;
+DROP TABLE IF EXISTS visitor_profiles      CASCADE;
 DROP TABLE IF EXISTS host_activations      CASCADE;
 DROP TABLE IF EXISTS admin_users           CASCADE;
 DROP TABLE IF EXISTS host_profiles         CASCADE;
@@ -64,11 +65,18 @@ CREATE TABLE host_profiles (
   country                TEXT        NOT NULL,
   lat                    DOUBLE PRECISION,
   lng                    DOUBLE PRECISION,
+  -- Coordonnées précises (Phase 2) — PRIVÉES, jamais exposées sur une route
+  -- publique. Servent uniquement au calcul de distance visiteur↔ambassadeur
+  -- (calcul serveur, cf /api/distance). lat/lng ci-dessus restent la version
+  -- publique grossière (ville ou arrondissement-rounded) — ne jamais les
+  -- écraser directement avec la valeur du geocoding précis.
+  lat_precise            DOUBLE PRECISION,
+  lng_precise            DOUBLE PRECISION,
   quartier               TEXT        DEFAULT NULL,
+  presentation_message   TEXT        DEFAULT NULL CHECK (char_length(presentation_message) <= 240),
   is_women_only          BOOLEAN     NOT NULL DEFAULT FALSE,
   geocoding_failed       BOOLEAN     DEFAULT FALSE,
   address_private        TEXT,
-  address_public         BOOLEAN     DEFAULT FALSE,
   whatsapp_group_url     TEXT        DEFAULT NULL
     CHECK (
       whatsapp_group_url IS NULL
@@ -103,7 +111,7 @@ CREATE TABLE host_profiles (
 -- Table multi-admins (source de vérité pour is_admin / is_super_admin)
 CREATE TABLE admin_users (
   user_id  UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role     TEXT NOT NULL CHECK (role IN ('super_admin', 'moderator')),
+  role     TEXT NOT NULL CHECK (role IN ('super_admin', 'admin')),
   added_by UUID REFERENCES auth.users(id),
   added_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -126,7 +134,10 @@ CREATE TABLE contact_requests (
   host_activation_id          UUID        NOT NULL REFERENCES host_activations(id) ON DELETE CASCADE,
   visitor_first_name          TEXT        NOT NULL,
   visitor_email               TEXT        NOT NULL,
-  visitor_phone               TEXT,
+  -- Obligatoire (Phase 3 PR1, validé David : "l'ambassadeur ouvre sa porte,
+  -- le visiteur donne juste sa présence — pas symétrique en risque. Un
+  -- téléphone permet à l'hôte d'appeler en cas d'imprévu, pas de checkpoint.")
+  visitor_phone               TEXT        NOT NULL,
   nb_personnes                INT         NOT NULL DEFAULT 1 CHECK (nb_personnes > 0),
   visitor_message             TEXT,
   status                      TEXT        NOT NULL DEFAULT 'pending'
@@ -135,6 +146,20 @@ CREATE TABLE contact_requests (
   visitor_notifications_optin BOOLEAN     DEFAULT TRUE,
   UNIQUE (host_activation_id, visitor_email),
   created_at                  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Phase 2bis : profil visiteur réutilisable (téléphone), créé silencieusement
+-- à la première demande de visite via un compte Supabase Auth (magic link,
+-- même mécanisme que host_profiles/admin_users — cf learning
+-- management-token-lost-link-problem : éviter les tokens UUID pour des
+-- profils permanents). Photo volontairement hors scope (aucune UI d'upload
+-- visiteur n'existe aujourd'hui, cf /plan-eng-review).
+CREATE TABLE visitor_profiles (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID        NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT        NOT NULL UNIQUE,
+  phone      TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE testimonials (
@@ -173,6 +198,10 @@ CREATE TABLE live_feedbacks (
   rating_listening    SMALLINT    CHECK (rating_listening    BETWEEN 1 AND 5),
   rating_prayer       SMALLINT    CHECK (rating_prayer       BETWEEN 1 AND 5),
   free_text           TEXT,
+  -- Direction host_to_visitor uniquement (Phase 3 PR2) : "seriez-vous à
+  -- l'aise que cette personne revienne chez vous ?". Sert aussi de donnée
+  -- d'entrée au blocage visiteur (Phase 3 PR3) — pas de colonne dupliquée.
+  would_host_again    BOOLEAN,
   reported            BOOLEAN     DEFAULT FALSE,
   report_reason       TEXT,
   report_status       TEXT        DEFAULT 'pending'
@@ -186,8 +215,15 @@ CREATE TABLE live_feedbacks (
 );
 
 -- Blacklist email / téléphone (anti-spam, anti-abus)
+-- host_profile_id NULL = blocage global (admin, /admin/blacklist).
+-- host_profile_id renseigné = blocage par-ambassadeur uniquement (Phase 3
+-- PR3, déclenché depuis le feedback post-live). Décision /plan-eng-review :
+-- même table/pattern que le blocage global plutôt qu'un système parallèle —
+-- pas de dépendance sur visitor_profiles.id (email/phone bruts, comme le
+-- blocage global existant).
 CREATE TABLE blacklist (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  host_profile_id UUID        REFERENCES host_profiles(id) ON DELETE CASCADE,
   email      TEXT,
   phone      TEXT,
   reason     TEXT        NOT NULL,
@@ -269,7 +305,7 @@ CREATE VIEW host_profiles_public AS
 SELECT
   id, user_id, first_name, last_name, host_type, church_subtype,
   city, country, lat, lng, geocoding_failed,
-  whatsapp_group_url, address_public,
+  whatsapp_group_url,
   capacity, consignes, viewing_setup, profile_photo_url,
   status, created_at
 FROM host_profiles;
@@ -418,6 +454,7 @@ ALTER TABLE host_profiles       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE host_activations    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_requests    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE visitor_profiles    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE testimonials        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_signals        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_feedbacks      ENABLE ROW LEVEL SECURITY;
@@ -442,6 +479,12 @@ CREATE POLICY "host_profiles_owner_full" ON host_profiles
   FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "host_profiles_admin_full" ON host_profiles
   FOR ALL USING (is_admin(auth.uid()));
+
+-- visitor_profiles : le visiteur ne voit et ne modifie que son propre profil
+-- (aucune lecture publique, aucun accès admin — pas de valeur pastorale à ce
+-- que David/Camille consultent le téléphone d'un visiteur hors contexte)
+CREATE POLICY "visitor_profiles_owner_full" ON visitor_profiles
+  FOR ALL USING (auth.uid() = user_id);
 
 -- admin_users : super_admin uniquement
 CREATE POLICY "admin_users_super_admin" ON admin_users
@@ -543,25 +586,64 @@ CREATE INDEX idx_testimonials_event_visible    ON testimonials(event_id, is_visi
 -- 9. STORAGE BUCKETS
 -- ============================================================
 
+-- Bucket privé (public = false) — corrigé le 2026-07-27 (/plan-eng-review a détecté que
+-- reset-db.sql n'avait jamais été aligné sur le pivot vie-privée de migration-photos-private.sql ;
+-- un `supabase start` local frais recréait un bucket réellement public). Photos accessibles
+-- uniquement via signed URL générée côté serveur (lib/storage/photo-url.ts).
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'ambassador-photos',
   'ambassador-photos',
-  true,
+  false,
   5242880,
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 )
 ON CONFLICT (id) DO NOTHING;
 
-DROP POLICY IF EXISTS "ambassador_photos_public_read"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_public_read"    ON storage.objects;
 DROP POLICY IF EXISTS "ambassador_photos_service_insert" ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_select"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_insert"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_update"   ON storage.objects;
+DROP POLICY IF EXISTS "ambassador_photos_owner_delete"   ON storage.objects;
 
--- Lecture publique via URL (bucket public)
-CREATE POLICY "ambassador_photos_public_read"
+-- L'ambassadeur peut lire ses propres fichiers (pour createSignedUrl côté client)
+CREATE POLICY "ambassador_photos_owner_select"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'ambassador-photos');
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);
 
--- Upload réservé au service_role (bypass RLS) — policy de sécurité pour les clés anon
-CREATE POLICY "ambassador_photos_service_insert"
+-- L'ambassadeur peut uploader (le contrôle d'ownership est dans la route API)
+CREATE POLICY "ambassador_photos_owner_insert"
 ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'ambassador-photos');
+WITH CHECK (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+);
+
+-- L'ambassadeur peut écraser ses propres fichiers (upsert)
+CREATE POLICY "ambassador_photos_owner_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);
+
+-- L'ambassadeur peut supprimer ses propres fichiers
+CREATE POLICY "ambassador_photos_owner_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'ambassador-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] IN (
+    SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
+  )
+);

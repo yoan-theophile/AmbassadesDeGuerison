@@ -3,6 +3,50 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { sendNewContactRequestHost } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+// Compte visiteur créé silencieusement à la première demande — Supabase Auth
+// (pas de token UUID custom, cf learning management-token-lost-link-problem :
+// un lien perdu = ticket support inévitable pour un profil permanent).
+// user_metadata.role='visitor' distingue ce compte des hôtes/admins pour le
+// routage post-login (/auth/confirm).
+async function createOrUpdateVisitorProfile(
+  supabase: ServiceClient,
+  email: string,
+  phone: string | null,
+): Promise<void> {
+  const { data: existingProfile } = await supabase
+    .from('visitor_profiles')
+    .select('id, user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    if (phone) {
+      await supabase.from('visitor_profiles').update({ phone }).eq('id', existingProfile.id);
+    }
+    return;
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { role: 'visitor' },
+  });
+
+  let userId: string | undefined = authData?.user?.id;
+
+  if (authError) {
+    if (!authError.message.toLowerCase().includes('already')) return; // best-effort, ne bloque jamais la demande
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    userId = existingUsers?.users.find((u) => u.email === email)?.id;
+  }
+
+  if (!userId) return;
+
+  await supabase.from('visitor_profiles').insert({ user_id: userId, email, phone });
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -14,28 +58,39 @@ export async function POST(req: NextRequest) {
   if (!event_id || !host_profile_id || !first_name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
   }
+  // Obligatoire depuis Phase 3 PR1 (validé David, cf CLAUDE.md "Modération
+  // anti-abus visiteur" / design doc R1) — permet à l'hôte d'appeler en cas
+  // d'imprévu, pas un checkpoint.
+  if (!phone?.trim()) {
+    return NextResponse.json({ error: 'Téléphone requis' }, { status: 400 });
+  }
   if (!consent) {
     return NextResponse.json({ error: 'Consentement requis' }, { status: 400 });
   }
 
   const supabase = createServiceClient();
   const emailLower = email.trim().toLowerCase();
-  const phoneTrimmed = phone?.trim() || null;
+  const phoneTrimmed = phone.trim();
 
   // Blacklist — refus honnête (403) sans dévoiler le mécanisme.
   // Choix éthique : pas de shadow-ban (faux 201). David est pasteur, le produit
   // ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre
   // pour ne pas confirmer au visiteur qu'il est blacklisté ; une voie de recours
   // est offerte si c'est une erreur.
+  // Vérifie à la fois le blocage global (host_profile_id NULL, /admin/blacklist)
+  // et le blocage par-ambassadeur (Phase 3 PR3, déclenché depuis le feedback
+  // post-live) — un visiteur bloqué par un hôte reste libre de contacter
+  // les autres.
   const blacklistFilter = phoneTrimmed
     ? `email.eq.${emailLower},phone.eq.${phoneTrimmed}`
     : `email.eq.${emailLower}`;
-  const { data: blocked } = await supabase
+  const { data: blockRows } = await supabase
     .from('blacklist')
-    .select('id')
-    .or(blacklistFilter)
-    .limit(1)
-    .maybeSingle();
+    .select('host_profile_id')
+    .or(blacklistFilter);
+  const blocked = (blockRows ?? []).some(
+    (r) => r.host_profile_id === null || r.host_profile_id === host_profile_id
+  );
   if (blocked) {
     return NextResponse.json(
       { error: "Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe." },
@@ -98,6 +153,11 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Phase 2bis — profil visiteur silencieux (aucune étape "créer un compte"
+  // visible). Best-effort : un échec ici ne doit jamais faire échouer la
+  // demande de visite elle-même, c'est un confort en plus, pas une dépendance.
+  createOrUpdateVisitorProfile(supabase, emailLower, phoneTrimmed).catch(() => {});
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     const { data: host } = await supabase

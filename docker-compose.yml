@@ -1,0 +1,7 @@
+services:
+  mailhog:
+    image: mailhog/mailhog
+    container_name: davidthery-mailhog
+    ports:
+      - "1025:1025" # SMTP — reçoit les mails envoyés par l'app
+      - "8025:8025" # Dashboard web — http://localhost:8025

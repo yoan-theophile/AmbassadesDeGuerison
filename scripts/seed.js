@@ -124,6 +124,7 @@ async function run() {
       viewing_setup: 'TV salon 55 pouces', healing_challenge_done: true,
       lat: 48.8698, lng: 2.3315, quartier: 'Paris 15e', status: 'validated',
       is_women_only: true,
+      presentation_message: "Chez nous, c'est simple et chaleureux — on prie ensemble avant le live autour d'un café.",
     },
     {
       first_name: 'Jean-Pierre', last_name: 'Martin', email: 'jp.martin@demo.fr',
@@ -136,6 +137,7 @@ async function run() {
       viewing_setup: 'Vidéoprojecteur 4K + sono', church_subtype: 'permanent_open',
       healing_challenge_done: true, denomination: 'évangélique',
       lat: 45.7578, lng: 4.8320, quartier: "Lyon Presqu'île", status: 'validated',
+      presentation_message: 'Grande salle accueillante, ouverte à tous. Café et thé partagés après le live.',
     },
     {
       first_name: 'Fatou', last_name: 'Diallo', email: 'fatou.diallo@demo.fr',
@@ -463,7 +465,7 @@ async function run() {
     },
     {
       host: 'marie.dubois@demo.fr', first: 'Nathalie', email: 'nathalie.v@mail.com',
-      phone: null, nb_personnes: 1,
+      phone: '+33645789632', nb_personnes: 1,
       msg: null, status: 'pending',
     },
     {
@@ -478,12 +480,12 @@ async function run() {
     },
     {
       host: 'jp.martin@demo.fr', first: 'Isabelle', email: 'isabelle.r@mail.com',
-      phone: null, nb_personnes: 5,
+      phone: '+33671234598', nb_personnes: 5,
       msg: "Ma famille sera là aussi, 5 personnes.", status: 'pending',
     },
     {
       host: 'fatou.diallo@demo.fr', first: 'Laure', email: 'laure.d@mail.com',
-      phone: null, nb_personnes: 1,
+      phone: '+32488334455', nb_personnes: 1,
       msg: null, status: 'declined',
     },
     {

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
+import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
   hostProfileId: string;
@@ -31,12 +33,33 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  // Pré-remplissage (Phase 2bis) : si un visiteur déjà venu est connecté,
+  // récupère son email/téléphone enregistrés — pas de re-saisie.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user?.user_metadata?.role !== 'visitor') return;
+      const res = await fetch('/api/visitor/profile').catch(() => null);
+      if (!res?.ok) return;
+      const profile = await res.json();
+      setForm((prev) => ({
+        ...prev,
+        visitor_email: profile.email ?? prev.visitor_email,
+        visitor_phone: (profile.phone ?? '').replace(/\s+/g, '') || prev.visitor_phone,
+      }));
+    });
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!eventId) return;
     // Garde anti-bypass (touche Entrée) : si l'ambassade est femmes-only,
     // refuser tout submit qui n'a pas explicitement coché "Femme".
     if (isWomenOnly && gender !== 'female') return;
+    if (!isValidPhoneNumber(form.visitor_phone)) {
+      setError('Merci de renseigner un numéro de téléphone valide.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -187,14 +210,19 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
             <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
+            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
           </div>
-          <PhoneInput
-            label="Téléphone (optionnel)"
-            id="visitor_phone"
-            value={form.visitor_phone}
-            onChange={(v) => set('visitor_phone', v)}
-            placeholder="+33 6 12 34 56 78"
-          />
+          <div>
+            <PhoneInput
+              label="Téléphone"
+              id="visitor_phone"
+              required
+              value={form.visitor_phone}
+              onChange={(v) => set('visitor_phone', v)}
+              placeholder="+33 6 12 34 56 78"
+            />
+            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input
@@ -240,6 +268,10 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
             <Send className="w-4 h-4" />
             {loading ? 'Envoi…' : 'Envoyer la demande'}
           </button>
+
+          <p className="text-center text-xs text-slate-400">
+            Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link> pour ne pas tout retaper.
+          </p>
         </div>
       )}
     </form>

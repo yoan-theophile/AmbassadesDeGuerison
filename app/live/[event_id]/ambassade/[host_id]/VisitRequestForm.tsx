@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Send } from 'lucide-react';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
+import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
   eventId: string;
@@ -29,8 +32,27 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user?.user_metadata?.role !== 'visitor') return;
+      const res = await fetch('/api/visitor/profile').catch(() => null);
+      if (!res?.ok) return;
+      const profile = await res.json();
+      setForm((prev) => ({
+        ...prev,
+        visitor_email: profile.email ?? prev.visitor_email,
+        visitor_phone: (profile.phone ?? '').replace(/\s+/g, '') || prev.visitor_phone,
+      }));
+    });
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidPhoneNumber(form.visitor_phone)) {
+      setError('Merci de renseigner un numéro de téléphone valide.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -42,7 +64,7 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
         host_profile_id: hostProfileId,
         first_name: form.visitor_first_name,
         email: form.visitor_email,
-        phone: form.visitor_phone || null,
+        phone: form.visitor_phone,
         nb_personnes: form.nb_personnes,
         message: form.visitor_message || null,
         consent: form.visitor_notifications_optin,
@@ -86,6 +108,7 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
               className={inputCls}
               placeholder="marie@exemple.com"
             />
+            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
           </div>
         </div>
       </fieldset>
@@ -94,13 +117,17 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
       <fieldset>
         <legend className="text-xs text-slate-400 uppercase tracking-wide mb-3">Logistique</legend>
         <div className="space-y-3">
-          <PhoneInput
-            label="Téléphone (optionnel)"
-            id="visitor_phone"
-            value={form.visitor_phone}
-            onChange={(v) => set('visitor_phone', v)}
-            placeholder="+33 6 12 34 56 78"
-          />
+          <div>
+            <PhoneInput
+              label="Téléphone"
+              id="visitor_phone"
+              required
+              value={form.visitor_phone}
+              onChange={(v) => set('visitor_phone', v)}
+              placeholder="+33 6 12 34 56 78"
+            />
+            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input
@@ -157,6 +184,10 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
         <Send className="w-4 h-4" />
         {loading ? 'Envoi…' : 'Envoyer ma demande'}
       </button>
+
+      <p className="text-center text-xs text-slate-400">
+        Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link> pour ne pas tout retaper.
+      </p>
     </form>
   );
 }

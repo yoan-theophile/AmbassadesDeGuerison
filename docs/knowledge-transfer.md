@@ -19,21 +19,24 @@
 
 ---
 
-## Structure des données (12 tables)
+## Structure des données (15 tables)
 
 ```
 events               → Les lives (titre, date, lien YouTube, lien StreamYard)
 host_profiles        → Les hôtes ambassadeurs (profil permanent)
 host_activations     → Qui est actif pour quel live (créé par trigger automatique)
-contact_requests     → Demandes de visiteurs vers un hôte
+contact_requests     → Demandes de visiteurs vers un hôte (visitor_phone NOT NULL)
+visitor_profiles     → Profil visiteur réutilisable (email, téléphone) — créé au premier contact, login par magic link
 live_signals         → Signaux "moment fort" pendant le live
 testimonials         → Témoignages post-live (hôtes + soumissions publiques anonymes)
-live_feedbacks       → Feedbacks structurés post-live (internes, non publics)
+live_feedbacks       → Feedbacks structurés post-live, bidirectionnel (host_to_visitor + visitor_to_host), non publics
 admin_users          → Table des comptes admin (role = 'admin' dans user_metadata Supabase)
+blacklist            → Blocage visiteur — global (host_profile_id NULL) ou scopé à un hôte
 scheduled_campaigns  → Campagnes email programmées (ambassadeurs ou visiteurs)
 campaign_recipients  → Destinataires snapshottés au moment de la création de la campagne
 moderation_log       → Journal des actions de modération admin
 onboarding_config    → Singleton — URL vidéo onboarding + chemin PDF charte (id = 1)
+event_timing_config  → Singleton — délais campagnes/feedback/rappels (id = 1)
 ```
 
 Les données des hôtes et visiteurs sont protégées par **RLS (Row Level Security)** :
@@ -207,7 +210,7 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+20 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 > Le template `pre-validation-accordee.tsx` a été supprimé en mai 2026 quand la transition `pending_review → pre_approved` est passée en self-service (le candidat clique "J'accepte" sur son dashboard, le questionnaire s'affiche immédiatement sans email intermédiaire).
 
@@ -218,7 +221,8 @@ ORDER BY ls.created_at DESC;
 | Validation finale | Confirmation de l'activation finale |
 | Confirmation inscription | Nouvel ambassadeur inscrit |
 | Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
-| Feedback post-live | Ambassadeur invité à donner son retour après le live |
+| Feedback post-live (visiteur) | Visiteur invité à donner son retour après le live |
+| Feedback post-live (hôte) | Ambassadeur invité à noter les visiteurs reçus, via `/feedback/host/[token]` |
 | Demande reçue (hôte) | Visiteur soumet une demande → email à l'hôte avec lien /accueillir/[token] (accepter) + lien /refuser/[token] (refuser) |
 | Demande refusée | Hôte refuse via /refuser/[token] → visiteur redirigé vers la carte |
 | Confirmation visite — adresse dévoilée | Hôte accepte via /accueillir/[token] → adresse complète + e-mail + lien WhatsApp envoyés au visiteur |
@@ -234,7 +238,19 @@ ORDER BY ls.created_at DESC;
 
 ### Voir les emails envoyés
 
-Resend Dashboard → Logs → filtrer par email ou date.
+**En production** : Resend Dashboard → Logs → filtrer par email ou date.
+
+**En local, sans dépendre de Resend ni d'adresses e-mail réelles** : Mailhog capture tous les e-mails du flux applicatif réel sur un SMTP local.
+
+```bash
+npm run mailhog          # démarre le conteneur Docker (docker-compose.yml)
+# .env.local : USE_MAILHOG=true
+npm run dev
+```
+
+Dashboard Mailhog : http://localhost:8025 — liste tous les e-mails envoyés par l'app (magic link, campagnes, notifications admin…) avec destinataire, sujet, HTML rendu et liens cliquables. `lib/email/send.ts` fait le routage Mailhog/Resend selon `USE_MAILHOG` ; `lib/email/templates.ts` n'a pas connaissance de la destination. Arrêter le conteneur : `npm run mailhog:stop`.
+
+Différence avec `/dev/emails` : `/dev/emails` affiche les templates avec des données mock (`emails/__mocks__/index.ts`) sans jamais passer par `lib/email/templates.ts` — utile pour le design visuel. Mailhog capture les e-mails **réellement déclenchés par un flux applicatif** (ex : cliquer "S'inscrire" sur `/inscription`) — utile pour vérifier bout-en-bout qu'une action envoie le bon e-mail avec le bon contenu.
 
 ---
 
@@ -387,6 +403,7 @@ AND hp.id NOT IN (
 | `host_profiles` | Vue publique limitée (nom, ville) | L'hôte lui-même + admin |
 | `host_activations` | Public (is_active, capacity) | L'hôte lui-même + admin |
 | `contact_requests` | L'hôte concerné + le visiteur concerné | Visiteur (créer) + hôte (accepter/refuser) |
+| `visitor_profiles` | Le visiteur lui-même | Le visiteur lui-même (policy `visitor_profiles_owner_full`) |
 | `live_signals` | Admin + l'hôte qui a créé le signal | L'hôte lui-même |
 | `events` | Public | Admin uniquement |
 

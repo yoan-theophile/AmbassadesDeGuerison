@@ -47,6 +47,15 @@ test.describe('Dashboard — section Mes informations (authentifié)', () => {
     await expect(page.getByText('Informations enregistrées')).toBeVisible({ timeout: 8_000 });
   });
 
+  test('message de présentation — enregistré et compteur de caractères mis à jour', async ({ page }) => {
+    await page.goto('/dashboard');
+    const textarea = page.getByPlaceholder(/Chez nous, c'est simple/);
+    await textarea.fill("On vous accueille avec joie autour d'un café avant chaque live.");
+    await expect(page.getByText(/^\d+\/240/)).toBeVisible();
+    await page.getByRole('button', { name: /Enregistrer mes informations/ }).click();
+    await expect(page.getByText('Informations enregistrées')).toBeVisible({ timeout: 8_000 });
+  });
+
   test('changement de ville sans sélection dropdown — hint ambre bloque l\'envoi', async ({ page }) => {
     await page.goto('/dashboard');
     // Taper une ville sans sélectionner dans le dropdown

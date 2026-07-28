@@ -36,7 +36,91 @@ interface HostPin {
   whatsapp_group_url?: string;
   host_type: string;
   quartier?: string | null;
+  presentation_message?: string | null;
+  photo_url?: string | null;
   is_women_only: boolean;
+}
+
+// "Trier par distance" — géolocalisation navigateur ÉPHÉMÈRE déclenchée par une
+// action utilisateur explicite (jamais automatique, cf design doc Phase 2 :
+// piggybacker sur l'auto-locate de la carte violerait le consentement). La
+// position n'est envoyée qu'une fois à /api/distance, jamais stockée, jamais
+// ré-exposée : seule la distance arrondie au km revient.
+async function sortClusterByDistance(
+  activeGroup: HostPin[],
+  btn: HTMLButtonElement,
+  hint: HTMLElement | null,
+  rowsContainer: HTMLElement | null,
+  renderRow: (host: HostPin, distanceKm?: number | null) => string,
+) {
+  btn.disabled = true;
+  btn.textContent = 'Localisation…';
+  if (hint) hint.style.display = 'none';
+
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) { reject(new Error('unsupported')); return; }
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: 10_000 });
+    });
+
+    const res = await fetch('/api/distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        host_ids: activeGroup.map((h) => h.id),
+      }),
+    });
+
+    if (!res.ok) throw new Error('distance_api_failed');
+    const distances: Record<string, number | null> = await res.json();
+
+    const sorted = [...activeGroup].sort((a, b) => {
+      const da = distances[a.id];
+      const db = distances[b.id];
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da - db;
+    });
+
+    if (rowsContainer) {
+      rowsContainer.innerHTML = sorted.map((h) => renderRow(h, distances[h.id] ?? null)).join('');
+    }
+    btn.style.display = 'none';
+  } catch {
+    btn.disabled = false;
+    btn.textContent = '📍 Trier par distance';
+    if (hint) {
+      hint.textContent = "Localisation refusée ou indisponible — les ambassades restent visibles sans tri par distance.";
+      hint.style.display = 'block';
+    }
+  }
+}
+
+// Avatar en popup (jamais sur le pin — cf design C.1, évite la surcharge
+// visuelle sur les clusters denses type Paris et le glissement "annonce").
+// Fallback initiale + couleur si pas de photo (accompagnement pastoral, pas
+// un blocage technique — cf design doc R2).
+function avatarHtml(host: { first_name: string; photo_url?: string | null }, size = 40): string {
+  if (host.photo_url) {
+    return `<img src="${escapeHtml(host.photo_url)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;border-radius:9999px;object-fit:cover;flex-shrink:0;" />`;
+  }
+  const initial = escapeHtml((host.first_name || '?').trim().charAt(0).toUpperCase());
+  return `<div style="width:${size}px;height:${size}px;border-radius:9999px;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:${Math.round(size * 0.4)}px;flex-shrink:0;">${initial}</div>`;
+}
+
+// Échappe les caractères HTML dangereux avant interpolation dans les popups
+// Leaflet (chaînes HTML brutes, pas de JSX) — first_name/quartier/presentation_message
+// sont du texte libre saisi par l'ambassadeur, jamais fait confiance tel quel.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // SVG inline de l'icône Lucide `Flower2` pour les popups Leaflet (HTML strings,
@@ -215,6 +299,22 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   const [searchResults, setSearchResults] = useState<{ lat: string; lon: string; display_name: string }[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // CTA "première fois" (Phase 4) — masquable, mémorisé en localStorage
+  // (même pattern que tz-city) pour ne pas fatiguer les visiteurs récurrents.
+  const [discoverDismissed, setDiscoverDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('discover-cta-dismissed') === '1') setDiscoverDismissed(true);
+    } catch {
+      // Safari mode privé — pas de crash, bandeau visible par défaut
+    }
+  }, []);
+
+  function dismissDiscoverCta() {
+    setDiscoverDismissed(true);
+    try { localStorage.setItem('discover-cta-dismissed', '1'); } catch { /* ignore */ }
+  }
 
   // Polling 30s pour les activations
   useEffect(() => {
@@ -364,11 +464,26 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               ${!effectiveIsFull ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
             `;
           }
+          const headerHtml = host.is_active
+            ? `
+              <div style="display:flex;align-items:flex-start;gap:8px;">
+                ${avatarHtml(host)}
+                <div style="min-width:0;">
+                  <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+                  ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+                </div>
+              </div>
+            `
+            : `
+              <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+            `;
           const popup = `
             <div style="min-width:190px;padding:2px 0">
-              <p class="font-semibold text-slate-800 text-sm">${host.first_name}</p>
-              <p class="text-xs text-slate-500 mt-0.5">${host.city}, ${host.country}</p>
-              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${host.quartier}</p>` : ''}
+              ${headerHtml}
+              ${host.is_active && host.presentation_message ? `<p class="text-xs text-slate-500 mt-1.5" style="line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
               ${bodyHtml}
             </div>
           `;
@@ -381,7 +496,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
           const activeGroup = group.filter((h) => h.is_active);
           const inactiveGroup = group.filter((h) => !h.is_active);
 
-          function renderActiveRow(host: HostPin) {
+          function renderActiveRow(host: HostPin, distanceKm?: number | null) {
             const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
             const effectiveIsFull = host.is_full;
             const fullBadge = effectiveIsFull
@@ -390,15 +505,22 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
             const womenBadge = host.is_women_only
               ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
               : '';
+            const distanceBadge = distanceKm != null
+              ? `<span style="display:inline-block;background:#eef2ff;color:#4f46e5;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">≈ ${distanceKm} km</span>`
+              : '';
             const cta = !effectiveIsFull
               ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
               : '';
             return `
-              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${host.first_name}${fullBadge}${womenBadge}</p>
-                <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${host.quartier}</p>` : ''}
-                ${cta}
+              <div style="padding:8px 0;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:flex-start;">
+                ${avatarHtml(host, 28)}
+                <div style="min-width:0;flex:1;">
+                  <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}${distanceBadge}</p>
+                  <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+                  ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
+                  ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
+                  ${cta}
+                </div>
               </div>
             `;
           }
@@ -410,15 +532,33 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               : '';
             return `
               <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${host.first_name}${womenBadge}</p>
+                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${escapeHtml(host.first_name)}${womenBadge}</p>
                 <p style="font-size:11px;color:#94a3b8;margin:2px 0 0;">${typeLabel}</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${host.quartier}</p>` : ''}
+                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
               </div>
             `;
           }
 
+          // Identifiant DOM stable pour ce cluster (pas de . ni - : getElementById
+          // n'a pas besoin d'échappement CSS, mais on reste prudent).
+          const idSafe = key.replace(/[^a-zA-Z0-9]/g, '_');
+          const rowsContainerId = `dist-rows-${idSafe}`;
+          const sortButtonId = `dist-btn-${idSafe}`;
+          const sortHintId = `dist-hint-${idSafe}`;
+
+          const sortButtonHtml = activeGroup.length > 1
+            ? `
+              <button id="${sortButtonId}" type="button" style="display:flex;align-items:center;gap:5px;background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:none;cursor:pointer;margin:4px 0 2px;">
+                📍 Trier par distance
+              </button>
+              <p id="${sortHintId}" style="display:none;font-size:10px;color:#94a3b8;margin:2px 0 4px;"></p>
+            `
+            : '';
+
           const activeSection = activeGroup.length > 0
-            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>${activeGroup.map(renderActiveRow).join('')}`
+            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>
+               ${sortButtonHtml}
+               <div id="${rowsContainerId}">${activeGroup.map((h) => renderActiveRow(h)).join('')}</div>`
             : '';
           const inactiveSection = inactiveGroup.length > 0
             ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">${inactiveMessage} (${inactiveGroup.length})</p>${inactiveGroup.map(renderInactiveRow).join('')}`
@@ -426,14 +566,25 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
 
           const popup = `
             <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
-              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${city}</p>
+              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${escapeHtml(city)}</p>
               ${activeSection}
               ${inactiveSection}
             </div>
           `;
-          L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
+          const clusterMarker = L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
             .addTo(mapRef.current!)
             .bindPopup(popup, { maxWidth: 300 });
+
+          if (activeGroup.length > 1) {
+            clusterMarker.on('popupopen', () => {
+              const btn = document.getElementById(sortButtonId) as HTMLButtonElement | null;
+              const hint = document.getElementById(sortHintId);
+              const rowsContainer = document.getElementById(rowsContainerId);
+              if (!btn || btn.dataset.bound) return;
+              btn.dataset.bound = '1';
+              btn.addEventListener('click', () => sortClusterByDistance(activeGroup, btn, hint, rowsContainer, renderActiveRow));
+            });
+          }
         }
       });
     }
@@ -551,6 +702,29 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
             >
               Sois le premier ambassadeur ici →
+            </a>
+          </div>
+        </div>
+      )}
+      {/* CTA "première fois" (Phase 4) — coin bas-droit pour ne pas chevaucher
+          le hint "pas d'ambassade" (centré) ni la recherche (haut-gauche) */}
+      {!discoverDismissed && (
+        <div className="absolute bottom-6 right-3 z-[500] max-w-[220px]">
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 relative">
+            <button
+              type="button"
+              onClick={dismissDiscoverCta}
+              aria-label="Fermer"
+              className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-slate-500 transition-colors"
+            >
+              ×
+            </button>
+            <p className="text-slate-600 text-xs pr-4">C&apos;est votre première fois&nbsp;?</p>
+            <a
+              href="/decouvrir"
+              className="mt-1.5 inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors"
+            >
+              Découvrir comment ça se passe →
             </a>
           </div>
         </div>

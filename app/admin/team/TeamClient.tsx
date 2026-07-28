@@ -7,7 +7,7 @@ interface Member {
   user_id: string;
   role: string;
   email: string;
-  created_at: string;
+  added_at: string;
 }
 
 interface Props {
@@ -93,6 +93,7 @@ export default function TeamClient({ members: initial }: Props) {
                     disabled={removing === m.user_id}
                     className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Retirer"
+                    aria-label={`Retirer ${m.email}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

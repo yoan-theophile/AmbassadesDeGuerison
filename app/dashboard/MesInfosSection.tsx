@@ -5,6 +5,7 @@ import { Settings, CheckCircle2, Loader2 } from 'lucide-react';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 import PhoneInput from '@/components/ui/PhoneInput';
+import AddressInput from '@/components/ui/AddressInput';
 
 interface Profile {
   city: string;
@@ -13,6 +14,7 @@ interface Profile {
   consignes?: string | null;
   phone?: string | null;
   quartier?: string | null;
+  presentation_message?: string | null;
   host_type?: string | null;
   is_women_only?: boolean | null;
 }
@@ -27,9 +29,13 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
     consignes: profile.consignes ?? '',
     phone: (profile.phone ?? '').replace(/\s+/g, ''),
     quartier: profile.quartier ?? '',
+    presentation_message: profile.presentation_message ?? '',
+    lat_precise: undefined as number | undefined,
+    lng_precise: undefined as number | undefined,
     is_women_only: Boolean(profile.is_women_only),
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
+  const [addressChanged, setAddressChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +67,13 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
       consignes: form.consignes,
       phone: form.phone,
       quartier: form.quartier,
+      presentation_message: form.presentation_message,
     };
+
+    if (addressChanged && form.lat_precise != null && form.lng_precise != null) {
+      payload.lat_precise = form.lat_precise;
+      payload.lng_precise = form.lng_precise;
+    }
 
     if (profile.host_type === 'individual') {
       payload.is_women_only = form.is_women_only;
@@ -134,13 +146,44 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
         </div>
 
         <div>
-          <label className="block text-sm text-slate-700 mb-1.5">Adresse privée</label>
+          <label className="block text-sm text-slate-700 mb-1.5">
+            Message de présentation
+            <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel, visible sur la carte)</span>
+          </label>
           <textarea
-            value={form.address_private}
-            onChange={(e) => { setForm((f) => ({ ...f, address_private: e.target.value })); setSaved(false); }}
+            value={form.presentation_message}
+            onChange={(e) => { setForm((f) => ({ ...f, presentation_message: e.target.value.slice(0, 240) })); setSaved(false); }}
             rows={2}
-            placeholder="12 rue de la Paix, 75001 Paris"
+            maxLength={240}
+            placeholder="Ex. : Chez nous, c'est simple et chaleureux — on prie ensemble avant le live autour d'un café."
             className={inputCls}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            {form.presentation_message.length}/240 — Donne envie aux visiteurs de venir chez toi.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-700 mb-1.5">Adresse privée</label>
+          <AddressInput
+            value={form.address_private}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, address_private: v, lat_precise: undefined, lng_precise: undefined }));
+              setAddressChanged(false);
+              setSaved(false);
+            }}
+            onSelect={(sel) => {
+              setForm((f) => ({
+                ...f,
+                address_private: sel.address,
+                lat_precise: sel.lat_precise,
+                lng_precise: sel.lng_precise,
+                quartier: f.quartier || (sel.quartier ?? ''),
+              }));
+              setAddressChanged(true);
+              setSaved(false);
+            }}
+            placeholder="12 rue de la Paix, 75001 Paris"
           />
           <p className="text-xs text-slate-400 mt-1">Partagée uniquement avec les visiteurs que vous acceptez.</p>
         </div>
@@ -156,12 +199,15 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           />
         </div>
 
-        <PhoneInput
-          label="Téléphone (WhatsApp de préférence)"
-          id="phone"
-          value={form.phone}
-          onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
-        />
+        <div>
+          <PhoneInput
+            label="Téléphone (WhatsApp de préférence)"
+            id="phone"
+            value={form.phone}
+            onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
+          />
+          <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
+        </div>
 
         {profile.host_type === 'individual' && (
           <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">

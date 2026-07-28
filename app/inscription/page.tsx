@@ -7,6 +7,7 @@ import AppHeader from '@/components/AppHeader';
 import CityInput from '@/components/ui/CityInput';
 import CountrySelect from '@/components/ui/CountrySelect';
 import PhoneInput from '@/components/ui/PhoneInput';
+import AddressInput from '@/components/ui/AddressInput';
 import { isValidPhoneNumber } from 'react-phone-number-input';
 const TYPES = [
   { value: 'individual', label: 'Domicile' },
@@ -19,6 +20,7 @@ export default function InscriptionPage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showWhatsAppHelp, setShowWhatsAppHelp] = useState(false);
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -32,6 +34,8 @@ export default function InscriptionPage() {
     type: 'individual',
     capacity: '10',
     address_private: '',
+    lat_precise: undefined as number | undefined,
+    lng_precise: undefined as number | undefined,
     whatsapp_group_url: '',
     consignes: '',
     quartier: '',
@@ -146,6 +150,7 @@ export default function InscriptionPage() {
               </Field>
               <Field label="E-mail" required>
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
+                <p className="text-xs text-slate-400 mt-1">Sert à vous connecter (lien de connexion, sans mot de passe) et à recevoir les notifications de demandes de visite.</p>
               </Field>
               <Field label="Téléphone (WhatsApp de préférence)" required>
                 <PhoneInput
@@ -214,8 +219,32 @@ export default function InscriptionPage() {
                 <input type="number" min="1" max="500" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} required className={inputCls} />
               </Field>
               <Field label="Adresse complète — privée, partagée uniquement avec un visiteur que vous avez accepté" required>
-                <textarea value={form.address_private} onChange={(e) => set('address_private', e.target.value)} required rows={3} className={inputCls} placeholder="12 rue des Lilas, 69001 Lyon" />
+                <AddressInput
+                  value={form.address_private}
+                  onChange={(v) => {
+                    setForm((prev) => ({ ...prev, address_private: v, lat_precise: undefined, lng_precise: undefined }));
+                    setAddressConfirmed(false);
+                  }}
+                  onSelect={(sel) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      address_private: sel.address,
+                      lat_precise: sel.lat_precise,
+                      lng_precise: sel.lng_precise,
+                      // N'écrase jamais un quartier déjà saisi manuellement à l'étape 1.
+                      quartier: prev.quartier || (sel.quartier ?? ''),
+                    }));
+                    setAddressConfirmed(true);
+                  }}
+                  placeholder="12 rue des Lilas, 69001 Lyon"
+                  required
+                />
                 <p className="text-xs text-slate-400 mt-1">Vous validez chaque demande avant que l'adresse soit dévoilée.</p>
+                {form.address_private && !addressConfirmed && (
+                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mt-1.5">
+                    Sélectionnez votre adresse dans la liste pour un calcul de distance précis avec les visiteurs. Si votre adresse n'apparaît pas (zone rurale), vous pouvez continuer tel quel.
+                  </p>
+                )}
               </Field>
               <Field label="Détails utiles pour vos visiteurs (optionnel)">
                 <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder="Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30." />

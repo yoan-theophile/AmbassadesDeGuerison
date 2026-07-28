@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8.0] - 2026-07-28
+
+### Added
+- **Message de présentation ambassadeur** (`presentation_message`, 240 caractères max, optionnel) : 2-3 lignes affichées dans le popup carte (pin individuel + lignes actives de cluster), avec avatar photo. Un visiteur qui survole une ambassade voit maintenant qui il va rencontrer, pas juste "Domicile" ou "Église".
+- **Photo ambassadeur dans le popup carte** : signed URL 24h (`getPublicMapPhotoUrls`, cache en mémoire), uniquement pour les hôtes actifs — jamais l'adresse. Toutes les photos uploadées sont converties en WebP compressé (`lib/image/compress-photo.ts`, Sharp) : profil 512×512 cover-fit, lieu max 1200px contain-fit.
+- **Adresse précise ambassadeur** (`AddressInput`, autocomplétion Nominatim `mode=address`) → `lat_precise`/`lng_precise`, **jamais publics**. Sert uniquement au calcul de distance ci-dessous. Distinct de `quartier` (texte libre public déjà existant).
+- **Distance visiteur ↔ ambassadeur, sans jamais stocker où vit le visiteur** : bouton "Trier par distance" dans les popups de cluster (≥ 2 hôtes) — géolocalisation navigateur déclenchée explicitement, jamais auto-appelée. `POST /api/distance` calcule côté serveur (Haversine, arrondi à l'entier km — mitigation anti-triangulation), rate-limité 8 req/min/IP, ne retourne jamais de coordonnées. Voir `docs/decisions.md` pour le raisonnement complet (le besoin réel de l'ambassadeur, c'est le téléphone du visiteur pour l'appeler — pas son adresse).
+- **Profil visiteur réutilisable** (`visitor_profiles`) : un visiteur qui contacte plusieurs ambassades n'a plus besoin de retaper email/téléphone à chaque demande. Créé automatiquement (best-effort) à la première demande de visite, connexion par magic link (même mécanisme que les ambassadeurs). Nouvel espace minimal `/mon-espace` (email + téléphone éditable). `ContactForm`/`VisitRequestForm` préremplissent si une session existe.
+- **Téléphone visiteur obligatoire** sur les 3 surfaces de demande de visite (`contact_requests.visitor_phone NOT NULL` + validation client `isValidPhoneNumber`). Permet à l'hôte d'appeler directement le visiteur en cas de besoin.
+- **Feedback bidirectionnel post-live** : en plus du feedback visiteur → hôte existant, un ambassadeur peut désormais noter les visiteurs reçus (`/feedback/host/[token]`, "seriez-vous à l'aise que cette personne revienne ?"). Réponse négative → case "Bloquer ce visiteur" optionnelle.
+- **Blacklist scopée par-ambassadeur** (`blacklist.host_profile_id`, nullable) : en plus du blocage global existant (`/admin/blacklist`), un ambassadeur peut désormais bloquer un visiteur spécifique uniquement pour ses propres futures demandes, directement depuis son formulaire de feedback.
+- **`/admin/feedback` enrichie** : 2 onglets — "Signalements" (modération existante) et "Toutes les notations" (filtres event/direction, tri récent/score) pour voir l'ensemble des feedbacks bidirectionnels.
+- **Page `/decouvrir`** : réassurance + 3 étapes concrètes + FAQ accessible (`FaqAccordion`, touch targets 44px) + témoignage vedette (fallback sur le plus récent publié si aucun pour le prochain live) + CTA retour carte. CTA discret "C'est votre première fois ?" sur la carte publique (coin bas-droit, masquable, mémorisé `localStorage`).
+- **Helper text inline** sur les champs critiques (`/inscription`, formulaires de contact visiteur, dashboard) — explique pourquoi l'email et le téléphone sont demandés (connexion par magic link, contact direct hôte↔visiteur).
+
+### Fixed
+- **Rate-limit `/api/auth/magic-link`** (3 req/min/IP) — la route génère un lien de connexion admin pour n'importe quel email, non protégée jusqu'ici.
+- **Bug SQL `send-feedback-emails`** : le filtre `.eq('host_activations.event_id', ...)` sur une relation non jointe était un no-op silencieux et retournait tous les `contact_requests` acceptés toutes events confondues. Remplacé par une requête en deux temps (`host_activation_id IN (...)`). Cron toujours désactivé hors production, mais le bug ne bloque plus son activation future.
+- **Bucket `ambassador-photos` privé** : `reset-db.sql` créait le bucket en `public: true`, contredisant le reste du schéma (policies RLS owner-scoped). Corrigé en `public: false` avec les policies alignées.
+- **Dédup suggestions ville** (`/api/geocode`) : Nominatim retourne parfois deux entités pour la même ville avec des coordonnées légèrement différentes, produisant deux options indiscernables dans le dropdown d'autocomplétion. Dédup par label plutôt que par coordonnées. (Trouvé par `/qa`.)
+- **Indicatif téléphone verrouillé** (`PhoneInput`, `countryCallingCodeEditable={false}`) : sélectionner tout le champ et retaper juste le numéro national pouvait faire basculer silencieusement l'indicatif vers un autre pays détecté dans les chiffres tapés — risque de numéro de contact erroné. Changer de pays passe désormais uniquement par le sélecteur drapeau. (Trouvé par `/qa`.)
+
+### Removed
+- **`POST /api/contact-requests`** (route legacy) : référençait une colonne inexistante (`visitor_whatsapp`), jamais appelée par le frontend. `/api/visit-requests` est la seule route de création de demande de visite.
+- **`emails/contact-reserved.tsx`** et `sendContactRequestReserved` : la doc affirmait ce template supprimé depuis mai 2026, mais le fichier et son câblage (`templates.ts`, `/dev/emails`) existaient toujours sans être appelés par aucune route réelle. Nettoyage pour aligner le code sur la documentation.
+
+### Rationale produit
+Ce lot répond directement aux retours réels de David sur le design doc du 12 mai (téléphone visiteur obligatoire, adresse précise pour calculer les distances, message de présentation ambassadeur, popup "première fois — découvrir"). Le point le plus structurant : en creusant le besoin "adresse visiteur pour calculer la distance", il s'est avéré que l'ambassadeur n'a pas besoin de savoir où vit le visiteur — juste de pouvoir l'appeler (téléphone, déjà collecté). La géolocalisation éphémère + Haversine arrondi au km résout le vrai problème sans introduire de PII visiteur superflue. Détail complet dans `docs/decisions.md`.
+
+### QA
+- ✅ 177 unit tests vitest passent.
+- ✅ Vérification manuelle (browse tool) : `/decouvrir`, accordéon FAQ, CTA carte (affichage + fermeture + persistance localStorage après rechargement), flux profil visiteur bout-en-bout (demande → compte créé → magic link → `/mon-espace` → préremplissage).
+- ✅ `e2e/rls-isolation.spec.ts` étendu : `lat_precise`/`lng_precise` jamais dans `/api/host-activations`, `/api/distance` ne fuite jamais de coordonnées, rejette > 20 host_ids et latitude invalide.
+- ✅ Build Next.js + typecheck passent.
+
+### Docs
+- `docs/ARCHITECTURE.md` : nouvelle section "Profil visiteur réutilisable + distance éphémère", routes API mises à jour, bug SQL `send-feedback-emails` marqué résolu, tableau des features complété.
+- `CLAUDE.md` : nouvelles sections profil visiteur, distance, feedback bidirectionnel ; `/admin/feedback` ajoutée au tableau des pages admin.
+- `docs/knowledge-transfer.md` : 12 → 15 tables, 19 → 20 templates.
+- `docs/decisions.md` : 2 nouvelles décisions (distance sans adresse visiteur, profil visiteur par magic link).
+- `README.md` : fonctionnalités visiteur/ambassadeur à jour, compteur templates corrigé.
+- `DESIGN.md` : 3 nouvelles décisions (touch targets FAQ, position CTA carte, pattern AddressInput).
+
 ## [0.1.7.0] - 2026-05-07
 
 ### Added

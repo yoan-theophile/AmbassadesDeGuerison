@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createServiceClient } from '@/lib/supabase/server';
+import { compressAmbassadorPhoto } from '@/lib/image/compress-photo';
 
 const BUCKET = 'ambassador-photos';
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 Mo
@@ -53,16 +54,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profil ambassadeur introuvable' }, { status: 404 });
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const timestamp = Date.now();
-  const path = `${profile.id}/${type}-${timestamp}.${ext}`;
+  const path = `${profile.id}/${type}-${timestamp}.webp`;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer;
+  try {
+    buffer = await compressAmbassadorPhoto(rawBuffer, type as 'profile' | 'room');
+  } catch {
+    return NextResponse.json({ error: 'Image invalide ou illisible' }, { status: 400 });
+  }
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
     .upload(path, buffer, {
-      contentType: file.type,
+      contentType: 'image/webp',
       upsert: true,
     });
 
