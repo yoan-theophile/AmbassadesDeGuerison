@@ -296,7 +296,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   const [visibleCount, setVisibleCount] = useState(0);
   const [mapZoom, setMapZoom] = useState(3);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ lat: string; lon: string; display_name: string }[]>([]);
+  const [searchResults, setSearchResults] = useState<{ lat: number; lng: number; city: string; country: string; label: string }[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // CTA "première fois" (Phase 4) — masquable, mémorisé en localStorage
@@ -624,9 +624,12 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   async function searchCity(query: string) {
     if (query.length < 2) { setSearchResults([]); setSearchOpen(false); return; }
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=fr`
-      );
+      // Passe par le proxy /api/geocode plutôt que Nominatim direct : il filtre
+      // sur featuretype=city et déduplique par label (Nominatim retourne parfois
+      // deux entités distinctes pour la même ville, ex: ville + relation
+      // administrative, en plus des homonymes internationaux légitimes comme
+      // Nantes FR / Nantes BR / Nantes CA).
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
       if (!res.ok) return;
       const data = await res.json();
       setSearchResults(data);
@@ -636,8 +639,8 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
     }
   }
 
-  function handleResultClick(lat: string, lon: string) {
-    mapRef.current?.flyTo([parseFloat(lat), parseFloat(lon)], 10);
+  function handleResultClick(lat: number, lng: number) {
+    mapRef.current?.flyTo([lat, lng], 10);
     setSearchOpen(false);
     setSearchQuery('');
     setSearchResults([]);
@@ -668,18 +671,15 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         {searchOpen && searchResults.length > 0 && (
           <ul className="absolute top-full mt-1 w-full bg-white border border-slate-100 rounded-xl shadow-lg overflow-hidden">
             {searchResults.map((r, i) => {
-              const parts = r.display_name.split(', ');
-              const city = parts[0];
-              const country = parts[parts.length - 1];
               return (
                 <li key={i}>
                   <button
                     type="button"
-                    onMouseDown={() => handleResultClick(r.lat, r.lon)}
+                    onMouseDown={() => handleResultClick(r.lat, r.lng)}
                     className="w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 transition-colors"
                   >
-                    <span className="font-medium text-slate-800">{city}</span>
-                    {country !== city && <span className="text-slate-400 text-xs ml-1.5">{country}</span>}
+                    <span className="font-medium text-slate-800">{r.city}</span>
+                    {r.country && r.country !== r.city && <span className="text-slate-400 text-xs ml-1.5">{r.country}</span>}
                   </button>
                 </li>
               );
