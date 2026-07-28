@@ -91,7 +91,7 @@ async function sortClusterByDistance(
     btn.style.display = 'none';
   } catch {
     btn.disabled = false;
-    btn.textContent = '📍 Trier par distance';
+    btn.textContent = 'Trier par distance';
     if (hint) {
       hint.textContent = "Localisation refusée ou indisponible — les ambassades restent visibles sans tri par distance.";
       hint.style.display = 'block';
@@ -562,7 +562,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
           const sortButtonHtml = activeGroup.length > 1
             ? `
               <button id="${sortButtonId}" type="button" style="display:flex;align-items:center;gap:5px;background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:none;cursor:pointer;margin:4px 0 2px;">
-                📍 Trier par distance
+                Trier par distance
               </button>
               <p id="${sortHintId}" style="display:none;font-size:10px;color:#94a3b8;margin:2px 0 4px;"></p>
             `
