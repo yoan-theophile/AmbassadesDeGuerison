@@ -302,6 +302,10 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   // CTA "première fois" (Phase 4) — masquable, mémorisé en localStorage
   // (même pattern que tz-city) pour ne pas fatiguer les visiteurs récurrents.
   const [discoverDismissed, setDiscoverDismissed] = useState(false);
+  // Hint "Pas d'ambassade dans ta ville ?" — fermable, non mémorisé (dépend du
+  // viewport courant, contrairement au CTA "première fois" qui est global).
+  const [noAmbassadorHintDismissed, setNoAmbassadorHintDismissed] = useState(false);
+  const wasHintVisibleRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -401,6 +405,15 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         );
         setVisibleCount(visible.length);
         setMapZoom(zoom);
+        // Ré-autorise le hint "Pas d'ambassade" à réapparaître la prochaine
+        // fois que sa condition d'affichage redevient vraie — sinon un clic
+        // sur "×" le fermerait définitivement pour toute la session, même
+        // après que l'utilisateur ait déplacé la carte vers une autre zone vide.
+        const hintVisible = zoom >= 5 && (zoom < 8 || visible.length === 0);
+        if (!hintVisible && wasHintVisibleRef.current) {
+          setNoAmbassadorHintDismissed(false);
+        }
+        wasHintVisibleRef.current = hintVisible;
       }
       map.on('moveend zoomend', updateViewport);
     }
@@ -693,9 +706,17 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         </div>
       )}
       {/* Ambassadeurs existent ailleurs mais pas dans le viewport actuel */}
-      {loaded && hosts.length > 0 && mapZoom >= 5 && (mapZoom < 8 || visibleCount === 0) && (
+      {loaded && hosts.length > 0 && mapZoom >= 5 && (mapZoom < 8 || visibleCount === 0) && !noAmbassadorHintDismissed && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 text-center pointer-events-auto">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-100 shadow-md px-4 py-3 pr-8 text-center relative pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setNoAmbassadorHintDismissed(true)}
+              aria-label="Fermer"
+              className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center text-slate-300 hover:text-slate-500 transition-colors"
+            >
+              ×
+            </button>
             <p className="text-slate-600 text-xs">Pas d&apos;ambassade dans ta ville&nbsp;?</p>
             <a
               href="/inscription"
