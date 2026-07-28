@@ -137,6 +137,7 @@ export default function BlacklistClient({ entries: initial }: Props) {
                   disabled={removing === e.id}
                   className="w-8 h-8 flex items-center justify-center text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shrink-0"
                   title="Retirer"
+                  aria-label={`Retirer ${e.email ?? e.phone ?? 'ce blocage'}`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
