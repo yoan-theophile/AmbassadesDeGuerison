@@ -129,6 +129,27 @@ CREATE TABLE host_activations (
   UNIQUE (host_profile_id, event_id)
 );
 
+-- Profil visiteur réutilisable (compte Supabase Auth, magic link — même
+-- mécanisme que host_profiles/admin_users, cf learning
+-- management-token-lost-link-problem : éviter les tokens UUID pour des
+-- profils permanents). Depuis Phase 3 PR3 : création via un écran de compte
+-- explicite (/mon-espace/creer), plus de création silencieuse à la première
+-- demande — corrige une faille où n'importe quel email non authentifié
+-- pouvait écraser le téléphone d'un profil existant (cf /plan-eng-review,
+-- Codex). Photo optionnelle, jamais un blocage de création de compte.
+CREATE TABLE visitor_profiles (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID        NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name     TEXT        NOT NULL,
+  email          TEXT        NOT NULL UNIQUE,
+  phone          TEXT,
+  photo_url      TEXT,
+  -- Signalement manuel depuis le dashboard ambassadeur (pas de modération IA,
+  -- hors scope) — modèle d'abus minimal pour la photo de profil visiteur.
+  photo_reported BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE contact_requests (
   id                          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   host_activation_id          UUID        NOT NULL REFERENCES host_activations(id) ON DELETE CASCADE,
@@ -138,6 +159,11 @@ CREATE TABLE contact_requests (
   -- le visiteur donne juste sa présence — pas symétrique en risque. Un
   -- téléphone permet à l'hôte d'appeler en cas d'imprévu, pas de checkpoint.")
   visitor_phone               TEXT        NOT NULL,
+  -- Phase 3 PR3 (photo visiteur + écran de compte) : la demande est désormais
+  -- toujours créée depuis un compte visiteur authentifié — permet de retrouver
+  -- la photo de profil sans la stocker par-demande. Nullable : les demandes
+  -- créées avant ce chantier n'ont pas de compte associé.
+  visitor_profile_id          UUID        REFERENCES visitor_profiles(id) ON DELETE SET NULL,
   nb_personnes                INT         NOT NULL DEFAULT 1 CHECK (nb_personnes > 0),
   visitor_message             TEXT,
   status                      TEXT        NOT NULL DEFAULT 'pending'
@@ -146,20 +172,6 @@ CREATE TABLE contact_requests (
   visitor_notifications_optin BOOLEAN     DEFAULT TRUE,
   UNIQUE (host_activation_id, visitor_email),
   created_at                  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Phase 2bis : profil visiteur réutilisable (téléphone), créé silencieusement
--- à la première demande de visite via un compte Supabase Auth (magic link,
--- même mécanisme que host_profiles/admin_users — cf learning
--- management-token-lost-link-problem : éviter les tokens UUID pour des
--- profils permanents). Photo volontairement hors scope (aucune UI d'upload
--- visiteur n'existe aujourd'hui, cf /plan-eng-review).
-CREATE TABLE visitor_profiles (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    UUID        NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
-  email      TEXT        NOT NULL UNIQUE,
-  phone      TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE testimonials (
@@ -571,6 +583,7 @@ CREATE INDEX idx_host_activations_event        ON host_activations(event_id);
 CREATE INDEX idx_host_activations_active       ON host_activations(event_id, is_active) WHERE is_active = TRUE;
 CREATE INDEX idx_live_signals_event            ON live_signals(event_id, status);
 CREATE INDEX idx_contact_requests_token        ON contact_requests(action_token);
+CREATE INDEX idx_contact_requests_visitor_profile ON contact_requests(visitor_profile_id) WHERE visitor_profile_id IS NOT NULL;
 CREATE INDEX idx_live_feedbacks_reported       ON live_feedbacks(reported, created_at DESC) WHERE reported = TRUE;
 CREATE INDEX idx_scheduled_campaigns_dispatch  ON scheduled_campaigns(scheduled_at, status) WHERE status = 'pending';
 CREATE INDEX idx_campaign_recipients_activation ON campaign_recipients(activation_token) WHERE activation_token IS NOT NULL;
@@ -646,4 +659,58 @@ USING (
   AND (storage.foldername(name))[1] IN (
     SELECT id::text FROM public.host_profiles WHERE user_id = auth.uid()
   )
+);
+
+-- Bucket dédié visiteur (Phase 3 PR3, /plan-eng-review) — isolation RLS entre
+-- deux populations d'utilisateurs différentes (hôte vs visiteur), pas de
+-- sous-préfixe du bucket ambassadeur. Path : {user_id}/profile-{ts}.webp —
+-- préfixe = auth.uid() directement (pas de host_profiles.id à résoudre côté
+-- policy). Lecture par l'hôte concerné : jamais via ce bucket directement,
+-- via une route API service_role qui vérifie l'ownership de la demande
+-- (cf app/api/dashboard/contact-photos) — évite d'élargir la policy RLS de
+-- visitor_profiles aux hôtes (fuiterait email/téléphone du visiteur).
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'visitor-photos',
+  'visitor-photos',
+  false,
+  5242880,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "visitor_photos_owner_select" ON storage.objects;
+DROP POLICY IF EXISTS "visitor_photos_owner_insert" ON storage.objects;
+DROP POLICY IF EXISTS "visitor_photos_owner_update" ON storage.objects;
+DROP POLICY IF EXISTS "visitor_photos_owner_delete" ON storage.objects;
+
+CREATE POLICY "visitor_photos_owner_select"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'visitor-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "visitor_photos_owner_insert"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'visitor-photos'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "visitor_photos_owner_update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'visitor-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "visitor_photos_owner_delete"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'visitor-photos'
+  AND auth.role() = 'authenticated'
+  AND (storage.foldername(name))[1] = auth.uid()::text
 );

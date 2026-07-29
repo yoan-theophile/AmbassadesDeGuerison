@@ -18,6 +18,7 @@ import SignalApproved from '@/emails/signal-approved';
 import NouvelleActivationAdmin from '@/emails/nouvelle-activation-admin';
 import EnrichissementRecu from '@/emails/enrichissement-recu';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
+import VisitorCompteCree from '@/emails/visitor-compte-cree';
 
 export default async function EmailPreviewPage() {
   if (process.env.EMAIL_PREVIEW !== 'true') notFound();
@@ -36,6 +37,7 @@ export default async function EmailPreviewPage() {
     htmlAcceptation,
     htmlRefus,
     htmlCampagneVisit,
+    htmlVisitorCompteCree,
     htmlSignal,
     htmlNouvelleActivation,
     htmlEnrichissement,
@@ -47,11 +49,12 @@ export default async function EmailPreviewPage() {
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
     render(<FeedbackPostLiveHost firstName={m.host.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
-    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} />),
+    render(<ContactReceivedHost hostFirstName={m.host.firstName} visitorFirstName={m.visitor.firstName} visitorEmail={m.visitor.email} visitorWhatsapp={m.visitor.whatsapp} visitorMessage={m.visitorMessage} acceptUrl={m.accueilUrl} declineUrl={m.declineUrl} dashboardUrl={m.activateUrl} />),
     render(<ContactDeclined visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} appUrl={m.appUrl} />),
     render(<AcceptationVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} hostAddress={m.host.address} hostPhone={m.host.phone} eventTitle={m.liveTitle} eventDate={m.liveDate} contactEquipeUrl={m.contactEquipeUrl} />),
     render(<RefusVisite visitorFirstName={m.visitor.firstName} hostFirstName={m.host.firstName} carteUrl={m.carteUrl} />),
     render(<CampagneVisiteurs firstName={m.visitor.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} carteUrl={m.carteUrl} unsubscribeUrl={m.unsubscribeUrl} />),
+    render(<VisitorCompteCree firstName={m.visitor.firstName} confirmUrl={m.magicLink} />),
     render(<SignalApproved firstName={m.marie.firstName} liveLink={m.liveLink} />),
     render(<NouvelleActivationAdmin firstName={m.marie.firstName} city={m.marie.city} country={m.marie.country} adminUrl={m.adminUrl} />),
     render(<EnrichissementRecu ambassadeurFirstName={m.marie.firstName} adminUrl={m.adminUrl} />),
@@ -73,6 +76,7 @@ export default async function EmailPreviewPage() {
     { label: 'Confirmation de visite — adresse dévoilée', html: htmlAcceptation },
     { label: 'Visite refusée', html: htmlRefus },
     { label: 'Campagne — prochain live', html: htmlCampagneVisit },
+    { label: 'Compte visiteur créé', html: htmlVisitorCompteCree },
   ];
 
   const live = [

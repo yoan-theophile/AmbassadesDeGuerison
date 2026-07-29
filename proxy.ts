@@ -11,6 +11,8 @@ const RATE_LIMITED_ROUTES = [
   '/api/visitor-help-request',
   '/api/distance',
   '/api/auth/magic-link',
+  '/api/visitor/check-email',
+  '/api/visitor/account',
 ];
 
 const LIMITS: Record<string, { max: number; windowMs: number }> = {
@@ -27,6 +29,12 @@ const LIMITS: Record<string, { max: number; windowMs: number }> = {
   // pas encore (cf Phase 2bis) — sans rate-limit, la route devient un vecteur de
   // spam email/création de compte (trouvé par Codex en /plan-eng-review).
   '/api/auth/magic-link':      { max: 3, windowMs: 60_000 },
+  // Vérification au blur (écran /mon-espace/creer) : répond au statut d'un
+  // email avant authentification — pattern d'énumération si non protégé
+  // (cf /plan-eng-review, passe 2 post design-review).
+  '/api/visitor/check-email': { max: 10, windowMs: 60_000 },
+  // Création de compte — même ordre de grandeur que /api/inscriptions.
+  '/api/visitor/account':      { max: 3, windowMs: 60_000 },
 };
 
 // Stockage en mémoire (ne persiste pas entre instances serverless — suffisant pour démo)
@@ -120,5 +128,7 @@ export const config = {
     '/api/visitor-help-request/:path*',
     '/api/distance/:path*',
     '/api/auth/magic-link/:path*',
+    '/api/visitor/check-email/:path*',
+    '/api/visitor/account/:path*',
   ],
 };

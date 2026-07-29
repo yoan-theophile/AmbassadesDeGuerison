@@ -1,0 +1,153 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { isValidPhoneNumber } from 'react-phone-number-input';
+import { createServiceClient } from '@/lib/supabase/server';
+import { classifyVisitorEmail } from '@/lib/visitor/classify-email';
+import { compressAmbassadorPhoto } from '@/lib/image/compress-photo';
+import { sendVisitorCompteCree } from '@/lib/email/templates';
+
+const BUCKET = 'visitor-photos';
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 Mo
+// Mitigation "decompression bomb" — une image prétendument petite (poids
+// fichier) mais aux dimensions énormes peut saturer la mémoire au moment du
+// décodage, avant même la compression (cf /plan-eng-review, modèle d'abus).
+const MAX_DIMENSION_PX = 8000;
+
+// Écran de compte explicite (Phase 3 PR3, /plan-eng-review) — remplace la
+// création silencieuse de createOrUpdateVisitorProfile() dans
+// /api/visit-requests, qui acceptait n'importe quel email non authentifié
+// pour écraser le profil d'un visiteur existant (faille trouvée par Codex).
+// Ici : email/host/admin en collision → 409, jamais de création croisée.
+export async function POST(req: NextRequest) {
+  const formData = await req.formData().catch(() => null);
+  if (!formData) {
+    return NextResponse.json({ error: 'Requête invalide' }, { status: 400 });
+  }
+
+  const firstName = (formData.get('first_name') as string | null)?.trim();
+  const emailRaw = (formData.get('email') as string | null)?.trim();
+  const phone = (formData.get('phone') as string | null)?.trim();
+  const file = formData.get('file') as File | null;
+
+  if (!firstName || !emailRaw || !emailRaw.includes('@')) {
+    return NextResponse.json({ error: 'Prénom et e-mail requis' }, { status: 400 });
+  }
+  if (!phone || !isValidPhoneNumber(phone)) {
+    return NextResponse.json({ error: 'Numéro de téléphone invalide' }, { status: 400 });
+  }
+  if (file) {
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'Seules les images sont acceptées' }, { status: 400 });
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Photo trop volumineuse (max 5 Mo)' }, { status: 400 });
+    }
+  }
+
+  const email = emailRaw.toLowerCase();
+  const supabase = createServiceClient();
+
+  // Revalidation serveur — la vérification au blur (/api/visitor/check-email)
+  // peut avoir été contournée ou périmée (compte créé entre-temps).
+  const classification = await classifyVisitorEmail(supabase, email);
+  if (classification === 'visitor_existing') {
+    return NextResponse.json(
+      { error: 'Un compte existe déjà avec cet e-mail.', type: 'visitor_exists' },
+      { status: 409 },
+    );
+  }
+  if (classification === 'collision') {
+    return NextResponse.json(
+      { error: 'Cet e-mail est déjà utilisé pour un autre type de compte.', type: 'collision' },
+      { status: 409 },
+    );
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { role: 'visitor' },
+  });
+
+  if (authError || !authData?.user) {
+    console.error('[visitor/account] createUser failed', authError);
+    return NextResponse.json({ error: "Impossible de créer le compte" }, { status: 500 });
+  }
+
+  const userId = authData.user.id;
+
+  // Photo optionnelle — un échec ici ne doit jamais bloquer la création de
+  // compte (cf Success Criteria du design doc). sharp() décode réellement le
+  // contenu de l'image (validation par magic bytes, pas seulement le
+  // Content-Type déclaré par le client) et échoue proprement sur un fichier
+  // renommé/corrompu.
+  let photoPath: string | null = null;
+  let photoError = false;
+
+  if (file) {
+    try {
+      const rawBuffer = Buffer.from(await file.arrayBuffer());
+      const sharp = (await import('sharp')).default;
+      const metadata = await sharp(rawBuffer).metadata();
+      if ((metadata.width ?? 0) > MAX_DIMENSION_PX || (metadata.height ?? 0) > MAX_DIMENSION_PX) {
+        throw new Error('Dimensions trop grandes');
+      }
+      const buffer = await compressAmbassadorPhoto(rawBuffer, 'profile');
+      const path = `${userId}/profile-${Date.now()}.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, buffer, { contentType: 'image/webp', upsert: true });
+      if (uploadError) throw uploadError;
+      photoPath = path;
+    } catch (err) {
+      console.error('[visitor/account] photo processing failed', err);
+      photoError = true;
+    }
+  }
+
+  const { error: profileError } = await supabase
+    .from('visitor_profiles')
+    .insert({ user_id: userId, first_name: firstName, email, phone, photo_url: photoPath });
+
+  if (profileError) {
+    console.error('[visitor/account] visitor_profiles insert failed', profileError);
+    return NextResponse.json({ error: 'Impossible de créer le profil' }, { status: 500 });
+  }
+
+  // Bootstrap de session immédiat — pas d'attente d'un clic e-mail (cf Cross-
+  // Model Perspective du design doc : ne jamais bloquer sur la confirmation).
+  // L'e-mail de confirmation dédié (copie chaleureuse, pas ce lien technique)
+  // est ajouté en PR2, avec son propre generateLink — pas de réutilisation du
+  // token ici pour ne pas consommer un token à usage unique deux fois.
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  });
+
+  if (linkError || !linkData) {
+    console.error('[visitor/account] generateLink failed', linkError);
+    return NextResponse.json({ error: 'Compte créé mais la connexion a échoué' }, { status: 500 });
+  }
+
+  // E-mail de confirmation dédié (Phase 3 PR2) — best-effort, en parallèle,
+  // jamais bloquant pour la réponse au client (cf Cross-Model Perspective :
+  // ne jamais faire attendre le visiteur sur un envoi d'e-mail). Génère son
+  // propre token à usage unique, distinct de celui utilisé pour le bootstrap
+  // de session immédiat ci-dessus.
+  supabase.auth.admin.generateLink({ type: 'magiclink', email }).then(({ data: emailLinkData, error: emailLinkError }) => {
+    if (emailLinkError || !emailLinkData) {
+      console.error('[visitor/account] confirmation email link generation failed', emailLinkError);
+      return;
+    }
+    const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?token_hash=${emailLinkData.properties.hashed_token}&type=magiclink&redirect=${encodeURIComponent('/mon-espace')}`;
+    sendVisitorCompteCree(email, firstName, confirmUrl).catch((err) => {
+      console.error('[visitor/account] confirmation email send failed', err);
+    });
+  }).catch((err) => {
+    console.error('[visitor/account] confirmation email link generation failed', err);
+  });
+
+  return NextResponse.json({
+    token_hash: linkData.properties.hashed_token,
+    photo_error: photoError,
+  }, { status: 201 });
+}

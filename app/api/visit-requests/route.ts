@@ -1,50 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendNewContactRequestHost } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
-type ServiceClient = ReturnType<typeof createServiceClient>;
-
-// Compte visiteur créé silencieusement à la première demande — Supabase Auth
-// (pas de token UUID custom, cf learning management-token-lost-link-problem :
-// un lien perdu = ticket support inévitable pour un profil permanent).
-// user_metadata.role='visitor' distingue ce compte des hôtes/admins pour le
-// routage post-login (/auth/confirm).
-async function createOrUpdateVisitorProfile(
-  supabase: ServiceClient,
-  email: string,
-  phone: string | null,
-): Promise<void> {
-  const { data: existingProfile } = await supabase
-    .from('visitor_profiles')
-    .select('id, user_id')
-    .eq('email', email)
-    .maybeSingle();
-
-  if (existingProfile) {
-    if (phone) {
-      await supabase.from('visitor_profiles').update({ phone }).eq('id', existingProfile.id);
-    }
-    return;
-  }
-
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { role: 'visitor' },
-  });
-
-  let userId: string | undefined = authData?.user?.id;
-
-  if (authError) {
-    if (!authError.message.toLowerCase().includes('already')) return; // best-effort, ne bloque jamais la demande
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    userId = existingUsers?.users.find((u) => u.email === email)?.id;
-  }
-
-  if (!userId) return;
-
-  await supabase.from('visitor_profiles').insert({ user_id: userId, email, phone });
+function getAnonClient(req: NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return req.cookies.getAll(); }, setAll() {} } }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -53,24 +18,39 @@ export async function POST(req: NextRequest) {
   // Honeypot — bots fill the hidden "website" field
   if (body.website) return NextResponse.json({}, { status: 200 });
 
-  const { event_id, host_profile_id, first_name, email, phone, nb_personnes, message, consent } = body;
+  const { event_id, host_profile_id, nb_personnes, message, consent } = body;
 
-  if (!event_id || !host_profile_id || !first_name?.trim() || !email?.trim()) {
+  if (!event_id || !host_profile_id) {
     return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
-  }
-  // Obligatoire depuis Phase 3 PR1 (validé David, cf CLAUDE.md "Modération
-  // anti-abus visiteur" / design doc R1) — permet à l'hôte d'appeler en cas
-  // d'imprévu, pas un checkpoint.
-  if (!phone?.trim()) {
-    return NextResponse.json({ error: 'Téléphone requis' }, { status: 400 });
   }
   if (!consent) {
     return NextResponse.json({ error: 'Consentement requis' }, { status: 400 });
   }
 
+  // Phase 3 PR3 : la demande se fait désormais depuis un compte visiteur
+  // authentifié (écran /mon-espace/creer) — plus de création silencieuse de
+  // profil ici (faille corrigée : un email non authentifié ne peut plus
+  // écraser le profil d'un visiteur existant, cf /plan-eng-review, Codex).
+  const { data: { user } } = await getAnonClient(req).auth.getUser();
+  if (!user || user.user_metadata?.role !== 'visitor') {
+    return NextResponse.json({ error: 'Compte visiteur requis' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
-  const emailLower = email.trim().toLowerCase();
-  const phoneTrimmed = phone.trim();
+
+  const { data: visitorProfile } = await supabase
+    .from('visitor_profiles')
+    .select('id, first_name, email, phone, photo_url')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!visitorProfile) {
+    return NextResponse.json({ error: 'Profil visiteur introuvable' }, { status: 404 });
+  }
+
+  const emailLower = visitorProfile.email;
+  const phoneTrimmed = visitorProfile.phone ?? '';
+  const firstNameTrimmed = visitorProfile.first_name;
 
   // Blacklist — refus honnête (403) sans dévoiler le mécanisme.
   // Choix éthique : pas de shadow-ban (faux 201). David est pasteur, le produit
@@ -138,9 +118,10 @@ export async function POST(req: NextRequest) {
     .from('contact_requests')
     .insert({
       host_activation_id: act.id,
-      visitor_first_name: first_name.trim(),
+      visitor_first_name: firstNameTrimmed,
       visitor_email: emailLower,
       visitor_phone: phoneTrimmed,
+      visitor_profile_id: visitorProfile.id,
       nb_personnes: Math.max(1, parseInt(String(nb_personnes)) || 1),
       visitor_message: message?.trim() || null,
     })
@@ -154,11 +135,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Phase 2bis — profil visiteur silencieux (aucune étape "créer un compte"
-  // visible). Best-effort : un échec ici ne doit jamais faire échouer la
-  // demande de visite elle-même, c'est un confort en plus, pas une dépendance.
-  createOrUpdateVisitorProfile(supabase, emailLower, phoneTrimmed).catch(() => {});
-
   if (FEATURES.EMAIL_NOTIFICATIONS) {
     const { data: host } = await supabase
       .from('host_profiles')
@@ -169,18 +145,25 @@ export async function POST(req: NextRequest) {
     if (host) {
       const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accueillir/${data.action_token}`;
       const declineUrl = `${process.env.NEXT_PUBLIC_APP_URL}/refuser/${data.action_token}`;
+      const dashboardUrl = visitorProfile.photo_url ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` : null;
+      // Fire-and-forget intentionnel — ne jamais faire attendre le visiteur
+      // sur l'envoi de la notification à l'hôte (Cross-Model Perspective du
+      // design doc). Le bug corrigé ici (Phase 3 PR2) n'est pas l'absence de
+      // blocage, mais l'absence de `.catch()` : un échec d'envoi était
+      // auparavant silencieux, jamais visible dans les logs Vercel.
       Promise.allSettled([
         sendNewContactRequestHost(
           host.email,
           host.first_name,
-          first_name.trim(),
+          firstNameTrimmed,
           emailLower,
           phoneTrimmed,
           message?.trim() || null,
           acceptUrl,
           declineUrl,
+          dashboardUrl,
         ),
-      ]);
+      ]).catch((err) => console.error('[visit-requests] host notification failed', err));
     }
   }
 

@@ -11,10 +11,13 @@ interface Props {
   visitorMessage?: string | null;
   acceptUrl: string;
   declineUrl: string;
+  // Photo affichée dans le dashboard (page authentifiée, signed URL fraîche
+  // à chaque vue), jamais embarquée dans l'email — cf /plan-eng-review.
+  dashboardUrl?: string | null;
 }
 
 export default function ContactReceivedHost({
-  hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
+  hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl, dashboardUrl,
 }: Props) {
   return (
     <EmailLayout preview={`${visitorFirstName} souhaite rejoindre votre ambassade`}>
@@ -26,6 +29,9 @@ export default function ContactReceivedHost({
       )}
       {visitorMessage && (
         <Text style={p}>Message : <em>"{visitorMessage}"</em></Text>
+      )}
+      {dashboardUrl && (
+        <Text style={p}>📷 {visitorFirstName} a ajouté une photo de profil — <Link href={dashboardUrl} style={link}>voir dans mon tableau de bord</Link></Text>
       )}
       <Btn href={acceptUrl}>J'accueille {visitorFirstName}</Btn>
       <Text style={muted}>Si vous n'êtes pas en mesure de l'accueillir :</Text>

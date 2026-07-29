@@ -240,3 +240,23 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 ---
 
+## TODO-23 : CGU visiteur — pré-requis avant PR3 (photo visiteur)
+
+**Quoi :** Rédiger et intégrer des CGU/mentions de confidentialité couvrant la collecte de photo visiteur, avant que PR3 (photo visiteur) ne ship.
+
+**Pourquoi :** PR1 retire les légendes explicatives existantes ("Utilisé uniquement pour...", "Permet à l'ambassadeur de vous appeler...") sur `ContactForm.tsx`/`VisitRequestForm.tsx`. PR3 ajoute ensuite la collecte d'une photo visiteur — donnée plus sensible qu'email/téléphone, visible directement par l'ambassadeur (email + dashboard). Trouvé par Codex (`/plan-eng-review`, 2026-07-29) : retirer la transparence existante tout en élargissant la collecte de données sans CGU est une tension produit/légale, même si les deux PR sont séquencées séparément dans le temps.
+
+**Pros :** Couvre le trou avant qu'il ne devienne un vrai problème (donnée sensible en prod sans base légale claire). Cohérent avec le principe déjà acté sur ce projet de ne jamais mentir/sous-informer l'utilisateur (cf CLAUDE.md "Modération anti-abus visiteur" — refus du shadow-ban).
+
+**Cons :** Nécessite le temps de David pour valider le ton/contenu (pas juste un fix technique). Peut retarder PR3 si la rédaction traîne.
+
+**Contexte :** Issu de `/office-hours` (2026-07-29, design doc `tagne-develop-design-20260729-photo-visiteur-confirmation-email.md`) puis `/plan-eng-review` le même jour. L'utilisateur a explicitement noté "CGU à traiter plus tard" en amorçant la conversation — ce TODO formalise ce "plus tard" comme un pré-requis à PR3, pas un sujet sans échéance.
+
+**Effort estimé :** S (humain ~1-2j, essentiellement rédaction + validation David) → avec CC+gstack : ~1-2h pour l'intégration technique une fois le texte validé.
+
+**Priorité :** P1 conditionnelle — bloque PR3, pas PR1/PR2.
+
+**Dépend de :** Validation du texte par David (pas une dépendance technique).
+
+---
+

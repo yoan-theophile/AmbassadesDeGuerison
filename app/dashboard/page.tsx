@@ -52,6 +52,7 @@ interface ContactRequest {
   created_at: string;
   action_token: string;
   host_activation_id: string | null;
+  visitor_profile_id: string | null;
 }
 
 export default function DashboardPage() {
@@ -84,6 +85,11 @@ export default function DashboardPage() {
 
   // Accept/decline loading state
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
+
+  // Photos visiteur (Phase 3 PR3) — signed URLs récupérées via une route
+  // dédiée (ownership vérifié serveur), et signalements en cours (optimiste).
+  const [visitorPhotoUrls, setVisitorPhotoUrls] = useState<Record<string, string>>({});
+  const [reportedPhotoIds, setReportedPhotoIds] = useState<Set<string>>(new Set());
 
   // Photos upload
   const [photoUploading, setPhotoUploading] = useState<'profile' | 'room' | null>(null);
@@ -133,11 +139,23 @@ export default function DashboardPage() {
     const { data: reqs } = activationIds.length > 0
       ? await supabase
           .from('contact_requests')
-          .select('id, visitor_first_name, visitor_email, visitor_phone, visitor_message, nb_personnes, status, created_at, action_token, host_activation_id')
+          .select('id, visitor_first_name, visitor_email, visitor_phone, visitor_message, nb_personnes, status, created_at, action_token, host_activation_id, visitor_profile_id')
           .in('host_activation_id', activationIds)
           .order('created_at', { ascending: false })
           .limit(20)
       : { data: [] };
+
+    const idsWithPhoto = (reqs ?? []).filter((r) => r.visitor_profile_id).map((r) => r.id);
+    if (idsWithPhoto.length > 0) {
+      fetch('/api/dashboard/contact-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact_request_ids: idsWithPhoto }),
+      })
+        .then((r) => (r.ok ? r.json() : {}))
+        .then((urls) => setVisitorPhotoUrls(urls))
+        .catch(() => {});
+    }
 
     const windowMs = LIVE_WINDOW_HOURS * 60 * 60 * 1000;
     const now = new Date();
@@ -349,6 +367,15 @@ export default function DashboardPage() {
       if (!prev) return prev;
       return { ...prev, room_photo_urls: (prev.room_photo_urls ?? []).filter((u) => u !== url) };
     });
+  }
+
+  async function handleReportPhoto(contactRequestId: string) {
+    setReportedPhotoIds((prev) => new Set(prev).add(contactRequestId));
+    await fetch('/api/dashboard/report-visitor-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact_request_id: contactRequestId }),
+    }).catch(() => {});
   }
 
   async function handleContactAction(token: string, action: 'accept' | 'decline') {
@@ -693,11 +720,33 @@ export default function DashboardPage() {
                     return (
                       <div key={r.id} className={`bg-white rounded-xl border p-4 shadow-sm ${r.status === 'declined' ? 'opacity-60' : 'border-slate-100'}`}>
                         <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
-                            {liveTitle && (
-                              <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
+                          <div className="min-w-0 flex items-start gap-2.5">
+                            {visitorPhotoUrls[r.id] && (
+                              <img
+                                src={visitorPhotoUrls[r.id]}
+                                alt=""
+                                className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                              />
                             )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-900 text-sm">{r.visitor_first_name}</p>
+                              {liveTitle && (
+                                <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
+                              )}
+                              {visitorPhotoUrls[r.id] && (
+                                reportedPhotoIds.has(r.id) ? (
+                                  <p className="text-slate-400 text-xs mt-0.5">Photo signalée</p>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReportPhoto(r.id)}
+                                    className="text-slate-400 hover:text-red-600 text-xs mt-0.5 transition-colors"
+                                  >
+                                    Signaler cette photo
+                                  </button>
+                                )
+                              )}
+                            </div>
                           </div>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${s.cls}`}>
                             {s.label}

@@ -47,3 +47,6 @@ screenshots/
 .playwright-mcp/
 
 .vercel
+
+.vercel
+.env*

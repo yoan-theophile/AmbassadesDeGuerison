@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, DragEvent, ChangeEvent } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Camera } from 'lucide-react';
 
 interface Props {
   onFile: (file: File) => void;
@@ -10,6 +10,7 @@ interface Props {
   preview?: string | null;
   onRemove?: () => void;
   label?: string;
+  ariaLabel?: string;
   disabled?: boolean;
 }
 
@@ -19,7 +20,10 @@ export default function Dropzone({
   maxSizeMb = 5,
   preview,
   onRemove,
-  label = 'Glissez une photo ou cliquez pour choisir',
+  // Copie mobile-first (persona 65-70% mobile) — "glissez" suppose un
+  // pointeur de souris, jamais pertinent sur téléphone (/plan-design-review).
+  label = 'Prendre une photo ou choisir dans la galerie',
+  ariaLabel = 'Ajouter une photo (optionnel)',
   disabled = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +43,7 @@ export default function Dropzone({
     return true;
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     setDragging(false);
     if (disabled) return;
@@ -72,13 +76,23 @@ export default function Dropzone({
 
   return (
     <div>
-      <div
-        onClick={() => !disabled && inputRef.current?.click()}
+      <label
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={ariaLabel}
+        aria-disabled={disabled}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDrop={handleDrop}
         onDragOver={(e) => { e.preventDefault(); if (!disabled) setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         className={`
           flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
           ${disabled ? 'cursor-not-allowed opacity-50 border-slate-200 bg-slate-50' : 'cursor-pointer border-slate-200 bg-slate-50 hover:border-indigo-400 hover:bg-indigo-50'}
           ${dragging ? 'border-indigo-500 bg-indigo-50' : ''}
         `}
@@ -87,20 +101,21 @@ export default function Dropzone({
           {dragging ? (
             <Upload className="w-5 h-5 text-indigo-500" />
           ) : (
-            <ImageIcon className="w-5 h-5 text-slate-400" />
+            <Camera className="w-5 h-5 text-slate-400" />
           )}
         </div>
         <p className="text-sm text-slate-500">{label}</p>
         <p className="text-xs text-slate-400">JPG, PNG, WebP — max {maxSizeMb} Mo</p>
-      </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          onChange={handleChange}
+          disabled={disabled}
+          className="sr-only"
+        />
+      </label>
       {error && <p className="text-red-600 text-xs mt-1.5">{error}</p>}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        onChange={handleChange}
-        className="hidden"
-      />
     </div>
   );
 }

@@ -30,6 +30,14 @@ function ConfirmContent() {
         setErrorMsg(error.message);
       } else {
         setStatus('success');
+        // Redirection vers la page d'origine (ex : reprendre une demande de
+        // visite juste après la création de compte) — uniquement un chemin
+        // relatif, jamais une URL externe (open redirect).
+        const redirect = searchParams.get('redirect');
+        if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+          router.replace(redirect);
+          return;
+        }
         const role = data.user?.user_metadata?.role;
         if (role === 'admin') {
           router.replace('/admin/stats');

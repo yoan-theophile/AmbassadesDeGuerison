@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data: profile } = await supabase
     .from('visitor_profiles')
-    .select('email, phone')
+    .select('first_name, email, phone, photo_url')
     .eq('user_id', user.id)
     .maybeSingle();
 

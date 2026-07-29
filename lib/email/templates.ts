@@ -20,6 +20,7 @@ import NouvelleActivationAdmin from '@/emails/nouvelle-activation-admin';
 import EnrichissementRecu from '@/emails/enrichissement-recu';
 import AdminAlerteNoActivations from '@/emails/admin-alerte-no-activations';
 import AmbassadeurModificationAdmin from '@/emails/ambassadeur-modification-admin';
+import VisitorCompteCree from '@/emails/visitor-compte-cree';
 
 const FROM = () => process.env.RESEND_FROM_EMAIL!;
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL!;
@@ -29,6 +30,17 @@ export async function sendMagicLink(to: string, magicLinkUrl: string) {
     from: FROM(), to,
     subject: 'Votre lien de connexion — Ambassades de Guérison',
     react: React.createElement(MagicLink, { magicLinkUrl }),
+  });
+}
+
+// Envoyée une seule fois, à la création du compte visiteur (jamais à chaque
+// demande de visite suivante) — cf /api/visitor/account. Copie dédiée,
+// distincte de sendMagicLink (générique, orientée "espace ambassadeur").
+export async function sendVisitorCompteCree(to: string, firstName: string, confirmUrl: string) {
+  return getMailer().emails.send({
+    from: FROM(), to,
+    subject: 'Votre compte a bien été créé — Ambassades de Guérison',
+    react: React.createElement(VisitorCompteCree, { firstName, confirmUrl }),
   });
 }
 
@@ -95,12 +107,13 @@ export async function sendNewContactRequestHost(
   visitorMessage: string | null,
   acceptUrl: string,
   declineUrl: string,
+  dashboardUrl?: string | null,
 ) {
   return getMailer().emails.send({
     from: FROM(), to,
     subject: `${visitorFirstName} souhaite rejoindre votre ambassade`,
     react: React.createElement(ContactReceivedHost, {
-      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl,
+      hostFirstName, visitorFirstName, visitorEmail, visitorWhatsapp, visitorMessage, acceptUrl, declineUrl, dashboardUrl,
     }),
   });
 }

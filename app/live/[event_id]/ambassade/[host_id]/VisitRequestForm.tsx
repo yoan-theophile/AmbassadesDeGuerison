@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Send } from 'lucide-react';
-import PhoneInput from '@/components/ui/PhoneInput';
-import { isValidPhoneNumber } from 'react-phone-number-input';
 import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
@@ -16,17 +14,17 @@ interface Props {
 
 export default function VisitRequestForm({ eventId, hostProfileId, hostName }: Props) {
   const router = useRouter();
-  const [step, setStep] = useState<'identity' | 'logistics' | 'message' | 'consent'>('identity');
   const [form, setForm] = useState({
-    visitor_first_name: '',
-    visitor_email: '',
-    visitor_phone: '',
     nb_personnes: 1,
     visitor_message: '',
     visitor_notifications_optin: true,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Phase 3 PR3 : demande faite depuis un compte visiteur authentifié —
+  // undefined = vérification en cours, null = pas de session (gate affichée).
+  const [visitorEmail, setVisitorEmail] = useState<string | null | undefined>(undefined);
 
   function set<K extends keyof typeof form>(field: K, value: typeof form[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -35,24 +33,16 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
-      if (data.user?.user_metadata?.role !== 'visitor') return;
+      if (data.user?.user_metadata?.role !== 'visitor') { setVisitorEmail(null); return; }
       const res = await fetch('/api/visitor/profile').catch(() => null);
-      if (!res?.ok) return;
+      if (!res?.ok) { setVisitorEmail(null); return; }
       const profile = await res.json();
-      setForm((prev) => ({
-        ...prev,
-        visitor_email: profile.email ?? prev.visitor_email,
-        visitor_phone: (profile.phone ?? '').replace(/\s+/g, '') || prev.visitor_phone,
-      }));
+      setVisitorEmail(profile.email ?? null);
     });
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValidPhoneNumber(form.visitor_phone)) {
-      setError('Merci de renseigner un numéro de téléphone valide.');
-      return;
-    }
     setLoading(true);
     setError('');
 
@@ -62,9 +52,6 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
       body: JSON.stringify({
         event_id: eventId,
         host_profile_id: hostProfileId,
-        first_name: form.visitor_first_name,
-        email: form.visitor_email,
-        phone: form.visitor_phone,
         nb_personnes: form.nb_personnes,
         message: form.visitor_message || null,
         consent: form.visitor_notifications_optin,
@@ -81,53 +68,37 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
     }
   }
 
+  if (visitorEmail === null) {
+    return (
+      <div className="space-y-3 text-center py-2">
+        <p className="text-slate-500 text-sm">
+          Créez votre compte visiteur pour contacter {hostName} — vos informations seront réutilisées pour vos prochaines demandes.
+        </p>
+        <Link
+          href={`/mon-espace/creer?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`}
+          className="w-full inline-flex items-center justify-center bg-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
+        >
+          Créer mon compte
+        </Link>
+        <p className="text-center text-xs text-slate-400">
+          Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Étape : identité */}
-      <fieldset>
-        <legend className="text-xs text-slate-400 uppercase tracking-wide mb-3">Identité</legend>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom *</label>
-            <input
-              type="text"
-              value={form.visitor_first_name}
-              onChange={(e) => set('visitor_first_name', e.target.value)}
-              required
-              className={inputCls}
-              placeholder="Marie"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail *</label>
-            <input
-              type="email"
-              value={form.visitor_email}
-              onChange={(e) => set('visitor_email', e.target.value)}
-              required
-              className={inputCls}
-              placeholder="marie@exemple.com"
-            />
-            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
-          </div>
-        </div>
-      </fieldset>
+      {visitorEmail && (
+        <p className="text-xs text-slate-400">
+          Connecté avec <span className="text-slate-600 font-medium">{visitorEmail}</span>
+        </p>
+      )}
 
-      {/* Étape : logistique */}
+      {/* Logistique */}
       <fieldset>
         <legend className="text-xs text-slate-400 uppercase tracking-wide mb-3">Logistique</legend>
         <div className="space-y-3">
-          <div>
-            <PhoneInput
-              label="Téléphone"
-              id="visitor_phone"
-              required
-              value={form.visitor_phone}
-              onChange={(v) => set('visitor_phone', v)}
-              placeholder="+33 6 12 34 56 78"
-            />
-            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input
@@ -184,10 +155,6 @@ export default function VisitRequestForm({ eventId, hostProfileId, hostName }: P
         <Send className="w-4 h-4" />
         {loading ? 'Envoi…' : 'Envoyer ma demande'}
       </button>
-
-      <p className="text-center text-xs text-slate-400">
-        Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link> pour ne pas tout retaper.
-      </p>
     </form>
   );
 }

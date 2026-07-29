@@ -16,6 +16,7 @@ export default function MonEspacePage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -31,6 +32,10 @@ export default function MonEspacePage() {
     const data = await res.json();
     setEmail(data.email ?? user.email ?? '');
     setPhone((data.phone ?? '').replace(/\s+/g, ''));
+    if (data.photo_url) {
+      const { data: signed } = await supabase.storage.from('visitor-photos').createSignedUrl(data.photo_url, 900);
+      setPhotoUrl(signed?.signedUrl ?? null);
+    }
     setLoading(false);
   }, [router]);
 
@@ -82,7 +87,11 @@ export default function MonEspacePage() {
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2">
-              <UserCircle className="w-5 h-5 text-indigo-500" />
+              {photoUrl ? (
+                <img src={photoUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+              ) : (
+                <UserCircle className="w-5 h-5 text-indigo-500" />
+              )}
               <h1 className="font-semibold text-slate-800 text-sm">Mon espace</h1>
             </div>
             <p className="text-sm text-slate-500">

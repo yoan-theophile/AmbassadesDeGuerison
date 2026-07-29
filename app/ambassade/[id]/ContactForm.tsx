@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Send } from 'lucide-react';
-import PhoneInput from '@/components/ui/PhoneInput';
-import { isValidPhoneNumber } from 'react-phone-number-input';
 import { createClient } from '@/lib/supabase/browser';
 
 interface Props {
@@ -16,9 +14,6 @@ interface Props {
 
 export default function ContactForm({ hostProfileId, hostName, eventId, isWomenOnly = false }: Props) {
   const [form, setForm] = useState({
-    visitor_first_name: '',
-    visitor_email: '',
-    visitor_phone: '',
     nb_personnes: 1,
     visitor_message: '',
     visitor_notifications_optin: true,
@@ -29,24 +24,24 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
 
+  // Phase 3 PR3 : la demande se fait désormais depuis un compte visiteur
+  // authentifié (écran /mon-espace/creer) — plus de saisie identité/photo
+  // à chaque demande. `visitorEmail === undefined` = vérification en cours,
+  // `null` = pas de session visiteur (gate affichée).
+  const [visitorEmail, setVisitorEmail] = useState<string | null | undefined>(undefined);
+
   function set<K extends keyof typeof form>(field: K, value: typeof form[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // Pré-remplissage (Phase 2bis) : si un visiteur déjà venu est connecté,
-  // récupère son email/téléphone enregistrés — pas de re-saisie.
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
-      if (data.user?.user_metadata?.role !== 'visitor') return;
+      if (data.user?.user_metadata?.role !== 'visitor') { setVisitorEmail(null); return; }
       const res = await fetch('/api/visitor/profile').catch(() => null);
-      if (!res?.ok) return;
+      if (!res?.ok) { setVisitorEmail(null); return; }
       const profile = await res.json();
-      setForm((prev) => ({
-        ...prev,
-        visitor_email: profile.email ?? prev.visitor_email,
-        visitor_phone: (profile.phone ?? '').replace(/\s+/g, '') || prev.visitor_phone,
-      }));
+      setVisitorEmail(profile.email ?? null);
     });
   }, []);
 
@@ -56,10 +51,6 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
     // Garde anti-bypass (touche Entrée) : si l'ambassade est femmes-only,
     // refuser tout submit qui n'a pas explicitement coché "Femme".
     if (isWomenOnly && gender !== 'female') return;
-    if (!isValidPhoneNumber(form.visitor_phone)) {
-      setError('Merci de renseigner un numéro de téléphone valide.');
-      return;
-    }
     setLoading(true);
     setError('');
 
@@ -69,9 +60,6 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
       body: JSON.stringify({
         host_profile_id: hostProfileId,
         event_id: eventId,
-        first_name: form.visitor_first_name,
-        email: form.visitor_email,
-        phone: form.visitor_phone || null,
         nb_personnes: form.nb_personnes,
         message: form.visitor_message || null,
         consent: form.visitor_notifications_optin,
@@ -201,28 +189,28 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
         </div>
       )}
 
-      {(!isWomenOnly || gender === 'female') && (
+      {(!isWomenOnly || gender === 'female') && visitorEmail === null && (
+        <div className={`space-y-3 text-center py-2 ${isWomenOnly ? 'form-reveal' : ''}`}>
+          <p className="text-slate-500 text-sm">
+            Créez votre compte visiteur pour contacter {hostName} — vos informations seront réutilisées pour vos prochaines demandes.
+          </p>
+          <Link
+            href={`/mon-espace/creer?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '')}`}
+            className="w-full inline-flex items-center justify-center bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+          >
+            Créer mon compte
+          </Link>
+          <p className="text-center text-xs text-slate-400">
+            Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link>
+          </p>
+        </div>
+      )}
+
+      {(!isWomenOnly || gender === 'female') && visitorEmail && (
         <div className={`space-y-3 ${isWomenOnly ? 'form-reveal' : ''}`}>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre prénom <span className="text-red-500">*</span></label>
-            <input type="text" value={form.visitor_first_name} onChange={(e) => set('visitor_first_name', e.target.value)} required className={inputCls} placeholder="Jean" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Votre e-mail <span className="text-red-500">*</span></label>
-            <input type="email" value={form.visitor_email} onChange={(e) => set('visitor_email', e.target.value)} required className={inputCls} placeholder="jean@exemple.com" />
-            <p className="text-xs text-slate-400 mt-1">Utilisé uniquement pour vous informer de la réponse de l'ambassadeur.</p>
-          </div>
-          <div>
-            <PhoneInput
-              label="Téléphone"
-              id="visitor_phone"
-              required
-              value={form.visitor_phone}
-              onChange={(v) => set('visitor_phone', v)}
-              placeholder="+33 6 12 34 56 78"
-            />
-            <p className="text-xs text-slate-400 mt-1">Permet à l'ambassadeur de vous appeler en cas d'imprévu le jour J.</p>
-          </div>
+          <p className="text-xs text-slate-400">
+            Connecté avec <span className="text-slate-600 font-medium">{visitorEmail}</span>
+          </p>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de personnes</label>
             <input
@@ -268,10 +256,6 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
             <Send className="w-4 h-4" />
             {loading ? 'Envoi…' : 'Envoyer la demande'}
           </button>
-
-          <p className="text-center text-xs text-slate-400">
-            Déjà venu ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link> pour ne pas tout retaper.
-          </p>
         </div>
       )}
     </form>
