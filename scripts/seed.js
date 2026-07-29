@@ -324,6 +324,19 @@ async function run() {
     },
   ];
 
+  // lat_precise/lng_precise viennent normalement de l'adresse complète saisie
+  // via AddressInput (mode=address, distinct du geocoding ville lat/lng) —
+  // utilisées uniquement par POST /api/distance (tri par distance dans les
+  // clusters). Sans elles, /api/distance retourne null pour tout le monde et
+  // le badge de distance ne s'affiche jamais. Décalage déterministe (~150m)
+  // pour rester réaliste sans dépendre d'un géocodage réel en seed.
+  for (const h of hostsData) {
+    if (h.lat != null && h.lng != null && h.lat_precise == null) {
+      h.lat_precise = h.lat + 0.0013;
+      h.lng_precise = h.lng - 0.0009;
+    }
+  }
+
   const hostIds = {};
   for (const h of hostsData) {
     try {
