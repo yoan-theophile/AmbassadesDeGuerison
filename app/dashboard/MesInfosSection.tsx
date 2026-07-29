@@ -36,6 +36,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
   });
   const [cityConfirmed, setCityConfirmed] = useState(true);
   const [addressChanged, setAddressChanged] = useState(false);
+  const [addressConfirmed, setAddressConfirmed] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -170,6 +171,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
             onChange={(v) => {
               setForm((f) => ({ ...f, address_private: v, lat_precise: undefined, lng_precise: undefined }));
               setAddressChanged(false);
+              setAddressConfirmed(v === profile.address_private);
               setSaved(false);
             }}
             onSelect={(sel) => {
@@ -181,11 +183,17 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
                 quartier: f.quartier || (sel.quartier ?? ''),
               }));
               setAddressChanged(true);
+              setAddressConfirmed(true);
               setSaved(false);
             }}
             placeholder="12 rue de la Paix, 75001 Paris"
           />
           <p className="text-xs text-slate-400 mt-1">Partagée uniquement avec les visiteurs que vous acceptez.</p>
+          {form.address_private && !addressConfirmed && (
+            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mt-1.5">
+              Sélectionnez votre adresse dans la liste pour un calcul de distance précis avec les visiteurs.
+            </p>
+          )}
         </div>
 
         <div>

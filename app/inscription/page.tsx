@@ -242,7 +242,7 @@ export default function InscriptionPage() {
                 <p className="text-xs text-slate-400 mt-1">Vous validez chaque demande avant que l'adresse soit dévoilée.</p>
                 {form.address_private && !addressConfirmed && (
                   <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mt-1.5">
-                    Sélectionnez votre adresse dans la liste pour un calcul de distance précis avec les visiteurs. Si votre adresse n'apparaît pas (zone rurale), vous pouvez continuer tel quel.
+                    Sélectionnez votre adresse dans la liste pour un calcul de distance précis avec les visiteurs.
                   </p>
                 )}
               </Field>
