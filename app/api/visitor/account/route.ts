@@ -115,9 +115,17 @@ export async function POST(req: NextRequest) {
 
   // Bootstrap de session immédiat — pas d'attente d'un clic e-mail (cf Cross-
   // Model Perspective du design doc : ne jamais bloquer sur la confirmation).
-  // L'e-mail de confirmation dédié (copie chaleureuse, pas ce lien technique)
-  // est ajouté en PR2, avec son propre generateLink — pas de réutilisation du
-  // token ici pour ne pas consommer un token à usage unique deux fois.
+  //
+  // Un seul generateLink, réutilisé pour le bootstrap ET l'e-mail de
+  // confirmation (Phase 3 PR2). Générer un 2e token 'magiclink' pour le même
+  // utilisateur juste après invalide silencieusement le premier côté Supabase
+  // (un seul OTP magiclink actif par utilisateur) — repro'd en /qa : la
+  // génération du token e-mail en arrière-plan gagnait quasi systématiquement
+  // la course contre le round-trip navigateur du lien de bootstrap, qui
+  // atterrissait alors sur "Lien invalide ou expiré". Le visiteur est de
+  // toute façon déjà connecté (cookie posé par le redirect immédiat) au
+  // moment où il ouvrirait l'e-mail — un lien déjà consommé n'y est pas un
+  // problème pratique.
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
@@ -128,22 +136,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Compte créé mais la connexion a échoué' }, { status: 500 });
   }
 
-  // E-mail de confirmation dédié (Phase 3 PR2) — best-effort, en parallèle,
-  // jamais bloquant pour la réponse au client (cf Cross-Model Perspective :
-  // ne jamais faire attendre le visiteur sur un envoi d'e-mail). Génère son
-  // propre token à usage unique, distinct de celui utilisé pour le bootstrap
-  // de session immédiat ci-dessus.
-  supabase.auth.admin.generateLink({ type: 'magiclink', email }).then(({ data: emailLinkData, error: emailLinkError }) => {
-    if (emailLinkError || !emailLinkData) {
-      console.error('[visitor/account] confirmation email link generation failed', emailLinkError);
-      return;
-    }
-    const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?token_hash=${emailLinkData.properties.hashed_token}&type=magiclink&redirect=${encodeURIComponent('/mon-espace')}`;
-    sendVisitorCompteCree(email, firstName, confirmUrl).catch((err) => {
-      console.error('[visitor/account] confirmation email send failed', err);
-    });
-  }).catch((err) => {
-    console.error('[visitor/account] confirmation email link generation failed', err);
+  // E-mail de confirmation dédié — best-effort, en parallèle, jamais
+  // bloquant pour la réponse au client (cf Cross-Model Perspective : ne
+  // jamais faire attendre le visiteur sur un envoi d'e-mail).
+  const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?token_hash=${linkData.properties.hashed_token}&type=magiclink&redirect=${encodeURIComponent('/mon-espace')}`;
+  sendVisitorCompteCree(email, firstName, confirmUrl).catch((err) => {
+    console.error('[visitor/account] confirmation email send failed', err);
   });
 
   return NextResponse.json({
