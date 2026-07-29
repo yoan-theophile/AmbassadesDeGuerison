@@ -59,8 +59,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(results);
   }
 
+  // En France (et ailleurs en Europe), une commune est cartographiée dans OSM
+  // comme une relation de frontière administrative (class=boundary), jamais
+  // comme un simple point class=place — donc pas de hiérarchie place=city/
+  // town/village à exploiter ici. Mais Nominatim calcule quand même un champ
+  // `addresstype` par résultat ("city", "town", "village", "municipality"...).
+  // Deux entités peuvent partager le même nom de ville avec des coordonnées
+  // différentes (ex: la commune elle-même vs un regroupement administratif
+  // plus large) — sans priorité explicite, dédupliquer par label garde la
+  // première rencontrée dans la réponse Nominatim, dont l'ordre n'est pas
+  // garanti stable d'une requête à l'autre. On trie donc d'abord pour
+  // toujours préférer l'entité "ville" la plus précise avant de dédupliquer,
+  // afin qu'une même recherche renvoie toujours le même point.
+  const ADDRESSTYPE_PRIORITY = ['city', 'town', 'village', 'hamlet'];
+  const sorted = [...raw].sort((a, b) => {
+    const rankOf = (r: any) => {
+      const idx = ADDRESSTYPE_PRIORITY.indexOf(r.addresstype);
+      return idx === -1 ? ADDRESSTYPE_PRIORITY.length : idx;
+    };
+    return rankOf(a) - rankOf(b);
+  });
+
   const seen = new Set<string>();
-  const results = raw
+  const results = sorted
     .filter((r) => r.lat && r.lon)
     .map((r) => {
       const addr = r.address ?? {};
