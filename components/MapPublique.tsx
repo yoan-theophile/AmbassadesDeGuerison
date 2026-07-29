@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Search } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import type { Map as LeafletMap } from 'leaflet';
 import { useBrowserTimezone } from '@/lib/hooks/use-browser-timezone';
 
@@ -173,6 +175,153 @@ function makeIcon(L: any, hostType: string, isFull: boolean, isActive: boolean, 
   });
 }
 
+// Popup d'un pin individuel (hôte non regroupé au zoom courant par
+// leaflet.markercluster). Extrait en fonction pure pour être réutilisable
+// entre le rendu initial des marqueurs et un éventuel re-rendu.
+function renderSinglePopup(host: HostPin, effectiveIsFull: boolean, liveInProgress: boolean): string {
+  const inactiveMessage = liveInProgress
+    ? 'Pas disponible pour ce live'
+    : 'Pas encore confirmé pour le prochain live';
+  const womenBadge = host.is_women_only
+    ? `<p class="text-xs mt-1" style="color:#ec4899;font-weight:600;display:inline-flex;align-items:center;gap:4px;">${flowerIconHtml('#ec4899', 12)}Groupe femmes</p>`
+    : '';
+  let bodyHtml: string;
+  if (!host.is_active) {
+    bodyHtml = `<p class="text-xs text-slate-400 mt-1">${inactiveMessage}</p>${womenBadge}`;
+  } else {
+    const fullBadge = effectiveIsFull
+      ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
+      : '';
+    bodyHtml = `
+      <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
+      <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
+      ${womenBadge}
+      ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
+      ${!effectiveIsFull ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
+    `;
+  }
+  const headerHtml = host.is_active
+    ? `
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        ${avatarHtml(host)}
+        <div style="min-width:0;">
+          <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+          <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+          ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+        </div>
+      </div>
+    `
+    : `
+      <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
+      <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
+      ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
+    `;
+  return `
+    <div style="min-width:190px;padding:2px 0">
+      ${headerHtml}
+      ${host.is_active && host.presentation_message ? `<p class="text-xs text-slate-500 mt-1.5" style="line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+function renderActiveRow(host: HostPin, distanceKm?: number | null): string {
+  const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
+  const effectiveIsFull = host.is_full;
+  const fullBadge = effectiveIsFull
+    ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">Complet</span>'
+    : '';
+  const womenBadge = host.is_women_only
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
+    : '';
+  const distanceBadge = distanceKm != null
+    ? `<span style="display:inline-block;background:#eef2ff;color:#4f46e5;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">≈ ${distanceKm} km</span>`
+    : '';
+  const cta = !effectiveIsFull
+    ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
+    : '';
+  return `
+    <div style="padding:8px 0;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:flex-start;">
+      ${avatarHtml(host, 28)}
+      <div style="min-width:0;flex:1;">
+        <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}${distanceBadge}</p>
+        <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
+        ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
+        ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
+        ${cta}
+      </div>
+    </div>
+  `;
+}
+
+function renderInactiveRow(host: HostPin): string {
+  const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
+  const womenBadge = host.is_women_only
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
+    : '';
+  return `
+    <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
+      <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${escapeHtml(host.first_name)}${womenBadge}</p>
+      <p style="font-size:11px;color:#94a3b8;margin:2px 0 0;">${typeLabel}</p>
+      ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
+    </div>
+  `;
+}
+
+// Popup d'un cluster leaflet.markercluster — regroupement dynamique par
+// proximité en pixels à l'écran (recalculé à chaque zoom/déplacement), pas
+// par coordonnées exactes. Deux ambassadeurs proches mais géocodés à des
+// coordonnées légèrement différentes (cas fréquent : Nominatim ne renvoie pas
+// toujours le même point pour la même ville) tombent maintenant dans le même
+// cluster dès qu'ils se recouvrent visuellement, au lieu de s'empiler
+// silencieusement l'un sur l'autre sans indication (bug observé à Nantes).
+function renderClusterPopup(group: HostPin[], liveInProgress: boolean, idSafe: string) {
+  const inactiveMessage = liveInProgress
+    ? 'Pas disponible pour ce live'
+    : 'Pas encore confirmé pour le prochain live';
+  const activeGroup = group.filter((h) => h.is_active);
+  const inactiveGroup = group.filter((h) => !h.is_active);
+
+  // Le regroupement étant désormais spatial (pixels) et non plus par
+  // coordonnées exactes, deux villes proches mais distinctes peuvent
+  // techniquement tomber dans le même cluster à faible zoom — n'afficher le
+  // nom de la ville dans l'en-tête que si tous les membres la partagent.
+  const cities = new Set(group.map((h) => h.city));
+  const cityLabel = cities.size === 1 ? ` · ${escapeHtml(group[0].city)}` : '';
+
+  const rowsContainerId = `dist-rows-${idSafe}`;
+  const sortButtonId = `dist-btn-${idSafe}`;
+  const sortHintId = `dist-hint-${idSafe}`;
+
+  const sortButtonHtml = activeGroup.length > 1
+    ? `
+      <button id="${sortButtonId}" type="button" style="display:flex;align-items:center;gap:5px;background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:none;cursor:pointer;margin:4px 0 2px;">
+        Trier par distance
+      </button>
+      <p id="${sortHintId}" style="display:none;font-size:10px;color:#94a3b8;margin:2px 0 4px;"></p>
+    `
+    : '';
+
+  const activeSection = activeGroup.length > 0
+    ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>
+       ${sortButtonHtml}
+       <div id="${rowsContainerId}">${activeGroup.map((h) => renderActiveRow(h)).join('')}</div>`
+    : '';
+  const inactiveSection = inactiveGroup.length > 0
+    ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">${inactiveMessage} (${inactiveGroup.length})</p>${inactiveGroup.map(renderInactiveRow).join('')}`
+    : '';
+
+  const html = `
+    <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
+      <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades${cityLabel}</p>
+      ${activeSection}
+      ${inactiveSection}
+    </div>
+  `;
+
+  return { html, rowsContainerId, sortButtonId, sortHintId, activeGroup };
+}
+
 function formatEventDate(isoDate: string) {
   return new Date(isoDate).toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -289,8 +438,16 @@ function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassador
 export default function MapPublique({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Groupe leaflet.markercluster — créé une fois dans initMap, alimenté à
+  // chaque changement de `hosts` (voir l'effet updatePins plus bas).
+  const clusterGroupRef = useRef<any>(null);
   const [hosts, setHosts] = useState<HostPin[]>([]);
   const hostsRef = useRef<HostPin[]>([]);
+  // Lu (pas fermé sur une valeur figée) par le handler 'clusterclick', bindé
+  // une seule fois au montage — sans ce ref le message "pas disponible" du
+  // popup de cluster resterait sur la valeur de liveInProgress du premier rendu.
+  const liveInProgressRef = useRef(liveInProgress);
+  useEffect(() => { liveInProgressRef.current = liveInProgress; }, [liveInProgress]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -351,6 +508,8 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
 
     async function initMap() {
       const L = (await import('leaflet')).default;
+      // Import à effet de bord : étend L avec `L.markerClusterGroup`.
+      await import('leaflet.markercluster');
 
       if (cancelled || !containerRef.current) return;
       if ((containerRef.current as any)._leaflet_id) return;
@@ -364,6 +523,42 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles by <a href="https://www.openstreetmap.fr" target="_blank">OSM France</a>',
         maxZoom: 20,
       }).addTo(map);
+
+      // Regroupement par proximité en pixels à l'écran (pas par coordonnées
+      // exactes) — recalculé automatiquement à chaque zoom/déplacement.
+      // zoomToBoundsOnClick/spiderfyOnMaxZoom désactivés : on garde notre
+      // propre popup de cluster (liste + tri par distance) au lieu du
+      // comportement par défaut du plugin (zoom automatique / éclatement en
+      // étoile), pour ne pas changer l'UX existante en plus de corriger le bug.
+      const clusterGroup = (L as any).markerClusterGroup({
+        maxClusterRadius: 60,
+        zoomToBoundsOnClick: false,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster: any) => makeClusterIcon(L, cluster.getChildCount()),
+      });
+      clusterGroup.on('clusterclick', (e: any) => {
+        const clusterLayer = e.layer;
+        const group: HostPin[] = clusterLayer.getAllChildMarkers().map((m: any) => m.hostData);
+        const idSafe = clusterLayer._leaflet_id != null ? String(clusterLayer._leaflet_id) : Math.random().toString(36).slice(2);
+        const { html, rowsContainerId, sortButtonId, sortHintId, activeGroup } = renderClusterPopup(
+          group,
+          liveInProgressRef.current,
+          idSafe
+        );
+        clusterLayer.bindPopup(html, { maxWidth: 300 }).openPopup();
+        if (activeGroup.length > 1) {
+          const btn = document.getElementById(sortButtonId) as HTMLButtonElement | null;
+          const hint = document.getElementById(sortHintId);
+          const rowsContainer = document.getElementById(rowsContainerId);
+          if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => sortClusterByDistance(activeGroup, btn, hint, rowsContainer, renderActiveRow));
+          }
+        }
+      });
+      clusterGroup.addTo(map);
+      clusterGroupRef.current = clusterGroup;
 
       // Cible de zoom pour le prochain `locationfound` — diffère entre l'auto-locate
       // au chargement (vue métropole) et le bouton manuel (vue régionale).
@@ -424,182 +619,40 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       cancelled = true;
       mapRef.current?.remove();
       mapRef.current = null;
+      clusterGroupRef.current = null;
     };
   }, []);
 
-  // Met à jour les pins quand les hosts changent
+  // Met à jour les pins quand les hosts changent. Chaque hôte devient un
+  // marqueur individuel avec son propre popup ; c'est leaflet.markercluster
+  // qui décide dynamiquement, à chaque zoom/déplacement, de les afficher tels
+  // quels ou fusionnés sous un badge de cluster — plus de regroupement manuel
+  // par coordonnées exactes ici (voir renderClusterPopup plus haut).
   useEffect(() => {
     async function updatePins() {
-      if (!mapRef.current) return;
+      const clusterGroup = clusterGroupRef.current;
+      if (!mapRef.current || !clusterGroup) return;
       const L = (await import('leaflet')).default;
 
-      // Supprime les markers existants
-      mapRef.current.eachLayer((layer) => {
-        if (layer instanceof L.Marker) mapRef.current!.removeLayer(layer);
-      });
+      clusterGroup.clearLayers();
 
-      // Regroupe les hôtes par coordonnées exactes pour éviter la superposition
-      const grouped = new Map<string, HostPin[]>();
-      hosts.filter((h) => h.lat && h.lng).forEach((host) => {
-        const key = `${host.lat},${host.lng}`;
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(host);
-      });
-
-      const inactiveMessage = liveInProgress
-        ? 'Pas disponible pour ce live'
-        : 'Pas encore confirmé pour le prochain live';
-
-      grouped.forEach((group, key) => {
-        const [lat, lng] = key.split(',').map(Number);
-
-        if (group.length === 1) {
-          // Pin individuel
-          const host = group[0];
+      const markers = hosts
+        .filter((h) => h.lat && h.lng)
+        .map((host) => {
           // is_full sur un pin grisé est sans objet (D2) — forcer false pour
           // éviter d'afficher rouge sur fond gris.
           const effectiveIsFull = host.is_active ? host.is_full : false;
-          const womenBadge = host.is_women_only
-            ? `<p class="text-xs mt-1" style="color:#ec4899;font-weight:600;display:inline-flex;align-items:center;gap:4px;">${flowerIconHtml('#ec4899', 12)}Groupe femmes</p>`
-            : '';
-          let bodyHtml: string;
-          if (!host.is_active) {
-            bodyHtml = `<p class="text-xs text-slate-400 mt-1">${inactiveMessage}</p>${womenBadge}`;
-          } else {
-            const fullBadge = effectiveIsFull
-              ? '<span class="inline-block bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded font-medium ml-1">Complet</span>'
-              : '';
-            bodyHtml = `
-              <p class="text-xs text-indigo-500 mt-1">${host.host_type === 'church' ? 'Lieu de prière en église' : 'Lieu de prière à domicile'}</p>
-              <p class="text-xs text-slate-500 mt-0.5">${host.accepted_count ?? 0}/${host.capacity ?? '?'} places${fullBadge}</p>
-              ${womenBadge}
-              ${host.whatsapp_group_url ? `<a href="${host.whatsapp_group_url}" target="_blank" class="text-emerald-600 text-xs mt-2 block hover:underline">Rejoindre le groupe WhatsApp</a>` : ''}
-              ${!effectiveIsFull ? `<a href="/ambassade/${host.id}" class="mt-2 inline-flex items-center gap-1 text-indigo-600 text-sm font-medium hover:text-indigo-800">Contacter →</a>` : ''}
-            `;
-          }
-          const headerHtml = host.is_active
-            ? `
-              <div style="display:flex;align-items:flex-start;gap:8px;">
-                ${avatarHtml(host)}
-                <div style="min-width:0;">
-                  <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
-                  <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
-                  ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
-                </div>
-              </div>
-            `
-            : `
-              <p class="font-semibold text-slate-800 text-sm">${escapeHtml(host.first_name)}</p>
-              <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(host.city)}, ${escapeHtml(host.country)}</p>
-              ${host.quartier ? `<p class="text-xs text-slate-400 mt-0">${escapeHtml(host.quartier)}</p>` : ''}
-            `;
-          const popup = `
-            <div style="min-width:190px;padding:2px 0">
-              ${headerHtml}
-              ${host.is_active && host.presentation_message ? `<p class="text-xs text-slate-500 mt-1.5" style="line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
-              ${bodyHtml}
-            </div>
-          `;
-          L.marker([lat, lng], { icon: makeIcon(L, host.host_type, effectiveIsFull, host.is_active, host.is_women_only) })
-            .addTo(mapRef.current!)
-            .bindPopup(popup, { maxWidth: 280 });
-        } else {
-          // Pin groupé — plusieurs ambassades à la même localisation
-          const city = group[0].city;
-          const activeGroup = group.filter((h) => h.is_active);
-          const inactiveGroup = group.filter((h) => !h.is_active);
+          const marker = L.marker([host.lat, host.lng], {
+            icon: makeIcon(L, host.host_type, effectiveIsFull, host.is_active, host.is_women_only),
+          });
+          // Porté par le marqueur pour que le handler 'clusterclick' (bindé une
+          // fois dans initMap) puisse reconstruire la liste des hôtes du cluster.
+          (marker as any).hostData = host;
+          marker.bindPopup(renderSinglePopup(host, effectiveIsFull, liveInProgress), { maxWidth: 280 });
+          return marker;
+        });
 
-          function renderActiveRow(host: HostPin, distanceKm?: number | null) {
-            const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
-            const effectiveIsFull = host.is_full;
-            const fullBadge = effectiveIsFull
-              ? '<span style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">Complet</span>'
-              : '';
-            const womenBadge = host.is_women_only
-              ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
-              : '';
-            const distanceBadge = distanceKm != null
-              ? `<span style="display:inline-block;background:#eef2ff;color:#4f46e5;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">≈ ${distanceKm} km</span>`
-              : '';
-            const cta = !effectiveIsFull
-              ? `<a href="/ambassade/${host.id}" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;margin-top:2px;">Contacter →</a>`
-              : '';
-            return `
-              <div style="padding:8px 0;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:flex-start;">
-                ${avatarHtml(host, 28)}
-                <div style="min-width:0;flex:1;">
-                  <p style="font-weight:600;font-size:13px;color:#1e293b;margin:0;">${escapeHtml(host.first_name)}${fullBadge}${womenBadge}${distanceBadge}</p>
-                  <p style="font-size:11px;color:#6366f1;margin:2px 0 0;">${typeLabel} · ${host.accepted_count ?? 0}/${host.capacity ?? '?'} places</p>
-                  ${host.quartier ? `<p style="font-size:11px;color:#94a3b8;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
-                  ${host.presentation_message ? `<p style="font-size:11px;color:#64748b;margin:3px 0 0;line-height:1.4;">${escapeHtml(host.presentation_message)}</p>` : ''}
-                  ${cta}
-                </div>
-              </div>
-            `;
-          }
-
-          function renderInactiveRow(host: HostPin) {
-            const typeLabel = host.host_type === 'church' ? 'Église' : 'Domicile';
-            const womenBadge = host.is_women_only
-              ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#fdf2f8;color:#ec4899;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;">${flowerIconHtml('#ec4899', 10)}Femmes</span>`
-              : '';
-            return `
-              <div style="padding:8px 0;border-top:1px solid #f1f5f9;">
-                <p style="font-weight:600;font-size:13px;color:#94a3b8;margin:0;">${escapeHtml(host.first_name)}${womenBadge}</p>
-                <p style="font-size:11px;color:#94a3b8;margin:2px 0 0;">${typeLabel}</p>
-                ${host.quartier ? `<p style="font-size:11px;color:#cbd5e1;margin:1px 0 0;">${escapeHtml(host.quartier)}</p>` : ''}
-              </div>
-            `;
-          }
-
-          // Identifiant DOM stable pour ce cluster (pas de . ni - : getElementById
-          // n'a pas besoin d'échappement CSS, mais on reste prudent).
-          const idSafe = key.replace(/[^a-zA-Z0-9]/g, '_');
-          const rowsContainerId = `dist-rows-${idSafe}`;
-          const sortButtonId = `dist-btn-${idSafe}`;
-          const sortHintId = `dist-hint-${idSafe}`;
-
-          const sortButtonHtml = activeGroup.length > 1
-            ? `
-              <button id="${sortButtonId}" type="button" style="display:flex;align-items:center;gap:5px;background:#eef2ff;color:#4f46e5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:none;cursor:pointer;margin:4px 0 2px;">
-                Trier par distance
-              </button>
-              <p id="${sortHintId}" style="display:none;font-size:10px;color:#94a3b8;margin:2px 0 4px;"></p>
-            `
-            : '';
-
-          const activeSection = activeGroup.length > 0
-            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">Disponibles (${activeGroup.length})</p>
-               ${sortButtonHtml}
-               <div id="${rowsContainerId}">${activeGroup.map((h) => renderActiveRow(h)).join('')}</div>`
-            : '';
-          const inactiveSection = inactiveGroup.length > 0
-            ? `<p style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin:8px 0 0;">${inactiveMessage} (${inactiveGroup.length})</p>${inactiveGroup.map(renderInactiveRow).join('')}`
-            : '';
-
-          const popup = `
-            <div style="min-width:200px;max-height:280px;overflow-y:auto;padding:2px 0;">
-              <p style="font-weight:700;font-size:13px;color:#1e293b;margin:0 0 4px;">${group.length} ambassades · ${escapeHtml(city)}</p>
-              ${activeSection}
-              ${inactiveSection}
-            </div>
-          `;
-          const clusterMarker = L.marker([lat, lng], { icon: makeClusterIcon(L, group.length) })
-            .addTo(mapRef.current!)
-            .bindPopup(popup, { maxWidth: 300 });
-
-          if (activeGroup.length > 1) {
-            clusterMarker.on('popupopen', () => {
-              const btn = document.getElementById(sortButtonId) as HTMLButtonElement | null;
-              const hint = document.getElementById(sortHintId);
-              const rowsContainer = document.getElementById(rowsContainerId);
-              if (!btn || btn.dataset.bound) return;
-              btn.dataset.bound = '1';
-              btn.addEventListener('click', () => sortClusterByDistance(activeGroup, btn, hint, rowsContainer, renderActiveRow));
-            });
-          }
-        }
-      });
+      clusterGroup.addLayers(markers);
     }
 
     updatePins();
@@ -614,7 +667,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       setVisibleCount(visible.length);
       setMapZoom(zoom);
     }
-  }, [hosts]);
+  }, [hosts, liveInProgress]);
 
   // Nominatim (OSM) : politique d'usage = 1 req/s par IP.
   // Le debounce 400ms est suffisant pour un usage normal (< ~50 req/min par utilisateur).

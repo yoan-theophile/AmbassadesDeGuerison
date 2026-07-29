@@ -406,7 +406,7 @@ Mis à jour manuellement à chaque PR significative.
 
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
-| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto pour pins co-localisés (groupement par clé `lat,lng`). Champ `quartier` + message de présentation (`presentation_message`, 240 car. max) + photo de profil (avatar 28px, signed URL 24h) affichés dans les popups (cluster + pin individuel) si renseignés. Bouton "Trier par distance" dans les clusters (géolocalisation éphémère, voir section dédiée). |
+| Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto par proximité en pixels à l'écran (`leaflet.markercluster`, recalculé à chaque zoom — remplace juillet 2026 l'ancien groupement par coordonnées exactes qui masquait silencieusement les pins proches mais non identiques). Champ `quartier` + message de présentation (`presentation_message`, 240 car. max) + photo de profil (avatar 28px, signed URL 24h) affichés dans les popups (cluster + pin individuel) si renseignés. Bouton "Trier par distance" dans les clusters (géolocalisation éphémère, voir section dédiée). |
 | Page de préparation visiteur (`/decouvrir`) | ✅ | `app/decouvrir/page.tsx` | Réassurance + 3 étapes + FAQ accessible (`FaqAccordion`) + témoignage vedette (fallback global si aucun pour le prochain live) + CTA retour carte. CTA discret "C'est votre première fois ?" sur `MapPublique` (coin bas-droit, masquable, mémorisé `localStorage`). |
 | Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). |
 | EventBanner (5 états) | ✅ | `lib/homepage-data.ts` → `app/page.tsx` | |

@@ -111,7 +111,7 @@ async function run() {
   // ── 2. Ambassadeurs ───────────────────────────────────────────────────────
   // Insérés AVANT les events → trigger trg_auto_activate_hosts crée les
   // host_activations (is_active=FALSE) dès qu'un event est inséré.
-  console.log('→ Ambassadeurs (13 validés + 2 enrichment_pending + 1 pending_review dont 5 cluster Paris)...');
+  console.log('→ Ambassadeurs (14 validés + 2 enrichment_pending + 1 pending_review dont 5 cluster Paris + 2 proches à Nantes)...');
 
   const hostsData = [
     {
@@ -204,6 +204,23 @@ async function run() {
       viewing_setup: 'TV 50 pouces + barre de son', healing_challenge_done: true,
       lat: 47.2173, lng: -1.5534, quartier: 'Nantes Centre', status: 'validated',
       is_women_only: true,
+    },
+    // Manon : 2e ambassadeur à Nantes, à ~600m de Nathalie (coordonnées
+    // proches mais volontairement PAS identiques — Nominatim géocode par
+    // ville et ne renvoie pas toujours le même point d'une inscription à
+    // l'autre). Reproduit le bug QA de juillet 2026 : à faible zoom, deux
+    // pins à coordonnées différentes mais visuellement superposés se
+    // recouvraient silencieusement sans regroupement en cluster (cf
+    // components/MapPublique.tsx, migration vers leaflet.markercluster).
+    {
+      first_name: 'Manon', last_name: 'Girard', email: 'manon.girard@demo.fr',
+      phone: '+33 6 45 67 89 01',
+      city: 'Nantes', country: 'France',
+      host_type: 'church', capacity: 15,
+      address_private: '2 rue Fénelon, 44000 Nantes',
+      consignes: 'Entrée par la cour, salle paroissiale au fond à droite.',
+      viewing_setup: 'Vidéoprojecteur + enceintes', healing_challenge_done: true,
+      lat: 47.2210, lng: -1.5480, quartier: 'Nantes Saint-Léonard', status: 'validated',
     },
     // ── Cluster Paris (5 ambassadeurs supplémentaires pour tester le rendu dense) ──
     {
@@ -427,13 +444,16 @@ async function run() {
       console.log(`  ERR [J-7] ${h.first_name}: ${e.message.slice(0, 80)}`);
     }
   }
-  console.log(`  OK [J-7]  12 hôtes activés (is_active=TRUE)`);
+  console.log(`  OK [J-7]  ${validatedHosts.length} hôtes activés (is_active=TRUE)`);
 
   // Event J+10 : 5 ambassadeurs ont cliqué "J'accueille" dont 3 parisiens pour le cluster
+  // + Nathalie et Manon à Nantes (coordonnées proches mais distinctes — cf
+  // hostsData plus haut) toutes deux actives simultanément, pour tester le
+  // clustering par proximité pixel sur la carte publique.
   const activatedForFutur = [
     'marie.dubois@demo.fr', 'jp.martin@demo.fr', 'kofi.asante@demo.fr',
     'lucas.dupont@demo.fr', 'camille.petit@demo.fr', 'antoine.moreau@demo.fr',
-    'nathalie.blanc@demo.fr',
+    'nathalie.blanc@demo.fr', 'manon.girard@demo.fr',
   ];
   for (const email of activatedForFutur) {
     const hid = hostIds[email];
@@ -447,7 +467,7 @@ async function run() {
       console.log(`  ERR [J+10] ${email}: ${e.message.slice(0, 80)}`);
     }
   }
-  console.log(`  OK [J+10] 7/13 hôtes activés dont 3 parisiens + Nathalie Nantes (femmes-only) (6 en attente)`);
+  console.log(`  OK [J+10] 8/14 hôtes activés dont 3 parisiens + Nathalie & Manon à Nantes (6 en attente)`);
 
   // ── 5. Demandes de contact (event J-7, hôtes actifs) ──────────────────────
   console.log('\n→ Demandes de contact...');
@@ -804,7 +824,8 @@ async function run() {
   console.log('   → /admin/temoignages   : 2 témoignages en attente de modération');
   console.log('   → /admin/feedback      : 1 signalement pending (Thomas B / Fatou)');
   console.log('   → /temoignages         : 10 publiés, filtre 3 events');
-  console.log('   → J+10 live            : 7/13 ambassades activées (Marie, JP, Kofi + 3 cluster Paris + Nathalie Nantes femmes-only)');
+  console.log('   → J+10 live            : 8/14 ambassades activées (Marie, JP, Kofi + 3 cluster Paris + Nathalie & Manon à Nantes)');
+  console.log('   → carte publique       : Nathalie & Manon (Nantes, ~600m d\'écart) testent le clustering leaflet.markercluster');
 }
 
 run().catch(e => {
