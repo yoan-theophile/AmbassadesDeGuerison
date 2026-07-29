@@ -130,7 +130,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
 
         <div>
           <label className="block text-sm text-slate-700 mb-1.5">
-            Quartier ou arrondissement
+            Quartier
             <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel)</span>
           </label>
           <input
