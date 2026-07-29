@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isValidPhoneNumber } from 'react-phone-number-input';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { createServiceClient } from '@/lib/supabase/server';
 import { classifyVisitorEmail } from '@/lib/visitor/classify-email';
 import { compressAmbassadorPhoto } from '@/lib/image/compress-photo';
