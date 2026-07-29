@@ -94,7 +94,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    userId = existingUsers?.users.find((u) => u.email === email)?.id;
+    const existingUser = existingUsers?.users.find((u) => u.email === email);
+    userId = existingUser?.id;
+
+    // Cas visiteur devenant ambassadeur avec le même e-mail (trouvé par /qa,
+    // 2026-07-29) : le compte auth.users existant garde son role metadata
+    // d'origine ('visitor'), ce qui verrouille silencieusement l'accès à
+    // /dashboard pour toujours (redirection permanente vers /mon-espace, cf
+    // app/dashboard/page.tsx qui checke le role avant même de regarder s'il
+    // existe un host_profile). Ne jamais rétrograder un compte 'admin'.
+    if (existingUser && existingUser.user_metadata?.role !== 'admin') {
+      await supabase.auth.admin.updateUserById(existingUser.id, {
+        user_metadata: { ...existingUser.user_metadata, role: 'host' },
+      });
+    }
   }
 
   if (!userId) return NextResponse.json({ error: 'Erreur création utilisateur.' }, { status: 500 });
