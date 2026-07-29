@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { sendValidationFinale } from '@/lib/email/templates';
+import { sendValidationFinale, sendNouvelleActivationAdmin } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
 interface Props {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Props) {
 
   const { data: profile } = await supabase
     .from('host_profiles')
-    .select('id, status, first_name, user_id')
+    .select('id, status, first_name, user_id, city, country')
     .eq('id', id)
     .maybeSingle();
 
@@ -74,7 +74,13 @@ export async function POST(req: NextRequest, { params }: Props) {
     const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
     const email = authUser?.user?.email;
     if (email && (action === 'validated' || action === 'validated_bypass')) {
-      Promise.allSettled([sendValidationFinale(email, profile.first_name)]);
+      // sendNouvelleActivationAdmin était défini dans templates.ts mais
+      // jamais appelé (trouvé par /qa, 2026-07-29) — documenté comme envoyé
+      // ici dans CLAUDE.md et la checklist QA manuelle, mais code mort.
+      Promise.allSettled([
+        sendValidationFinale(email, profile.first_name),
+        sendNouvelleActivationAdmin(profile.first_name, profile.city, profile.country),
+      ]);
     }
   }
 
