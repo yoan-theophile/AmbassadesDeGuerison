@@ -260,3 +260,19 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 ---
 
+## TODO-24 : `/mon-espace/creer` ne redirige pas un visiteur déjà connecté
+
+**Quoi :** Un visiteur avec une session active qui navigue vers `/mon-espace/creer` voit quand même le formulaire de création de compte, au lieu d'être redirigé vers `/mon-espace` (ou la page d'origine).
+
+**Pourquoi :** Trouvé par `/qa` le 2026-07-29 en testant le flux photo visiteur + confirmation email. Pas un bug bloquant (soumettre le formulaire à nouveau créerait un conflit d'e-mail, correctement géré par la vérification au blur — pas de perte de données), mais une friction inutile pour un visiteur déjà identifié.
+
+**Pros :** Cohérent avec le comportement attendu d'un écran "créer un compte" — évite la confusion de revoir ce formulaire une fois connecté.
+
+**Cons :** Fix mineur (guard de redirection côté page), aucun risque à différer.
+
+**Effort estimé :** XS (~15 min).
+
+**Priorité :** P3 — cosmétique/UX, aucun impact fonctionnel ou sécurité.
+
+---
+
