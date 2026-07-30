@@ -26,7 +26,7 @@ events               → Les lives (titre, date, lien YouTube, lien StreamYard)
 host_profiles        → Les hôtes ambassadeurs (profil permanent)
 host_activations     → Qui est actif pour quel live (créé par trigger automatique)
 contact_requests     → Demandes de visiteurs vers un hôte (visitor_phone NOT NULL)
-visitor_profiles     → Profil visiteur réutilisable (email, téléphone) — créé au premier contact, login par magic link
+visitor_profiles     → Profil visiteur réutilisable (prénom, email, téléphone, photo optionnelle) — créé explicitement via /mon-espace/creer, login par magic link
 live_signals         → Signaux "moment fort" pendant le live
 testimonials         → Témoignages post-live (hôtes + soumissions publiques anonymes)
 live_feedbacks       → Feedbacks structurés post-live, bidirectionnel (host_to_visitor + visitor_to_host), non publics
@@ -210,13 +210,14 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-20 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 > Le template `pre-validation-accordee.tsx` a été supprimé en mai 2026 quand la transition `pending_review → pre_approved` est passée en self-service (le candidat clique "J'accepte" sur son dashboard, le questionnaire s'affiche immédiatement sans email intermédiaire).
 
 | Template | Déclenché quand |
 |----------|----------------|
 | Magic link | Hôte ou visiteur se connecte |
+| Compte visiteur créé | Confirmation après `/mon-espace/creer` (`sendVisitorCompteCree`), en parallèle du bootstrap de session immédiat |
 | Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
 | Validation finale | Confirmation de l'activation finale |
 | Confirmation inscription | Nouvel ambassadeur inscrit |

@@ -210,23 +210,50 @@ plusieurs hôtes ne devrait pas retaper son téléphone/adresse à chaque demand
 visiteur devrait pouvoir trouver l'ambassade la plus proche sans que l'app ne stocke
 jamais où il habite.
 
+**Révisé en Phase 3 PR3** : la création de compte visiteur, initialement en best-effort
+et silencieuse depuis `/api/visit-requests`, expose désormais un écran de compte
+explicite (`/mon-espace/creer`) — l'ancienne approche acceptait n'importe quel email non
+authentifié et pouvait écraser le profil d'un visiteur existant (faille trouvée par
+Codex, cf `/plan-eng-review`).
+
 ```
-POST /api/visit-requests (première demande)
-  │  createOrUpdateVisitorProfile() — best-effort, .catch(() => {})
-  │  → crée un compte Supabase Auth (user_metadata.role='visitor') si l'email est neuf
-  │  → upsert visitor_profiles (email, phone)
+Visiteur clique "Contacter" sur /ambassade/[id] ou /live/.../ambassade/[host_id]
+  │  ContactForm / VisitRequestForm vérifient GET /api/visitor/profile au montage
+  │  Pas de session visiteur → CTA "Créer mon compte" → /mon-espace/creer?redirect=...
   ▼
-Visiteur reçoit un magic link (même mécanisme que les ambassadeurs)
+/mon-espace/creer — prénom, e-mail, téléphone (obligatoire), photo de profil (optionnelle)
+  │  POST /api/visitor/check-email (blur, rate-limité 10/min) → classifyVisitorEmail()
+  │     'new'              → formulaire continue
+  │     'visitor_existing' → propose un renvoi de magic link
+  │     'collision'        → refus (email host/admin/auth existant), message neutre
+  ▼
+POST /api/visitor/account (rate-limité 3/min, revalide la classification)
+  │  → crée le compte Supabase Auth (user_metadata.role='visitor', email pré-confirmé)
+  │  → insert visitor_profiles (user_id, first_name, email, phone, photo_url)
+  │     photo optionnelle : bucket privé `visitor-photos`, compressée WebP, validée
+  │     par magic bytes (sharp), jamais bloquante en cas d'échec de traitement
+  │  → generateLink({ type: 'magiclink' }) — un seul token, réutilisé pour :
+  │     (a) bootstrap immédiat de la session navigateur (redirect direct)
+  │     (b) l'e-mail de confirmation (sendVisitorCompteCree, best-effort)
+  ▼
+Redirect /auth/confirm?token_hash=...&type=magiclink&redirect=<page d'origine>
   │  → /auth/confirm route sur user_metadata.role : admin → /admin/stats,
-  │     visitor → /mon-espace, sinon → /dashboard
+  │     visitor → page d'origine (ou /mon-espace), sinon → /dashboard
+  ▼
+Formulaire de demande de visite pré-rempli ("Connecté avec {email}", nb personnes,
+message, consentement notifications) → POST /api/visit-requests
+  │  Exige une session visiteur authentifiée (401 sinon) — prénom/email/téléphone
+  │  viennent de visitor_profiles, jamais du body de la requête
   ▼
 /mon-espace — espace minimal (email, téléphone éditable, déconnexion)
   │  PAS un dashboard complet — juste assez pour ne pas retaper ses infos
-  ▼
-Prochaine visite sur /ambassade/[id] ou /live/.../ambassade/[id]
-  │  ContactForm / VisitRequestForm préremplissent email + téléphone
-  │  depuis GET /api/visitor/profile si une session existe
 ```
+
+**Photo de profil visiteur.** Distincte des photos ambassadeur (`ambassador-photos`) :
+bucket Storage privé dédié `visitor-photos`. Visible par l'hôte concerné via
+`POST /api/dashboard/contact-photos` (signed URL 15 min, vérifie que la demande de
+visite appartient bien à un `host_activation` de l'hôte connecté avant de révéler la
+photo — ne fuit jamais l'email/téléphone du visiteur par cette route).
 
 **Distance ambassadeur ↔ visiteur — jamais de stockage d'adresse visiteur.**
 `components/MapPublique.tsx` (bouton "Trier par distance" dans les popups de cluster)
@@ -252,9 +279,12 @@ de proximité. `lat_precise`/`lng_precise` viennent de l'adresse complète saisi
 | Préfixe | Domaine | Auth requise |
 |---------|---------|-------------|
 | `/api/host-activations` | Pins carte publique | Non (lecture publique) |
-| `/api/visit-requests` | Visiteur → hôte — route unique de création (l'ancienne `/api/contact-requests` a été supprimée, code mort) | Non |
+| `/api/visit-requests` | Visiteur → hôte — route unique de création (l'ancienne `/api/contact-requests` a été supprimée, code mort). Exige une session visiteur authentifiée depuis Phase 3 PR3 (401 sinon) | Session visiteur |
 | `/api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, arrondi au km) | Non (rate-limité 8 req/min/IP) |
+| `/api/visitor/account` | Création de compte visiteur (`/mon-espace/creer`) — bootstrap magic link immédiat | Non (rate-limité 3 req/min/IP) |
+| `/api/visitor/check-email` | Classification email au blur (`new`/`visitor_existing`/`collision`) | Non (rate-limité 10 req/min/IP) |
 | `/api/visitor/profile` | Lecture/édition du profil visiteur réutilisable (`visitor_profiles`) | Session visiteur |
+| `/api/dashboard/contact-photos` | Photo de profil visiteur visible par l'hôte (signed URL, ownership vérifié) | Session hôte |
 | `/api/temoignages` | Soumission témoignage public | Non |
 | `/api/testimonials` | Lecture/modération témoignages | Admin |
 | `/api/live-signals` | Signaux live depuis dashboard hôte | Session hôte |
@@ -419,8 +449,8 @@ Mis à jour manuellement à chaque PR significative.
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse précise (`lat_precise`/`lng_precise` via `AddressInput`/Nominatim), consignes, téléphone. Email admin si ville change. |
 | Photo compressée (upload ambassadeur) | ✅ | `POST /api/upload/ambassador-photo` | `lib/image/compress-photo.ts` (Sharp) : profil → 512×512 WebP cover-fit ; lieu → max 1200px WebP contain-fit sans upscale. Toutes les photos converties en `.webp`. |
-| Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte). Téléphone visiteur **obligatoire** (contrainte `NOT NULL` + validation `isValidPhoneNumber` client). Best-effort : crée/upsert un `visitor_profiles` (compte Auth + profil réutilisable) sans jamais bloquer la demande. |
-| Profil visiteur réutilisable | ✅ | `GET/PATCH /api/visitor/profile`, `/mon-espace` | Créé automatiquement à la première demande de visite (magic link, pas de mot de passe). Préremplit email/téléphone sur les demandes suivantes (`ContactForm`, `VisitRequestForm`). Voir section dédiée. |
+| Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte). Téléphone visiteur **obligatoire** (contrainte `NOT NULL` + validation `isValidPhoneNumber`). Exige une session visiteur authentifiée (Phase 3 PR3) — infos lues depuis `visitor_profiles`, jamais du body. |
+| Profil visiteur réutilisable | ✅ | `POST /api/visitor/account`, `GET/PATCH /api/visitor/profile`, `/mon-espace`, `/mon-espace/creer` | Compte créé explicitement via `/mon-espace/creer` (prénom, email, téléphone, photo optionnelle) au moment du premier "Contacter", pas en best-effort silencieux. Bootstrap magic link immédiat. Voir section dédiée. |
 | Distance visiteur ↔ ambassadeur | ✅ | `POST /api/distance` | Géolocalisation navigateur éphémère (jamais persistée) + Haversine arrondi au km. Rate-limité 8 req/min/IP. Ne retourne jamais de coordonnées. |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
@@ -525,10 +555,13 @@ conception le fait.
 |---------|---------|------|--------|
 | `GET /api/host-activations` | Pins carte publique | Non | ✅ |
 | `PATCH /api/host-activations/[id]` | Toggle self-activation hôte | Session hôte (RLS) | ✅ |
-| `POST /api/visit-requests` | Visiteur → demande contact hôte (téléphone obligatoire) | Non | ✅ |
+| `POST /api/visit-requests` | Visiteur → demande contact hôte (téléphone obligatoire) | Session visiteur | ✅ |
 | ~~`POST /api/contact-requests`~~ | **Supprimée** (juillet 2026) — référençait une colonne inexistante (`visitor_whatsapp`), jamais appelée par le frontend | — | 💀 Supprimée |
 | `POST /api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, km arrondi) | Non (rate-limité) | ✅ |
+| `POST /api/visitor/account` | Création de compte visiteur + bootstrap magic link (`/mon-espace/creer`) | Non (rate-limité 3/min/IP) | ✅ |
+| `POST /api/visitor/check-email` | Classification email au blur (new/visitor_existing/collision) | Non (rate-limité 10/min/IP) | ✅ |
 | `GET/PATCH /api/visitor/profile` | Profil visiteur réutilisable (email, téléphone) | Session visiteur | ✅ |
+| `POST /api/dashboard/contact-photos` | Photo visiteur visible par l'hôte (signed URL 15min, ownership vérifié) | Session hôte | ✅ |
 | `POST /api/feedbacks` | Feedback bidirectionnel post-live + blocage visiteur | Token / Session hôte | ✅ |
 | `POST /api/campaign-activations` | Activation hôte via lien email | Token signé | ✅ |
 | `POST /api/temoignages` | Soumission témoignage public | Non | ✅ |
