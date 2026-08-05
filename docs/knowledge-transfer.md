@@ -376,6 +376,35 @@ Remove-Item -Recurse -Force .next\dev
 npm run dev
 ```
 
+### "Une photo uploadée vers Storage s'affiche cassée (0×0, icône brisée)"
+
+**Symptôme** : `POST /api/upload/*-photo` (ou `POST /api/visitor/account` avec photo) répond 200,
+la signed URL générée pointe vers un fichier réel et téléchargeable (200, bon `content-type`), mais
+l'`<img>` ne s'affiche jamais — `naturalWidth`/`naturalHeight` restent à `0` même quand `complete`
+vaut `true`. Repro'd sur `/mon-espace` (photo visiteur) en août 2026, cf `/qa`.
+
+**Cause** : passer un `Buffer` Node.js brut comme deuxième argument de
+`supabase.storage.from(BUCKET).upload(path, buffer, ...)` — le `fetch()` interne du SDK
+`@supabase/storage-js` (et le `fetch()` global lui-même, testé en le bypassant) corrompt les octets
+non-UTF-8-safe du buffer : chaque byte binaire sans séquence de continuation UTF-8 valide est
+silencieusement remplacé par le caractère de remplacement Unicode `U+FFFD` (`EF BF BD` en UTF-8).
+Le fichier change de taille (grossit, chaque octet corrompu passant de 1 à 3 octets) et devient
+un WebP invalide, alors que `Content-Length`/`content-type` réseau restent cohérents en apparence.
+Reproduit avec Next.js 16 (Turbopack) + Node 24 en dev ; confirmé absent en dehors du contexte
+requête Next.js (un script Node isolé avec le même SDK et le même buffer fonctionne parfaitement).
+
+**Fix** : envelopper le buffer dans un `Blob` avant de le passer à `.upload()` — force un chemin de
+sérialisation binaire-safe :
+
+```ts
+.upload(path, new Blob([new Uint8Array(buffer)], { type: 'image/webp' }), { contentType: 'image/webp', upsert: true })
+```
+
+Appliqué dans les 3 endroits qui uploadent un buffer compressé vers Storage :
+`app/api/upload/ambassador-photo/route.ts`, `app/api/upload/visitor-photo/route.ts`,
+`app/api/visitor/account/route.ts`. **Ne jamais réintroduire `.upload(path, buffer, ...)` avec un
+`Buffer` nu** — toujours passer par `new Blob([new Uint8Array(buffer)], { type: ... })`.
+
 ### "Le trigger host_activations ne s'est pas déclenché"
 
 Le trigger `trg_auto_activate_host_on_validated` crée automatiquement une entrée

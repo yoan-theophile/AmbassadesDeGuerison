@@ -93,9 +93,13 @@ export async function POST(req: NextRequest) {
       }
       const buffer = await compressAmbassadorPhoto(rawBuffer, 'profile');
       const path = `${userId}/profile-${Date.now()}.webp`;
+      // Un Buffer Node passé tel quel au fetch() interne du SDK Storage se fait
+      // corrompre (octets non-UTF-8-safe remplacés par U+FFFD) sous Next.js 16 /
+      // Turbopack dev — repro'd en /qa. Envelopper en Blob force un chemin de
+      // sérialisation binaire-safe.
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(path, buffer, { contentType: 'image/webp', upsert: true });
+        .upload(path, new Blob([new Uint8Array(buffer)], { type: 'image/webp' }), { contentType: 'image/webp', upsert: true });
       if (uploadError) throw uploadError;
       photoPath = path;
     } catch (err) {

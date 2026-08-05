@@ -65,9 +65,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Image invalide ou illisible' }, { status: 400 });
   }
 
+  // Un Buffer Node passé tel quel au fetch() interne du SDK Storage se fait
+  // corrompre (octets non-UTF-8-safe remplacés par U+FFFD) sous Next.js 16 /
+  // Turbopack dev — repro'd en /qa. Envelopper en Blob force un chemin de
+  // sérialisation binaire-safe. Voir app/api/visitor/account/route.ts.
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, buffer, {
+    .upload(path, new Blob([new Uint8Array(buffer)], { type: 'image/webp' }), {
       contentType: 'image/webp',
       upsert: true,
     });
