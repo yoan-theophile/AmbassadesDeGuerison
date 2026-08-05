@@ -9,6 +9,7 @@ import {
   Calendar, Loader2, ChevronDown, ChevronUp, Download,
 } from 'lucide-react';
 import Dropzone from '@/components/ui/Dropzone';
+import Avatar from '@/components/ui/Avatar';
 import StatusTimeline from '@/components/dashboard/StatusTimeline';
 import MissionDuMoment from '@/components/dashboard/MissionDuMoment';
 import MesInfosSection from '@/app/dashboard/MesInfosSection';
@@ -458,9 +459,16 @@ export default function DashboardPage() {
 
         {/* En-tête */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-800">Bonjour, {profile.first_name}</h1>
-            <p className="text-slate-500 text-sm">{profile.city}, {profile.country}</p>
+          <div className="flex items-center gap-3">
+            <Avatar
+              photoUrl={profile.profile_photo_url ? photoSignedUrls[profile.profile_photo_url] ?? null : null}
+              firstName={profile.first_name}
+              size={48}
+            />
+            <div>
+              <h1 className="text-xl font-semibold text-slate-800">Bonjour, {profile.first_name}</h1>
+              <p className="text-slate-500 text-sm">{profile.city}, {profile.country}</p>
+            </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[profile.status] ?? 'bg-slate-100 text-slate-600'}`}>
             {statusLabels[profile.status] ?? profile.status}

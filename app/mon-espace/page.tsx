@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Loader2, UserCircle, Camera, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Camera, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import PhoneInput from '@/components/ui/PhoneInput';
+import Avatar from '@/components/ui/Avatar';
 import { createClient } from '@/lib/supabase/browser';
 
 // Espace visiteur minimal (Phase 2bis) — pas un espace visiteur complet
@@ -15,6 +16,7 @@ import { createClient } from '@/lib/supabase/browser';
 export default function MonEspacePage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export default function MonEspacePage() {
     if (!res.ok) { router.replace('/'); return; }
     const data = await res.json();
     setEmail(data.email ?? user.email ?? '');
+    setFirstName(data.first_name ?? '');
     setPhone((data.phone ?? '').replace(/\s+/g, ''));
     setPhotoUrl(data.photo_signed_url ?? null);
     setPhotoPath(data.photo_url ?? null);
@@ -128,7 +131,9 @@ export default function MonEspacePage() {
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-slate-800 text-sm">Mon espace</h1>
+              <h1 className="font-semibold text-slate-800 text-sm">
+                {firstName ? `Bonjour, ${firstName} !` : 'Mon espace'}
+              </h1>
             </div>
             <p className="text-sm text-slate-500">
               Connecté avec <span className="font-medium text-slate-700">{email}</span>. Ton téléphone sera pré-rempli automatiquement sur ta prochaine demande de visite.
@@ -136,11 +141,7 @@ export default function MonEspacePage() {
 
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
-                {photoUrl ? (
-                  <img src={photoUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
-                ) : (
-                  <UserCircle className="w-16 h-16 text-slate-300" />
-                )}
+                <Avatar photoUrl={photoUrl} firstName={firstName} size={64} />
                 {photoUploading && (
                   <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
                     <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
