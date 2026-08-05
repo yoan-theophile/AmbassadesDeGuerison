@@ -245,15 +245,22 @@ message, consentement notifications) → POST /api/visit-requests
   │  Exige une session visiteur authentifiée (401 sinon) — prénom/email/téléphone
   │  viennent de visitor_profiles, jamais du body de la requête
   ▼
-/mon-espace — espace minimal (email, téléphone éditable, déconnexion)
+/mon-espace — espace minimal (email, téléphone éditable, photo de profil éditable, déconnexion)
   │  PAS un dashboard complet — juste assez pour ne pas retaper ses infos
 ```
 
 **Photo de profil visiteur.** Distincte des photos ambassadeur (`ambassador-photos`) :
-bucket Storage privé dédié `visitor-photos`. Visible par l'hôte concerné via
-`POST /api/dashboard/contact-photos` (signed URL 15 min, vérifie que la demande de
-visite appartient bien à un `host_activation` de l'hôte connecté avant de révéler la
-photo — ne fuit jamais l'email/téléphone du visiteur par cette route).
+bucket Storage privé dédié `visitor-photos`. Signed URL toujours générée **côté
+serveur** (`GET /api/visitor/profile` retourne `photo_signed_url`, via
+`createServiceClient()`) — jamais côté client avec le SDK anon, pour rester
+cohérent avec `lib/storage/photo-url.ts` et ne pas dépendre de l'état RLS/session
+du SDK browser. Upload/remplacement/suppression après création de compte via
+`POST`/`DELETE /api/upload/visitor-photo` (même pattern que
+`POST /api/upload/ambassador-photo`, compression `compressAmbassadorPhoto` en
+WebP 512×512). Visible par l'hôte concerné via `POST /api/dashboard/contact-photos`
+(signed URL 15 min, vérifie que la demande de visite appartient bien à un
+`host_activation` de l'hôte connecté avant de révéler la photo — ne fuit jamais
+l'email/téléphone du visiteur par cette route).
 
 **Distance ambassadeur ↔ visiteur — jamais de stockage d'adresse visiteur.**
 `components/MapPublique.tsx` (bouton "Trier par distance" dans les popups de cluster)
@@ -283,7 +290,8 @@ de proximité. `lat_precise`/`lng_precise` viennent de l'adresse complète saisi
 | `/api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, arrondi au km) | Non (rate-limité 8 req/min/IP) |
 | `/api/visitor/account` | Création de compte visiteur (`/mon-espace/creer`) — bootstrap magic link immédiat | Non (rate-limité 3 req/min/IP) |
 | `/api/visitor/check-email` | Classification email au blur (`new`/`visitor_existing`/`collision`) | Non (rate-limité 10 req/min/IP) |
-| `/api/visitor/profile` | Lecture/édition du profil visiteur réutilisable (`visitor_profiles`) | Session visiteur |
+| `/api/visitor/profile` | Lecture/édition du profil visiteur réutilisable (`visitor_profiles`) — GET retourne aussi `photo_signed_url` (signée côté serveur) | Session visiteur |
+| `/api/upload/visitor-photo` | Upload/suppression de la photo de profil visiteur (bucket `visitor-photos`), depuis `/mon-espace` | Session visiteur |
 | `/api/dashboard/contact-photos` | Photo de profil visiteur visible par l'hôte (signed URL, ownership vérifié) | Session hôte |
 | `/api/temoignages` | Soumission témoignage public | Non |
 | `/api/testimonials` | Lecture/modération témoignages | Admin |
@@ -450,7 +458,7 @@ Mis à jour manuellement à chaque PR significative.
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse précise (`lat_precise`/`lng_precise` via `AddressInput`/Nominatim), consignes, téléphone. Email admin si ville change. |
 | Photo compressée (upload ambassadeur) | ✅ | `POST /api/upload/ambassador-photo` | `lib/image/compress-photo.ts` (Sharp) : profil → 512×512 WebP cover-fit ; lieu → max 1200px WebP contain-fit sans upscale. Toutes les photos converties en `.webp`. |
 | Demandes de visite (visiteur → hôte) | ✅ | `POST /api/visit-requests` | Insère dans `contact_requests` (table correcte). Téléphone visiteur **obligatoire** (contrainte `NOT NULL` + validation `isValidPhoneNumber`). Exige une session visiteur authentifiée (Phase 3 PR3) — infos lues depuis `visitor_profiles`, jamais du body. |
-| Profil visiteur réutilisable | ✅ | `POST /api/visitor/account`, `GET/PATCH /api/visitor/profile`, `/mon-espace`, `/mon-espace/creer` | Compte créé explicitement via `/mon-espace/creer` (prénom, email, téléphone, photo optionnelle) au moment du premier "Contacter", pas en best-effort silencieux. Bootstrap magic link immédiat. Voir section dédiée. |
+| Profil visiteur réutilisable | ✅ | `POST /api/visitor/account`, `GET/PATCH /api/visitor/profile`, `POST/DELETE /api/upload/visitor-photo`, `/mon-espace`, `/mon-espace/creer` | Compte créé explicitement via `/mon-espace/creer` (prénom, email, téléphone, photo optionnelle) au moment du premier "Contacter", pas en best-effort silencieux. Bootstrap magic link immédiat. Photo modifiable après création depuis `/mon-espace`. Voir section dédiée. |
 | Distance visiteur ↔ ambassadeur | ✅ | `POST /api/distance` | Géolocalisation navigateur éphémère (jamais persistée) + Haversine arrondi au km. Rate-limité 8 req/min/IP. Ne retourne jamais de coordonnées. |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
@@ -560,7 +568,8 @@ conception le fait.
 | `POST /api/distance` | Distance visiteur ↔ ambassadeurs (Haversine, km arrondi) | Non (rate-limité) | ✅ |
 | `POST /api/visitor/account` | Création de compte visiteur + bootstrap magic link (`/mon-espace/creer`) | Non (rate-limité 3/min/IP) | ✅ |
 | `POST /api/visitor/check-email` | Classification email au blur (new/visitor_existing/collision) | Non (rate-limité 10/min/IP) | ✅ |
-| `GET/PATCH /api/visitor/profile` | Profil visiteur réutilisable (email, téléphone) | Session visiteur | ✅ |
+| `GET/PATCH /api/visitor/profile` | Profil visiteur réutilisable (email, téléphone, `photo_signed_url` signée côté serveur) | Session visiteur | ✅ |
+| `POST/DELETE /api/upload/visitor-photo` | Upload/suppression photo de profil visiteur (`/mon-espace`, bucket `visitor-photos`) | Session visiteur | ✅ |
 | `POST /api/dashboard/contact-photos` | Photo visiteur visible par l'hôte (signed URL 15min, ownership vérifié) | Session hôte | ✅ |
 | `POST /api/feedbacks` | Feedback bidirectionnel post-live + blocage visiteur | Token / Session hôte | ✅ |
 | `POST /api/campaign-activations` | Activation hôte via lien email | Token signé | ✅ |

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Loader2, UserCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, UserCircle, Camera, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import PhoneInput from '@/components/ui/PhoneInput';
 import { createClient } from '@/lib/supabase/browser';
@@ -17,10 +17,14 @@ export default function MonEspacePage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -32,14 +36,51 @@ export default function MonEspacePage() {
     const data = await res.json();
     setEmail(data.email ?? user.email ?? '');
     setPhone((data.phone ?? '').replace(/\s+/g, ''));
-    if (data.photo_url) {
-      const { data: signed } = await supabase.storage.from('visitor-photos').createSignedUrl(data.photo_url, 900);
-      setPhotoUrl(signed?.signedUrl ?? null);
-    }
+    setPhotoUrl(data.photo_signed_url ?? null);
+    setPhotoPath(data.photo_url ?? null);
     setLoading(false);
   }, [router]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPhotoError('');
+    setPhotoUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload/visitor-photo', { method: 'POST', body: formData });
+    const d = await res.json();
+    if (!res.ok) {
+      setPhotoError(d.error ?? 'Une erreur est survenue.');
+    } else {
+      setPhotoUrl(d.url);
+      setPhotoPath(d.path);
+    }
+    setPhotoUploading(false);
+  }
+
+  async function handlePhotoDelete() {
+    if (!photoPath) return;
+    setPhotoError('');
+    setPhotoUploading(true);
+    const res = await fetch('/api/upload/visitor-photo', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: photoPath }),
+    });
+    if (!res.ok) {
+      const d = await res.json();
+      setPhotoError(d.error ?? 'Une erreur est survenue.');
+    } else {
+      setPhotoUrl(null);
+      setPhotoPath(null);
+    }
+    setPhotoUploading(false);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -87,16 +128,54 @@ export default function MonEspacePage() {
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2">
-              {photoUrl ? (
-                <img src={photoUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
-              ) : (
-                <UserCircle className="w-5 h-5 text-indigo-500" />
-              )}
               <h1 className="font-semibold text-slate-800 text-sm">Mon espace</h1>
             </div>
             <p className="text-sm text-slate-500">
               Connecté avec <span className="font-medium text-slate-700">{email}</span>. Ton téléphone sera pré-rempli automatiquement sur ta prochaine demande de visite.
             </p>
+
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                {photoUrl ? (
+                  <img src={photoUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
+                ) : (
+                  <UserCircle className="w-16 h-16 text-slate-300" />
+                )}
+                {photoUploading && (
+                  <div className="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={photoUploading}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5" /> {photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
+                </button>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoDelete}
+                    disabled={photoUploading}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-red-600 disabled:opacity-50 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" /> Supprimer
+                  </button>
+                )}
+              </div>
+            </div>
+            {photoError && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{photoError}</p>}
 
             <form onSubmit={handleSave} className="space-y-4">
               <PhoneInput

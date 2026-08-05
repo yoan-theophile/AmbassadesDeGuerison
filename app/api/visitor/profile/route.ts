@@ -23,7 +23,18 @@ export async function GET(req: NextRequest) {
 
   if (!profile) return NextResponse.json({ error: 'Profil introuvable' }, { status: 404 });
 
-  return NextResponse.json(profile);
+  // Signed URL générée côté serveur (service_role) — jamais côté client, cf
+  // convention lib/storage/photo-url.ts (RLS/session du SDK browser ne doit
+  // jamais conditionner l'affichage d'une photo déjà possédée par l'appelant).
+  let photoSignedUrl: string | null = null;
+  if (profile.photo_url) {
+    const { data: signed } = await supabase.storage
+      .from('visitor-photos')
+      .createSignedUrl(profile.photo_url, 900);
+    photoSignedUrl = signed?.signedUrl ?? null;
+  }
+
+  return NextResponse.json({ ...profile, photo_signed_url: photoSignedUrl });
 }
 
 export async function PATCH(req: NextRequest) {
