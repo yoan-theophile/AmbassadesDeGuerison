@@ -4,7 +4,7 @@
 
 ## Projet
 
-DavidTheryApp — Ambassades de Guérison. Next.js 15 + Supabase + Tailwind.
+DavidTheryApp — Ambassades de Guérison. Next.js 15 + Supabase + Tailwind. Stack complète et schéma des couches : voir ARCHITECTURE.md.
 
 ## Phase actuelle — conception (pas encore en production)
 
@@ -36,15 +36,6 @@ npm run test:e2e        # playwright (E2E, nécessite npm run dev)
 
 Tests DB (triggers, RLS) : nécessite `supabase start` (Docker).
 
-## Stack
-
-- Next.js 15 App Router, TypeScript, Tailwind CSS
-- Supabase : PostgreSQL + Auth magic links + RLS
-- Resend : emails (notifications, magic links) — templates dans `emails/*.tsx` (React Email v6)
-- Leaflet + OpenStreetMap : carte publique
-- PWA : manifest + service worker (cache Leaflet tiles)
-- Vercel : hébergement production (Fluid Compute, région IAD1 Washington)
-
 ## Déploiement Vercel
 
 Projet : **`ambassades-guerison`** — compte `yoan-theophiles-projects` (renommé depuis `davidthery-app` le 2026-05-05)
@@ -63,74 +54,20 @@ Préférer cette approche à `vercel deploy` classique quand des modifications n
 
 ### Variables d'environnement — portées
 
-Toutes les variables sont configurées sur les deux scopes. Seule différence :
-
-| Variable | Production | Preview |
-|----------|-----------|---------|
-| `EMAIL_PREVIEW` | `false` — `/dev/emails` retourne 404 | **`true`** — route active |
-| `NEXT_PUBLIC_DEV_OVERLAY` | **`true`** — DevOverlay rendu en prod (phase de conception) | non défini |
-| `DEV_OVERLAY_SECRET` | secret aléatoire 32 chars — exigé en header `x-dev-secret` par toutes les routes `/api/dev/*` | non défini |
-
-`NEXT_PUBLIC_APP_URL` est `https://ambassades-guerison.vercel.app` dans les deux scopes (mettre à jour si domaine personnalisé).
+Toutes les variables sont configurées sur les deux scopes (Production/Preview), sauf 3 qui diffèrent : `EMAIL_PREVIEW` (false en prod → `/dev/emails` 404, true en preview), `NEXT_PUBLIC_DEV_OVERLAY` (true en prod uniquement, phase de conception), `DEV_OVERLAY_SECRET` (requis en prod pour les routes `/api/dev/*`, header `x-dev-secret`). Détail complet : ARCHITECTURE.md § Variables d'environnement clés.
 
 Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API REST (token dans `%APPDATA%\com.vercel.cli\Data\auth.json`).
 
 ## Développement local
 
-### Preview emails (React Email)
+### Emails
 
-19 templates dans `emails/*.tsx`, composants React Email v6 (import depuis `react-email`).
-`lib/email/templates.ts` contient les fonctions `sendXxx` qui utilisent `react:` au lieu de `html:`.
+19 templates dans `emails/*.tsx` (React Email v6). `lib/email/templates.ts` contient les fonctions `sendXxx`.
 
-Templates **supprimés** (orphelins — jamais appelés depuis une route) :
-- `magic-link-bienvenue.tsx` — variante bienvenue du magic link, redondante avec `registration-confirmation`
-- `contact-accepted.tsx` — étape intermédiaire du flux contact, supprimée quand le flux a été simplifié
-- `contact-reserved.tsx` — "place réservée" envoyée au visiteur avant acceptation de l'hôte ; supprimée quand le flux a été corrigé (seul `acceptation-visite` est envoyé, après acceptation explicite de l'hôte)
-- `pre-validation-accordee.tsx` — déclenchée par l'admin pre_approve. Supprimée quand la transition `pending_review → pre_approved` est passée en self-service (le candidat est sur le dashboard, le questionnaire s'affiche immédiatement, pas besoin d'email)
-- `bienvenue-ambassadeur.tsx` — jamais appelée (`sendBienvenueAmbassadeur` n'avait aucun caller hors `templates.ts`). Contenu par ailleurs incorrect : annonçait "vous apparaissez sur la carte" dès la validation admin, alors que l'ambassadeur doit encore s'auto-activer par live via le lien de campagne (`sendValidationFinale`, réellement envoyée par `PATCH /api/admin/ambassadeurs/[id]/status`, décrit correctement ce flux). Trouvé par /qa le 2026-07-28.
-
-**Preview visuelle** : `localhost:PORT/dev/emails` (ou URL Vercel preview avec `EMAIL_PREVIEW=true`).
-Ajouter dans `.env.local` :
-```
-EMAIL_PREVIEW=true
-```
-La route retourne 404 en production (sans cette variable).
-
-Données mock dans `emails/__mocks__/index.ts` — basées sur les profils seed (Marie, JP, Sophie).
-
-### Mailhog — capture SMTP locale des e-mails réellement envoyés
-
-`/dev/emails` montre les templates avec des données mock, mais ne teste pas le vrai chemin d'envoi (`lib/email/templates.ts` → Resend). Pour vérifier qu'un flux applicatif (inscription, validation, campagne…) déclenche bien le bon e-mail avec le bon contenu, sans dépendre de Resend ni d'adresses e-mail réelles :
-
-```bash
-npm run mailhog        # docker compose up -d mailhog
-```
-
-Puis dans `.env.local` :
-```
-USE_MAILHOG=true
-```
-
-`lib/email/send.ts` route alors **tous** les envois (`getMailer().emails.send(...)`, utilisé par toutes les fonctions `sendXxx` de `lib/email/templates.ts`) vers le SMTP local de Mailhog au lieu de l'API Resend — aucun changement de code applicatif requis, juste la variable d'env. Dashboard web : **http://localhost:8025** — chaque e-mail capturé (destinataire, sujet, HTML rendu, liens cliquables).
-
-`USE_MAILHOG` absent ou `false` → comportement inchangé (Resend réel). Arrêter le conteneur : `npm run mailhog:stop`.
-
-**Tests automatisés** : `tests/unit/email-send-router.test.ts` mocke `resend` et `nodemailer` pour vérifier le routage (Mailhog vs Resend) sans dépendance réseau. `tests/unit/email-templates.test.ts` mocke `resend` directement pour vérifier le contenu (destinataire, props, composant) de chaque `sendXxx`.
-
-### Connexion admin sans e-mail (Resend sandbox)
-
-`RESEND_FROM_EMAIL=onboarding@resend.dev` ne livre qu'à l'e-mail du propriétaire du compte Resend. Les adresses de démo (`david.thery@demo.fr`) ne reçoivent rien.
-
-Deux solutions :
-1. **Mailhog** (ci-dessus) — capture l'e-mail réel envoyé par le flux applicatif (ex : magic link cliqué depuis `/auth`), consultable sur http://localhost:8025
-2. **Génération directe du lien**, sans passer par un e-mail :
-
-```bash
-node scripts/magic-link.js david.thery@demo.fr
-node scripts/magic-link.js theo.nelson.ia@gmail.com
-```
-
-Ouvrir l'URL affichée dans le navigateur. Valable 1 heure.
+- **Preview visuelle** (données mock) : `/dev/emails`, nécessite `EMAIL_PREVIEW=true` dans `.env.local` (404 en prod sans cette variable).
+- **Test du vrai chemin d'envoi** (Mailhog, capture SMTP locale) : `npm run mailhog` puis `USE_MAILHOG=true` dans `.env.local` → tous les envois `lib/email/send.ts` sont routés vers http://localhost:8025 au lieu de Resend. `npm run mailhog:stop` pour arrêter.
+- **Connexion admin sans email** (le sandbox Resend `onboarding@resend.dev` ne livre qu'au propriétaire du compte, pas aux adresses `@demo.fr`) : `node scripts/magic-link.js <email>` génère un lien direct, valable 1h.
+- Templates supprimés (orphelins, ne pas recréer sans vérifier un caller réel) : `magic-link-bienvenue`, `contact-accepted`, `contact-reserved`, `pre-validation-accordee`, `bienvenue-ambassadeur`. Ce dernier annonçait à tort "vous apparaissez sur la carte" dès validation admin (l'ambassadeur doit encore s'auto-activer par live) — trouvé par `/qa` le 2026-07-28.
 
 ### Reset base de données
 
@@ -139,259 +76,59 @@ supabase db query --linked --file scripts/reset-db.sql   # recrée le schéma
 node scripts/seed.js                                      # insère les données de démo
 ```
 
-### Comptes de démo créés par le seed
-
-| E-mail | Rôle | Statut | Note | `quartier` |
-|--------|------|--------|------|------------|
-| `david.thery@demo.fr` | admin | — | super_admin | — |
-| `theo.nelson.ia@gmail.com` | admin | — | super_admin | — |
-| `marie.dubois@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 15e |
-| `jp.martin@demo.fr` | ambassadeur | `validated` | Lyon — complet | Lyon Presqu'île |
-| `sophie.leroux@demo.fr` | ambassadeur | `pending_review` | Bordeaux — test dashboard candidature | Bordeaux Chartrons |
-| `emilie.rousseau@demo.fr` | ambassadeur | `enrichment_pending` | Toulouse — domicile, queue admin | Toulouse Capitole |
-| `pascal.nguyen@demo.fr` | ambassadeur | `enrichment_pending` | Strasbourg — église, queue admin | Strasbourg Centre |
-| `lucas.dupont@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 10e |
-| `camille.petit@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 11e |
-| `antoine.moreau@demo.fr` | ambassadeur | `validated` | Paris — cluster (église) | Paris 3e |
-| `julie.fontaine@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 7e |
-| `theo.garnier@demo.fr` | ambassadeur | `validated` | Paris — cluster | Paris 20e |
-| `nathalie.blanc@demo.fr` | ambassadeur | `validated` | Nantes — proche de Manon (femmes-only) | Nantes Centre |
-| `manon.girard@demo.fr` | ambassadeur | `validated` | Nantes — proche de Nathalie (église) | Nantes Saint-Léonard |
-
-**Cluster Paris** : 6 ambassadeurs à Paris (Marie + 5 nouveaux) pour tester le rendu Leaflet avec beaucoup de pins dans la même ville. Pour le live J+10, 4 d'entre eux sont activés (Marie, Lucas, Camille, Antoine).
-
-**Paire Nantes (test clustering par proximité)** : Nathalie et Manon sont à ~600m l'une de l'autre — coordonnées proches mais volontairement pas identiques, pour reproduire le cas où deux ambassadeurs voisins ont été géocodés à des points légèrement différents. Vérifie que `leaflet.markercluster` les regroupe bien sous un badge à faible zoom (au lieu qu'un pin masque silencieusement l'autre) et les sépare en pins individuels une fois assez zoomé. Toutes deux activées pour le live J+10.
-
-## Crons email
-
-Déclarés dans `vercel.json` (Vercel Cron) et en miroir dans `.github/workflows/` (GitHub Actions, désactivés par défaut) :
-
-| Route | Schedule | Rôle |
-|-------|----------|------|
-| `/api/cron/dispatch-campaigns` | `0 8 * * *` | Envoie les campagnes planifiées (`scheduled_campaigns`) aux ambassadeurs et visiteurs |
-| `/api/cron/send-feedback-emails` | `0 10 * * *` | Envoie les emails de feedback post-live aux hôtes ayant participé |
-| `/api/cron/check-activations` | `0 9 * * *` | Envoie `admin-alerte-no-activations` si 0 hôtes actifs pour le prochain live |
-
-**Tous les crons sont désactivés** (`vercel.json` vide) — à réactiver lors du passage en production.
-
-Toutes les routes cron exigent le header `x-cron-secret: $CRON_SECRET`.
+Comptes de démo : voir `scripts/seed.js`. Notes non-évidentes : un cluster de 6 ambassadeurs à Paris teste le rendu Leaflet à forte densité ; Nathalie et Manon (Nantes) sont géocodées à ~600m l'une de l'autre pour reproduire le cas de clustering par proximité (voir bug clustering plus bas).
 
 ## Pipeline d'activation ambassadeur
 
-Flux **self-service jusqu'au questionnaire**, admin n'intervient qu'à la fin :
+Flux self-service jusqu'au questionnaire (voir ARCHITECTURE.md § Cycle de vie d'un ambassadeur pour le diagramme complet). Points non-évidents :
 
-```
-/inscription → pending_review
-                  │
-                  │ candidat regarde vidéo + télécharge PDF + clique "J'accepte"
-                  │ POST /api/onboarding/complete  (auth, plus aucune action admin)
-                  ▼
-              pre_approved (CGU acceptées, questionnaire débloqué)
-                  │
-                  │ candidat remplit le questionnaire
-                  │ PATCH /api/ambassadeur/enrichissement
-                  ▼
-              enrichment_pending (admin queue)
-                  │
-                  │ admin valide ou refuse depuis /admin/ambassadeurs
-                  ▼
-              validated  OR  rejected
-                  ↕
-              suspended (admin)
-```
-
-- L'inscription crée le profil avec `status = 'pending_review'`.
-- **Gate inline dans `/dashboard`** : pour `pending_review`, l'encart contextuel intègre vidéo + lien PDF + checkbox "J'accepte" + bouton "Activer mon onboarding". Cliquer le bouton appelle `PATCH /api/onboarding/complete` qui fait passer `pending_review → pre_approved`. **Pas d'email** — le candidat est sur le dashboard, le questionnaire est immédiatement visible. Idempotent : déjà ≥ pre_approved → 200 noop ; statuts terminaux (suspended/rejected) → 400. La route `/onboarding` autonome n'existe plus.
-- **Video gate** : la checkbox d'engagement reste désactivée jusqu'au premier clic dans la vidéo YouTube (le candidat doit avoir interagi avec). Détection via `window.addEventListener('blur', ...)` + `document.activeElement instanceof HTMLIFrameElement`. Helper `buildVideoUrl` exporté depuis `lib/youtube.ts`.
-- **Admin** (`PATCH /api/admin/ambassadeurs/[id]/status`) : actions valides = `validated`, `validated_bypass`, `rejected`, `suspended`, `reactiver`. L'action `pre_approved` n'existe **plus** (transition self-service). `validated` n'est autorisé que depuis `enrichment_pending`. `validated_bypass` reste accepté par l'API comme escape hatch (support, script SQL, migration), **mais le bouton dédié a été retiré du UI** (`/admin/ambassadeurs`) — un bypass produit un ambassadeur sans photo de profil ni questionnaire, visible publiquement avec un profil incomplet. La validation finale envoie `sendNouvelleActivationAdmin` + `sendValidationFinale` (bienvenue).
-- Le dashboard gère : pas de session → `/auth` ; session sans `host_profile` → `/inscription`. Après ces guards, `if (!profile) return null` évite les erreurs TS.
-- Statuts valides (contrainte CHECK DB inchangée) : `pending_review`, `pre_approved`, `enrichment_pending`, `validated`, `suspended`, `rejected`.
-- `enrichment_pending` requiert `profile_photo_url` non NULL — la route `PATCH /api/ambassadeur/enrichissement` refuse la soumission si la photo de profil n'a pas été uploadée. Le questionnaire (`/dashboard/questionnaire`) expose deux blocs photo : **Photo de profil** (requise) et **Photos du lieu d'accueil** (optionnel, max 5). Upload via `POST /api/upload/ambassador-photo` (`type=profile|room`), suppression via `DELETE` même endpoint avec ownership check (le path doit commencer par `<profile.id>/`).
-- Ambassadeur validé : `PATCH /api/ambassadeur/profile` permet d'éditer ville (+ re-géocodage), adresse privée, consignes et téléphone. Si la ville change, un email `ambassadeur-modification-admin` est envoyé à l'admin. Si `lat`/`lng` sont absents (ville tapée sans sélection dropdown), retourne 400.
+- **Transition `pending_review → pre_approved`** est exclusivement self-service (`PATCH /api/onboarding/complete`, pas d'email, idempotente). L'action admin `pre_approve` n'existe plus.
+- **Video gate** : la checkbox d'engagement reste désactivée tant que le candidat n'a pas cliqué dans la vidéo YouTube (détection via `blur` + `document.activeElement instanceof HTMLIFrameElement`, helper `buildVideoUrl` dans `lib/youtube.ts`).
+- **`validated_bypass`** reste accepté par l'API comme escape hatch (support/SQL) mais le bouton dédié a été retiré de `/admin/ambassadeurs` — un bypass produit un ambassadeur sans photo ni questionnaire, visible publiquement avec un profil incomplet.
+- `enrichment_pending` requiert `profile_photo_url` non NULL (garde côté API).
 
 ## Formulaire d'inscription (`/inscription`)
 
-- **Champs obligatoires étape 1** : Prénom (`first_name`), Nom (`last_name`), E-mail, Téléphone (`phone`), Ville (avec géocodage confirmé), Pays. Le bouton "Continuer" est désactivé tant que l'un de ces champs est vide, que `form.lat == null`, ou que le numéro de téléphone n'est pas valide (`isValidPhoneNumber` de `react-phone-number-input`).
-- **`PhoneInput`** (`components/ui/PhoneInput.tsx`) : remplace `<input type="tel">` sur `/inscription`, `MesInfosSection`, et les formulaires de contact visiteur (`ContactForm`, `VisitRequestForm`, où le téléphone est désormais **obligatoire**). Utilise `react-phone-number-input` v3 — sélecteur d'indicatif pays avec drapeau (défaut France), formatage automatique, validation E.164. `countryCallingCodeEditable={false}` : l'indicatif pays est verrouillé sur le pays sélectionné (bug QA corrigé — sans ça, sélectionner tout le champ et retaper juste le numéro national pouvait faire basculer silencieusement l'indicatif vers un autre pays détecté dans les chiffres tapés). Changer de pays passe uniquement par le sélecteur drapeau explicite. La valeur stockée en DB et transmise à l'API est en format E.164 (ex : `+33612345678`). Lors du chargement depuis la DB dans `MesInfosSection`, normaliser les espaces : `.replace(/\s+/g, '')` (données legacy peuvent être au format `+33 6 12 34 56 78`).
-- **`AddressInput`** (`components/ui/AddressInput.tsx`) : autocomplétion Nominatim `mode=address` (calquée sur `CityInput`), collecte l'adresse complète → `lat_precise`/`lng_precise` sur `host_profiles`. **Jamais publics** — utilisés uniquement par `POST /api/distance` pour calculer la proximité visiteur ↔ ambassadeur (voir ARCHITECTURE.md). Distinct de `quartier` (texte libre public affiché sur la carte). Utilisé à l'inscription et dans `MesInfosSection`.
-- **Message de présentation** (`presentation_message`, optionnel, 240 caractères max) : 2-3 lignes affichées dans le popup carte (single-pin et lignes actives de cluster). Modifiable depuis `MesInfosSection`.
-- **`CityInput`** (`components/ui/CityInput.tsx`) : autocomplétion Nominatim via `/api/geocode`. Le `onChange` expose `(city, lat?, lng?, country?)`. `country` est transmis uniquement lors d'une sélection dans le dropdown (pas lors d'une saisie libre). `/api/geocode` déduplique les suggestions par label (bug QA corrigé — Nominatim retourne parfois deux entités distinctes pour la même ville avec des lat/lng légèrement différents, produisant deux options indiscernables dans le dropdown).
-- **Validation géocodage** : double couche — (1) frontend : bouton "Continuer" désactivé tant que `form.lat == null`, hint ambre si texte tapé sans sélection ; (2) API : `POST /api/inscriptions` retourne 400 si `lat` ou `lng` absents. Évite les ambassadeurs sans coordonnées invisibles sur la carte (`host-activations/route.ts` filtre `hp.lat && hp.lng`). Le check utilise `== null` (et non `!lat`) pour ne pas bloquer les villes à latitude 0 (équateur).
-- **Auto-remplissage pays** : quand une ville est sélectionnée dans le dropdown, `country` bascule automatiquement sur le pays retourné par le geocoding (ex : sélectionner "Yaoundé" → pays passe à "Cameroun"). Si la sélection ne retourne pas de pays, le champ reste inchangé.
-- **`CountrySelect`** (`components/ui/CountrySelect.tsx`) : expose le nom du pays (`"Cameroun"`), pas le code ISO. Pays épinglés : FR, BE, CH, CA, LU, MA, SN, CI, CM.
-- **Champ `quartier`** (optionnel, étape 1) : texte libre pour préciser le quartier ou l'arrondissement (ex : "Paris 15e", "Abidjan Cocody"). Stocké dans `host_profiles.quartier`. Affiché en `text-slate-400` sur trois surfaces publiques : (1) popups carte (cluster + pin individuel), (2) fiche `/ambassade/[id]` sous `Ville, Pays`, (3) fiche live `/live/[event_id]/ambassade/[host_id]` sous `Ville, Pays`. Vide → aucune ligne affichée. Modifiable depuis `MesInfosSection` dans le dashboard.
-- **Types de lieux** (`TYPES` dans `inscription/page.tsx`) : `individual` → "Domicile — lieu de prière", `church` → "Église — lieu de prière". Labels publics orientés ministère. En admin (`AmbassadeursTable`) : "Domicile" / "Église" (court). Sur la carte (popup) : "Lieu de prière à domicile" / "Lieu de prière en église".
+Champs obligatoires étape 1 : prénom, nom, e-mail, téléphone (E.164, `react-phone-number-input`), ville avec géocodage confirmé, pays. Pièges déjà corrigés à ne pas réintroduire :
 
-## Pages admin
-
-| Route | Description |
-|-------|-------------|
-| `/admin/stats` | Vue générale — "À noter depuis le dernier live". Panneau factuel sobre (pas de narrative pastoral) : action queue (candidats à valider, témoignages à modérer, signalements feedback) + 3 témoignages récents + max 5 ambassades à vérifier (label de contexte factuel : profil incomplet, jamais activée, inactive depuis 2 lives, ville sans demande, ancienne sans accueil — **premier match wins**) + snapshot footer (totaux globaux). Helpers factorisés dans `lib/admin/event-window.ts` + `lib/admin/stats-helpers.ts` + `lib/admin/context-label.ts`. Tracking d'usage via `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs queryable). Pivot post-CEO/Codex : V1 sobre, V2 enrichie (narrative + mailto + digest) conditionnelle à la mesure d'usage — cf TODO-22. |
-| `/admin/ambassadeurs` | Datatable ambassadeurs — pagination, recherche full text (nom, e-mail, ville), filtres statut, Suspendre/Réactiver. Avatar 32px dans la colonne Nom + galerie photos (profil + lieu d'accueil) dans le panneau étendu. Signed URLs 1h générées server-side via `getAdminPhotoUrl` (bucket privé) |
-| `/admin/live` | Feed en direct — signaux live + témoignages du dernier event |
-| `/admin/calendrier` | Lives + campagnes email — section Lives (création/modification d'événements via `PlanningClient`) + section Campagnes planifiées (formulaire pour programmer une campagne ambassadeurs ou visiteurs via `CalendrierCampaignSection`) |
-| `/admin/temoignages` | Modération témoignages — bandeau live actif (titre + badge "N en attente"), stats bar (total/publiés/villes), bouton "Copier le lien", onglets scopés au live, combobox event, recherche multi-mots, pagination, Tout publier |
-| `/admin/feedback` | Feedback post-live — 2 onglets : "Signalements" (modération, `report_status`) et "Toutes les notations" (filtres event/direction, tri récent/score). Affiche aussi le feedback bidirectionnel ambassadeur → visiteur (`would_host_again`). |
-| `/admin/blacklist` | Modération **côté visiteur**, blocages **globaux uniquement** (`host_profile_id IS NULL`) : bloque un email/téléphone d'envoyer toute demande (`/api/visit-requests` + `/api/visitor-help-request`). Les blocages **scopés à un hôte** (`host_profile_id` renseigné) se créent depuis le formulaire de feedback ambassadeur (`/feedback/host/[token]`), n'apparaissent pas sur cette page. Distinct de la suspension d'ambassade (qui cible l'hôte). **Layout** : formulaire d'ajout en haut (action principale, reste accessible sans scroll), historique des blocages en bas. Voir « Modération anti-abus visiteur » plus bas pour le choix éthique. |
-| `/admin/settings` | Paramètres onboarding — URL vidéo YouTube + chemin PDF |
-
-`/admin/moderation` redirige vers `/admin/live`.
-
-### Config onboarding (`onboarding_config`)
-
-Table singleton (`id = 1`). Accès exclusivement via `createServiceClient()` (bypass RLS).
-
-- `GET /api/onboarding/config` — lecture publique, fallback sur `config/onboarding.ts`
-- `PATCH /api/admin/settings/onboarding` — écriture, requiert `role = admin`
-
-Si la table est vide ou `video_url = ''`, le GET retourne les constantes de `config/onboarding.ts`.
+- `countryCallingCodeEditable={false}` sur `PhoneInput` : sans ce lock, sélectionner tout le champ et retaper le numéro pouvait faire basculer silencieusement l'indicatif pays.
+- `/api/geocode` déduplique les suggestions Nominatim par label (deux entités distinctes pour la même ville produisaient des doublons indiscernables).
+- Le check de coordonnées utilise `form.lat == null` (jamais `!lat`) — sinon les villes à latitude 0 (équateur) seraient bloquées à tort.
+- `AddressInput` (adresse précise → `lat_precise`/`lng_precise`) est distinct de `quartier` (texte libre public affiché sur la carte) — le premier n'est jamais public, voir § Règles importantes.
 
 ## Page d'accueil publique (`/`)
 
-Carte Leaflet plein écran avec :
-- **Header** (`AppHeader`) : sous-titre "Groupes de prière — lives de guérison" visible desktop (`hidden sm:block`), sous le nom.
-- **EventBanner** : bandeau flottant sur la carte — 4 états selon `liveInProgress` + `nextEvent` + `lastEvent` :
-  1. `liveInProgress = true` (event_date ≤ now ≤ event_date + `NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`) → *"Live en cours — rejoignez-nous"* (indigo, Radio pulsing)
-  2. `nextEvent` dans < 7 jours → *"Prochain live dans Xj Xh Xmin"* (countdown, indigo)
-  3. `nextEvent` dans ≥ 7 jours → *"Prochain live le {weekday} {day} {month} à {HH}h{mm}"* (blanc, heure en timezone navigateur)
-  4. Aucun `nextEvent`, `lastEvent` présent → *"Dernier live il y a X jours — prochainement"* (blanc)
-- **Footer** : "Ambassades de Guérison — rejoignez un groupe de prière lors des lives de David Théry" (`text-slate-500`).
-- **Popup des pins** : texte conditionné sur `host_type` — "Lieu de prière à domicile" ou "Lieu de prière en église" + action Contacter. Si `quartier` renseigné : affiché en dessous du type en `text-slate-400`. Si `presentation_message` renseigné (240 car. max) : affiché sous forme de 2-3 lignes de présentation, avec avatar photo (signed URL 24h, `getPublicMapPhotoUrls`) ou initiale + couleur en fallback. Couleurs des pins : domicile = indigo `#4f46e5`, église = violet `#7c3aed` (distinguables à l'œil sur la carte). Tous les champs libres injectés dans le HTML du popup Leaflet passent par `escapeHtml()` (protection XSS).
-- **CTA "première fois"** (coin bas-droit, masquable + mémorisé `localStorage['discover-cta-dismissed']`) : lien vers `/decouvrir` (réassurance, 3 étapes, FAQ, témoignage vedette). Positionné pour ne pas chevaucher le hint "Pas d'ambassade" (centré) ni la recherche (haut-gauche).
-- **Cluster de pins par proximité** (`MapPublique` — `leaflet.markercluster`) : chaque hôte devient un marker individuel (`makeIcon`, popup via `renderSinglePopup`) ajouté à un `L.markerClusterGroup()` ; c'est le plugin qui décide dynamiquement, à chaque zoom/déplacement, de les afficher séparément ou fusionnés sous un badge (`makeClusterIcon`, via `iconCreateFunction`), selon leur **proximité en pixels à l'écran** (`maxClusterRadius: 60`) — pas selon des coordonnées exactes identiques. Clic sur un cluster → popup listant chaque ambassadeur (`renderClusterPopup` : nom, type, places, quartier si renseigné, lien Contacter, tri par distance si ≥ 2 disponibles) ; `zoomToBoundsOnClick`/`spiderfyOnMaxZoom` désactivés pour garder cette popup plutôt que le comportement par défaut du plugin (zoom auto / éclatement en étoile).
-  - **Bug corrigé (juillet 2026)** : l'ancien regroupement par clé exacte `"${lat},${lng}"` ne fusionnait que les hôtes aux coordonnées **strictement identiques**. Deux ambassadeurs proches mais géocodés à des points légèrement différents (Nominatim ne renvoie pas toujours le même point pour la même ville selon le moment de l'inscription) n'étaient jamais regroupés : à faible zoom, leurs positions tombaient au même endroit en pixels et l'un recouvrait totalement l'autre dans le DOM, sans badge ni indice qu'un second pin existait — une ambassade pouvait devenir invisible sans avertissement. `leaflet.markercluster` fusionne par distance à l'écran, recalculée à chaque zoom : le pin caché redevient soit visible individuellement (zoomé), soit compté dans un badge (dézoomé). Repro dans le seed : Nathalie & Manon (Nantes, ~600m d'écart, voir `scripts/seed.js`).
-- **Géolocalisation auto au premier chargement** (`MapPublique` — `initMap`) : `map.locate({ enableHighAccuracy: false })` est appelé après l'init. Le listener `locationfound` déclenche `map.flyTo(latlng, zoom, { duration: 1.4 })` — animation douce au lieu du saut sec de `setView`. `enableHighAccuracy: false` cible 100-500 ms de résolution (triangulation Wi-Fi/cellulaire ~50 km) au lieu de 1-5 s GPS — précision largement suffisante pour zoom niveau métropole. Variable `nextLocateZoom` préserve les deux zooms : 9 auto-load (vue métropole), 7 bouton manuel (vue régionale). Si refus → vue monde par défaut (`setView([20, 10], 3)`) conservée via `locationerror` handler silencieux.
-- **Recherche par ville** (`MapPublique`) : barre de recherche flottante `absolute top-3 left-3 z-[1000]`, debounce 400ms → Nominatim OSM (`/search?format=json&limit=5&accept-language=fr`). Sur sélection : `map.flyTo([lat, lon], zoom 10)`. Résultats : `display_name` splité sur `", "` pour afficher ville + pays.
-  - **Limite Nominatim** : 1 req/s par IP (politique OSM). Le debounce 400ms est suffisant au lancement. **TODO** : évaluer migration vers [Photon (Komoot)](https://photon.komoot.io) (self-hostable, gratuit) ou Mapbox Geocoding (clé API) si trafic simultané > ~50 users ou si Nominatim commence à rate-limiter.
-- **État vide** (`MapPublique`) — la carte est vide hors état `live` (is_active=false sur tous les hôtes). Deux comportements distincts :
-  - `hosts.length === 0` → composant `EmptyMapContent` affiché — overlay contextuel centré selon l'état de l'app :
-    - `liveInProgress && hosts.length === 0` (`live-zero`) → "Live en cours / Les ambassades confirment..." + lien "Regarder le live →" (conditionné à `lastEvent?.live_link`)
-    - `nextEvent` dans ≤ 2j → "PROCHAIN LIVE [date] / Les ambassades confirment leur participation..."
-    - `nextEvent` dans > 2j (`upcoming`, `blank`) → "PROCHAIN LIVE [date] / Les ambassades s'afficheront dès qu'elles confirmeront..." + stats + "Voir les témoignages →"
-    - `lastEvent && !nextEvent` (`closed`, `past`) → "Dernier live [date] / Prochain live annoncé prochainement." + stats + "Partager un témoignage →"
-    - Aucun event → "Pas encore de live prévu / Rejoignez la communauté..." + bouton "Devenir ambassadeur" (seul état avec ce CTA)
-  - `hosts.length > 0` mais viewport vide au zoom ≥ 5 → hint discret bas-centré "Pas d'ambassade dans ta ville ? / Sois le premier ambassadeur ici →". Seuil 5 = niveau pays (Côte d'Ivoire, France entière). Mécanisme : `hostsRef` + listener `moveend/zoomend` Leaflet + `visibleCount` React state.
-  - `live_link` sur `events` : renseigné par David dans `/admin/calendrier` à la création de chaque live. Propagé via `getHomepageData()` → `lastEvent.live_link`. Utilisé dans l'overlay `live-zero`.
+Carte Leaflet plein écran, voir `components/MapPublique.tsx` pour le détail d'implémentation (géolocalisation, recherche ville, états vides). Point non-évident à ne pas réintroduire :
+
+- **Clustering par proximité en pixels** (`leaflet.markercluster`, pas par coordonnées exactes) — corrigé juillet 2026. L'ancien regroupement par clé `"${lat},${lng}"` ne fusionnait que les hôtes aux coordonnées strictement identiques : deux ambassadeurs proches mais géocodés à des points légèrement différents pouvaient se superposer silencieusement dans le DOM, l'un masquant totalement l'autre sans aucun badge. Le plugin recalcule la distance à l'écran à chaque zoom.
 
 ## DevOverlay — simulation d'états (dev local + prod gated)
 
-`components/DevOverlay.tsx` — bouton `DEV 🔧` coin bas-droit. Rendu si `process.env.NODE_ENV !== 'production'` (dev local) **OU** `process.env.NEXT_PUBLIC_DEV_OVERLAY === 'true'` (flag prod, phase de conception). Helper `lib/dev-overlay-auth.ts:isDevOverlayEnabled()` centralise le check.
+`components/DevOverlay.tsx`, gated par `NODE_ENV !== 'production'` OU `NEXT_PUBLIC_DEV_OVERLAY === 'true'` (helper `lib/dev-overlay-auth.ts`). En prod, `/api/dev/state` et `/api/dev/magic-link` exigent un header `x-dev-secret` valide (sinon 403, secret auto-effacé côté client pour reprompt). 9 états simulables, voir `lib/dev/state.ts:applyState()`.
 
-**Sécurité prod** : les routes `/api/dev/state` et `/api/dev/magic-link` mutent la DB et peuvent générer un magic link admin. En prod elles exigent un secret partagé via header `x-dev-secret` (vérifié contre `process.env.DEV_OVERLAY_SECRET`). Sans secret valide → 403. En dev local le secret est bypassed (`NODE_ENV === 'development'`).
-
-L'utilisateur saisit le secret au premier usage dans le DevOverlay (input `password`), il est stocké en `localStorage['dev-overlay-secret']` et envoyé dans tous les calls `/api/dev/*`. Bouton `reset` dans le header du panel pour effacer le secret. 403 reçu → secret auto-effacé pour reprompt.
-
-Appelle `POST /api/dev/state` qui invoque `lib/dev/state.ts:applyState()`. Les 9 états disponibles :
-
-| État | Label | is_active | liveInProgress | nextEvent |
-|------|-------|-----------|---------------|-----------|
-| `live` | 🔴 Live | true (tous) | true | J+10 |
-| `live-zero` | 🔴 Live (0 confirm.) | false | true | J+10 |
-| `soon` | ⏱ Soon 3j | false | false | J+3 |
-| `soon-confirmed` | ⏱ Soon 3j ✓ pins | partiel (4 premiers) | false | J+3 |
-| `upcoming` | 📅 Upcoming | false | false | J+10 |
-| `upcoming-confirmed` | 📅 Upcoming ✓ pins | partiel (4 premiers) | false | J+10 |
-| `past` | ⏪ Past | false | false | aucun |
-| `closed` | 🔚 Closed | false | false | J+10 |
-| `blank` | 🫙 Blank 0 confirm. | false | false | J+10 (is_active=false) |
-
-**Règle critique** : seuls `live` et `live-zero` ont `event_date` dans la fenêtre live (`NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`). `soon-confirmed` et `upcoming-confirmed` activent 4 `host_activations` sur l'événement futur — les pins apparaissent sur la carte avant le live, simulant des ambassadeurs qui ont cliqué tôt sur le lien de campagne. Tous les autres états ont `is_active=false` → carte vide → overlay contextuel affiché.
-
-**Fix `closed`** (commit 56a4d30) : l'état `closed` remet `demoFutureEvent` à J+10. Sans ce fix, après `past → closed`, evtFutur restait à J-10 ce qui maintenait l'overlay "Dernier live" au lieu de "Dernier live + prochain annoncé".
-
-Le DevOverlay inclut aussi une section Magic Link rapide pour se connecter en tant que `david.thery`, `theo.nelson.ia`, ou `marie.dubois` sans passer par Resend.
-
-## Page témoignages publique (`/temoignages`)
-
-- En-tête : icône `Sparkles` + titre **"Ce que Dieu a fait"** + sous-titre + stats (N témoignages • M villes).
-- Filtre par live : `TemoignageLiveFilter` (client component) — dropdown custom (pas `<select>` natif) avec recherche intégrée, navigue vers `?live=<uuid>`. Filtrage server-side dans la query Supabase. Affiché en ligne avec le CTA "Partager le mien" (lien discret) visible dès l'arrivée.
-- Colonne unique (`flex flex-col gap-4`) — meilleure lisibilité pour du contenu textuel long.
-- Pagination 20 par page (param `?page=N`), identique à `/admin/ambassadeurs`. `getTemoignages` accepte `page` + retourne `total` via `{ count: 'exact' }`. Stats (N témoignages, M villes) calculées sur l'ensemble, pas seulement la page courante (`getTotalCities` requête séparée).
-- **`TemoignageCard`** (client component) : icône `Quote` indigo en haut, texte sans guillemets, `line-clamp-4` par défaut. Si `scrollHeight > clientHeight`, bouton **"Lire la suite"** apparaît ; **"Réduire"** pour replier.
-- Métadonnées : `{first_name}, {city}` (depuis `host_profiles`) OU `{visitor_name}, {submitter_city}` pour les témoignages anonymes + titre du live en indigo.
-- Jointure Supabase many-to-one → retourne un objet, pas un tableau. Normaliser avec `Array.isArray ? [0] : direct`.
-- CTA principal "Partage ton témoignage" en bas de page. CTA discret "Partager le mien" visible à côté du filtre (accessible sans scroller).
-- Bouton WhatsApp + copier le lien (`TemoignageShareButtons` client component).
-
-## Page formulaire témoignage (`/temoignages/nouveau`)
-
-- Accès public, aucune authentification requise.
-- Formulaire : sélection du live (dropdown), contenu (min 20 / max 2000 chars), prénom + ville (optionnels).
-- Submit → `POST /api/temoignages` → `is_visible = false`, va en moderation queue (`/admin/temoignages`).
-- Pré-sélection du live via `?live=<uuid>` (passé depuis le filtre de la page principale).
-- Schéma DB : `visitor_name` (nom soumissionnaire), `submitter_city` (ville soumissionnaire), `host_profile_id = NULL`, `contact_request_id = NULL`.
-- **Migration requise** avant premier usage : `supabase db query --linked --file scripts/migration-testimonials-anon.sql`
-  - Supprime `CONSTRAINT chk_testimonial_author` (imposait un auteur identifié)
-  - Ajoute colonne `submitter_city TEXT`
-  - Ajoute policy RLS `testimonials_anon_insert` (INSERT public sans FK).
-
-## Dashboard ambassadeur (`/dashboard`)
-
-Page centrale de l'ambassadeur. Server Component principal, hydraté par plusieurs Client Components.
-
-- **Encarts contextuels selon le statut** (dans le bloc `isOnboarding`) :
-  - `pending_review` → encart ambre "Bienvenue, {prénom} !" + gate self-service inline : vidéo de formation, bouton "Télécharger le guide pratique" (PDF), checkbox "J'ai regardé la vidéo et accepté les conditions" (désactivée tant que la vidéo n'a pas été cliquée), bouton "Activer mon onboarding" qui appelle `PATCH /api/onboarding/complete` → transition `pending_review → pre_approved`. Helper `buildVideoUrl` importé depuis `lib/youtube.ts` ajoute `enablejsapi=1` à l'URL YouTube. Détection iframe via `window.addEventListener('blur', ...)` scopé à `profile?.status === 'pending_review'`.
-  - `pre_approved` → encart indigo "Conditions acceptées" + CTA `/dashboard/questionnaire`
-  - `enrichment_pending` → encart violet "Ton dossier est en cours d'examen"
-- **`MissionDuMoment`** (`components/dashboard/MissionDuMoment.tsx`) : carte contextuelle prioritaire en haut du dashboard pour les ambassadeurs `validated`. 5 états selon la priorité décroissante : (1) signal approuvé → invite à rejoindre le live (emerald) ; (2) signal envoyé → "en attente de David" (indigo atténué) ; (3) live en cours sans signal → formulaire de signal (indigo) ; (4) demandes en attente → nudge amber ; (5) live dans ≤ 3 jours non confirmé → nudge bleu discret. Retourne `null` si aucune condition active.
-- **`StatusTimeline`** (`components/dashboard/StatusTimeline.tsx`) : stepper 4 étapes **affiché uniquement pour les ambassadeurs non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Étapes : Inscription → Conditions acceptées → Profil enrichi → Validation finale. Mappé sur `host_profiles.status` via `STATUS_TO_STEP`. Absent du dashboard pour les `validated` (ils ont terminé leur parcours).
-- **Ordre des sections pour `validated`** : MissionDuMoment → Mes lives → **Mes demandes** (remonté — urgences prioritaires) → Témoignage live (si live en cours) → Mon ambassade → Photos → MesInfosSection → **Formation (collapsée par défaut)**.
-- **Formation collapsée par défaut** : bouton toggle "Formation ambassadeur" toujours visible ; l'iframe YouTube ne se monte qu'après le clic (`showFormation` state). Pour `enrichment_pending` et autres non-validés, la formation est affichée immédiatement (onboarding).
-- **Section "Mes lives"** : pour chaque `host_activation`, affiche une carte CTA :
-  - Inactif → bouton plein indigo "Je participe à ce live" (`PATCH /api/host-activations/[id]`)
-  - Actif → badge vert "Vous participez à ce live" + bouton secondaire "Annuler ma participation"
-- **Section "Mes demandes"** : carte enrichie par demande — nom visiteur, live concerné, horodatage relatif (`Intl.RelativeTimeFormat`), message déplié (pas de `line-clamp`), boutons Accepter/Refuser.
-- **Section "Modifier mes photos"** : affichée uniquement si `status === 'enrichment_pending'` OU si l'ambassadeur clique sur le bouton toggle. Section cachée par défaut pour un ambassadeur validé.
-- **`MesInfosSection`** (`app/dashboard/MesInfosSection.tsx`) : visible uniquement pour un ambassadeur `validated`. Formulaire édition ville + pays + adresse précise (`AddressInput`) + consignes + téléphone + message de présentation. `CityInput` : si ville tapée sans sélection dropdown, `cityConfirmed = false` → hint ambre + blocage du submit. `PhoneInput` : valeur initialisée avec `.replace(/\s+/g, '')` pour normaliser les données legacy vers E.164.
+Piège corrigé : l'état `closed` doit remettre `demoFutureEvent` à J+10 (commit 56a4d30) — sans ce fix, l'overlay restait bloqué sur "Dernier live" au lieu d'annoncer le prochain.
 
 ## Profil visiteur réutilisable (`/mon-espace`)
 
-Un visiteur qui contacte un hôte ne devrait pas retaper email/téléphone à chaque demande.
+Compte créé explicitement via `/mon-espace/creer` (pas en best-effort silencieux, voir ARCHITECTURE.md pour le flux complet). Pièges corrigés à ne pas réintroduire :
 
-**Compte créé explicitement, pas en best-effort** (Phase 3 PR3 — remplace l'ancienne création silencieuse). `ContactForm` et `VisitRequestForm` vérifient la session au montage (`GET /api/visitor/profile`) ; sans session visiteur, ils affichent un CTA **"Créer mon compte"** vers `/mon-espace/creer?redirect=<page d'origine>` au lieu d'un formulaire de contact rempli inline.
+- **Un seul `generateLink({ type: 'magiclink' })`** est généré et réutilisé à la fois pour le bootstrap de session immédiat et l'e-mail de confirmation — en générer un second invaliderait silencieusement le premier (un seul OTP magiclink actif par utilisateur côté Supabase).
+- **`photo_signed_url` est toujours signée côté serveur** (`GET /api/visitor/profile`, `createServiceClient()`) — jamais via le SDK anon côté client, dont l'état RLS/session pouvait silencieusement empêcher l'affichage de la photo sans erreur visible (bug corrigé août 2026).
+- `POST /api/visit-requests` exige une session visiteur authentifiée (401 sinon) — l'ancienne création silencieuse de profil permettait d'écraser le profil d'un visiteur existant (faille trouvée par Codex, cf `/plan-eng-review`).
 
-- **`/mon-espace/creer`** : collecte prénom, e-mail, téléphone (obligatoire, `PhoneInput` + `isValidPhoneNumber`) et une photo de profil optionnelle ("aide l'ambassadeur à savoir qui il accueille — jamais publiée, visible uniquement par lui").
-- **Vérification email au blur** : `POST /api/visitor/check-email` (rate-limité 10/min) classe l'e-mail via `lib/visitor/classify-email.ts` → `new` (formulaire continue), `visitor_existing` (propose un renvoi de magic link), `collision` (e-mail déjà utilisé par un ambassadeur/admin ou un autre compte `auth.users` — refus, message neutre, aucune création croisée). Revalidé côté serveur dans `POST /api/visitor/account` (rate-limité 3/min) contre une collision créée entre-temps.
-- **`POST /api/visitor/account`** crée le compte Supabase Auth (`user_metadata.role = 'visitor'`, email pré-confirmé), insère `visitor_profiles (user_id, first_name, email, phone, photo_url)`, puis génère un **unique** `generateLink({ type: 'magiclink' })` réutilisé à la fois pour (a) le bootstrap immédiat de la session navigateur (redirect direct, pas d'attente d'un clic e-mail) et (b) l'e-mail de confirmation (`sendVisitorCompteCree`, best-effort). Générer un second token invaliderait silencieusement le premier côté Supabase (un seul OTP magiclink actif par utilisateur) — piège trouvé en `/qa`.
-- **Photo de profil visiteur** : bucket Storage privé dédié `visitor-photos` (distinct de `ambassador-photos`), compressée en WebP, validée par magic bytes via `sharp()` (pas seulement le `Content-Type` déclaré par le client) avec garde anti decompression-bomb (dimensions max 8000px) à la création de compte. Un échec de traitement ne bloque jamais la création de compte (`photo_error: true` dans la réponse). Visible par l'hôte via `POST /api/dashboard/contact-photos` (signed URL 15 min, vérifie l'ownership de la demande de visite — ne révèle jamais l'email/téléphone du visiteur par cette route). Modifiable/supprimable après création depuis `/mon-espace` via `POST`/`DELETE /api/upload/visitor-photo` (même pattern que `POST /api/upload/ambassador-photo`, compression `compressAmbassadorPhoto`). `GET /api/visitor/profile` signe la photo **côté serveur** (`createServiceClient()`) et renvoie `photo_signed_url` — jamais de `createSignedUrl` côté client avec le SDK anon (bug corrigé août 2026 : la génération côté client dépendait silencieusement de l'état RLS/session du SDK browser, laissant la photo ne jamais s'afficher sans erreur visible).
-- **`POST /api/visit-requests` exige désormais une session visiteur authentifiée** (401 sinon). L'ancienne création silencieuse de profil (`createOrUpdateVisitorProfile()`, best-effort, `.catch(() => {})`, acceptait n'importe quel email non authentifié) a été retirée : elle permettait d'écraser le profil d'un visiteur existant (faille trouvée par Codex, cf `/plan-eng-review`). Prénom/email/téléphone viennent du `visitor_profiles` du compte connecté, jamais du body de la requête.
-- Connexion par **magic link**, même mécanisme que les ambassadeurs — pas de mot de passe visiteur.
-- `app/auth/confirm/page.tsx` route sur 3 branches selon `user_metadata.role` : `admin` → `/admin/stats`, `visitor` → `/mon-espace`, sinon → `/dashboard`. `app/dashboard/page.tsx` redirige aussi un visiteur connecté vers `/mon-espace` (évite une boucle vers `/auth`).
-- `/mon-espace` (`app/mon-espace/page.tsx`) : espace minimal, **pas un dashboard complet** — email (lecture seule), téléphone éditable (`PATCH /api/visitor/profile`), photo de profil éditable/supprimable (`POST`/`DELETE /api/upload/visitor-photo`), déconnexion. Phase 5 (espace visiteur enrichi) reste hors scope, pas de besoin identifié par David.
-- `ContactForm` et `VisitRequestForm` affichent "Connecté avec {email}" si une session visiteur existe, et un lien "Déjà venu ? Se connecter" vers `/auth` sinon.
-- Téléphone visiteur **obligatoire** (contrainte `contact_requests.visitor_phone NOT NULL` + validation `isValidPhoneNumber` sur `/mon-espace/creer`) — permet à l'hôte d'appeler directement en cas de besoin.
+## Distance visiteur ↔ ambassadeur
 
-## Distance visiteur ↔ ambassadeur (géolocalisation éphémère)
-
-Sur la carte publique, un cluster avec plusieurs ambassadeurs propose un bouton **"Trier par distance"** (uniquement si ≥ 2 hôtes dans le cluster).
-
-- Déclenche explicitement `navigator.geolocation.getCurrentPosition()` — **jamais** auto-appelé, jamais réutilisé depuis la géolocalisation d'ouverture de carte (`map.locate()`).
-- `POST /api/distance` (rate-limité 8 req/min/IP, max 20 `host_profile_id`) calcule `lib/geo/distance.ts:haversineKm()` côté serveur et **arrondit à l'entier km** — mitigation volontaire contre un oracle de triangulation (interroger la distance depuis plusieurs points ne permet de reconstruire qu'une position approximative, pas les coordonnées exactes de l'hôte).
-- Les coordonnées du visiteur ne sont **jamais persistées** — calcul à la demande uniquement. La route ne retourne jamais de coordonnées, seulement des distances.
-- Distinct du champ `quartier` (texte libre public) : `lat_precise`/`lng_precise` (ambassadeur) ne sont jamais exposés publiquement, utilisés uniquement par ce calcul.
+Géolocalisation navigateur éphémère (jamais persistée) + Haversine arrondi au km côté serveur (`POST /api/distance`, rate-limité 8 req/min/IP) — mitigation anti-oracle de triangulation. Détail complet : ARCHITECTURE.md § Distance visiteur ↔ ambassadeur.
 
 ## Feedback bidirectionnel post-live
 
-- **Visiteur → hôte** (déjà existant) : `/feedback/[token]`, déclenché par le cron `send-feedback-emails` (désactivé hors production).
-- **Hôte → visiteur** (nouveau) : `/feedback/host/[token]` où `token = host_activations.id` (réutilisé, pas de nouvelle colonne token). Liste tous les visiteurs acceptés pour cette activation pas encore notés. Formulaire V1 minimal : "Seriez-vous à l'aise que cette personne revienne ?" (Oui/Non) + texte libre optionnel.
-- Si `would_host_again = false`, une case **"Bloquer ce visiteur"** apparaît → `POST /api/feedbacks` insère dans `blacklist` avec `host_profile_id` renseigné (blocage scopé à cet hôte uniquement, pas global — voir « Modération anti-abus visiteur »).
-- `/admin/feedback` (`FeedbackModerationClient`) : 2 onglets — "Signalements" (modération existante) et "Toutes les notations" (filtres event/direction/tri récent-score), pour voir l'ensemble des feedbacks bidirectionnels.
-- Email `sendFeedbackPostLiveHost` (`emails/feedback-post-live-host.tsx`) envoyé une fois par activation ayant ≥ 1 visiteur accepté (pas un email par visiteur).
-
-## Page calendrier admin (`/admin/calendrier`) — section Lives
-
-- **`PlanningClient`** : date-heure affichée avec `toLocaleString` + `hour: '2-digit', minute: '2-digit', timeZone: 'Indian/Reunion'` dans `EventRow`.
-- Labels des formulaires : "Date et heure (heure La Réunion)" pour les champs création et édition.
-- Conversion UTC ↔ local via `localInputToUTC` / `utcToLocalInput` avec `NEXT_PUBLIC_ADMIN_TZ_OFFSET`.
+Visiteur → hôte (`/feedback/[token]`) et hôte → visiteur (`/feedback/host/[token]`, token = `host_activations.id` réutilisé). Côté hôte, cocher "Bloquer ce visiteur" insère dans `blacklist` avec `host_profile_id` renseigné (blocage scopé à cet hôte, pas global — voir § Modération anti-abus visiteur).
 
 ## Modération anti-abus visiteur
 
-Deux mécanismes de modération orthogonaux :
+Deux mécanismes orthogonaux : **suspendre une ambassade** (`host_profiles.status = 'suspended'`, cible l'hôte, disparaît de la carte) vs **blacklist** (`INSERT blacklist`, cible le visiteur, `host_profile_id NULL` = global créé depuis `/admin/blacklist`, renseigné = scopé à un hôte créé depuis `/feedback/host/[token]`).
 
-1. **Suspendre une ambassade** (`/admin/ambassadeurs` → bouton Suspendre) : `host_profiles.status = 'suspended'`. Cible l'**hôte**. Disparaît de la carte, plus contactable.
-2. **Blacklist** (`/admin/blacklist` ou formulaire de feedback ambassadeur) : `INSERT blacklist (email, phone, reason, host_profile_id?)`. Cible le **visiteur**. Bloque ses futures demandes via `/api/visit-requests` et `/api/visitor-help-request`. `host_profile_id NULL` = blocage **global** (créé depuis `/admin/blacklist`) ; renseigné = blocage **scopé à un hôte** (créé depuis `/feedback/host/[token]` quand un ambassadeur coche "Bloquer ce visiteur"). Le check dans `/api/visit-requests` matche les deux cas.
-
-**Choix éthique — pas de shadow-ban.** Quand un visiteur blacklisté envoie une demande, l'API retourne **403** avec un message neutre : *« Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe. »* Pas de faux 201 silencieux qui ferait croire au visiteur que sa demande est partie. Le pattern shadow-ban (Twitter/Reddit) est efficace contre l'énumération mais incompatible avec une éthique pastorale : David ne ment pas à ses utilisateurs, même problématiques. Le message reste neutre pour ne pas confirmer le blacklistage, et offre une voie de recours en cas d'erreur.
+**Choix éthique — pas de shadow-ban.** Un visiteur blacklisté qui envoie une demande reçoit un **403** avec un message neutre : *« Votre demande ne peut pas être prise en compte. Si vous pensez qu'il s'agit d'une erreur, contactez l'équipe. »* Pas de faux 201 silencieux. Le pattern shadow-ban (Twitter/Reddit) est efficace contre l'énumération mais incompatible avec une éthique pastorale : David ne ment pas à ses utilisateurs, même problématiques.
 
 Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/api/visitor-help-request/route.ts](app/api/visitor-help-request/route.ts).
 
@@ -406,11 +143,10 @@ Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/
 - `lat_precise`/`lng_precise` (`host_profiles`) ne sont **jamais** exposés dans une réponse API publique (`/api/host-activations` ne les sélectionne pas). Utilisés uniquement par `POST /api/distance` pour le calcul de proximité (arrondi au km, jamais de coordonnées en retour).
 - `proxy.ts` rate-limite `/api/auth/magic-link` (3 req/min/IP) et `/api/distance` (8 req/min/IP) — la première génère un lien de connexion admin pour n'importe quel email, la seconde pourrait servir d'oracle de triangulation sans le rate-limit + l'arrondi au km.
 - **Routes `next/og` ImageResponse (ex : `/ambassade/[id]/badge`)** : règles strictes pour éviter `ERR_EMPTY_RESPONSE` :
-  1. **Satori multi-child** : tout `<div>` avec plus d'un node enfant doit avoir un `display: flex | contents | none` explicite, OU fusionner les enfants en template string. Erreur typique : `<div>{a}, {b}</div>` (3 text nodes) crashe ; `<div>{`${a}, ${b}`}</div>` (1 node) OK. **Cause #1 des crashs**.
-  2. **Pas de `@supabase/supabase-js`** dans le route handler — le contexte isolé satori ne supporte pas les libs avec side-effects au load. Utiliser `fetch()` direct vers `${SUPABASE_URL}/rest/v1/...` avec headers `apikey` + `Authorization: Bearer <service_key>`.
-  3. **Pas de `export const runtime = 'edge'`** — Node runtime par défaut OK, edge aggrave les deux symptômes.
-  4. **Cache-Control header** : toujours ajouter `'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600'` sur l'ImageResponse pour que le CDN serve l'image et économise les invocations Vercel.
-  5. **Si crash mystérieux après edits successifs en dev** : `rm -rf .next/dev` + restart `npm run dev` (cache Turbopack peut cacher du code corrompu, voir [docs/knowledge-transfer.md](docs/knowledge-transfer.md)).
+  1. **Satori multi-child** : tout `<div>` avec plus d'un node enfant doit avoir un `display: flex | contents | none` explicite, OU fusionner les enfants en template string (`<div>{a}, {b}</div>` crashe ; `<div>{`${a}, ${b}`}</div>` OK). **Cause #1 des crashs.**
+  2. **Pas de `@supabase/supabase-js`** dans le route handler (side-effects au load non supportés par le contexte satori) — utiliser `fetch()` direct vers `${SUPABASE_URL}/rest/v1/...`. Pas de `export const runtime = 'edge'` (Node runtime par défaut OK, edge aggrave les crashs).
+  3. **Cache-Control header** : toujours `'Cache-Control': 'public, max-age=86400, stale-while-revalidate=3600'` sur l'ImageResponse.
+  4. **Si crash mystérieux après edits successifs en dev** : `rm -rf .next/dev` + restart `npm run dev` (cache Turbopack peut cacher du code corrompu, voir docs/knowledge-transfer.md).
 
 ## Skill routing
 
@@ -427,13 +163,14 @@ Key routing rules:
 - Update docs after shipping → invoke document-release
 - Weekly retro → invoke retro
 - Design system, brand → invoke design-consultation
-
-## Design System
-Lire DESIGN.md avant toute décision visuelle ou UI.
-Couleurs, fonts, spacing, règles responsive — tout est défini là.
-Ne pas dévier sans accord explicite.
-En mode QA, signaler tout code qui ne suit pas DESIGN.md.
 - Visual audit, design polish → invoke design-review
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+## Design System
+
+Lire DESIGN.md avant toute décision visuelle ou UI.
+Couleurs, fonts, spacing, règles responsive — tout est défini là.
+Ne pas dévier sans accord explicite.
+En mode QA, signaler tout code qui ne suit pas DESIGN.md.
