@@ -84,7 +84,7 @@ export default function DashboardPage() {
   const [testimonialError, setTestimonialError] = useState('');
 
   // Accept/decline loading state
-  const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
+  const [requestActionLoading, setRequestActionLoading] = useState<{ token: string; action: 'accept' | 'decline' } | null>(null);
 
   // Photos visiteur (Phase 3 PR3) — signed URLs récupérées via une route
   // dédiée (ownership vérifié serveur), et signalements en cours (optimiste).
@@ -379,7 +379,7 @@ export default function DashboardPage() {
   }
 
   async function handleContactAction(token: string, action: 'accept' | 'decline') {
-    setRequestActionLoading(token);
+    setRequestActionLoading({ token, action });
     const res = await fetch(`/api/visit-requests/${token}/${action}`, { method: 'POST' });
     if (res.ok) {
       const newStatus = action === 'accept' ? 'accepted' : 'declined';
@@ -710,7 +710,9 @@ export default function DashboardPage() {
                   {contactRequests.map((r) => {
                     const s = REQUEST_STATUS[r.status] ?? { label: r.status, cls: 'bg-slate-100 text-slate-500' };
                     const isPending = r.status === 'pending';
-                    const isActioning = requestActionLoading === r.action_token;
+                    const isAccepting = requestActionLoading?.token === r.action_token && requestActionLoading.action === 'accept';
+                    const isDeclining = requestActionLoading?.token === r.action_token && requestActionLoading.action === 'decline';
+                    const isActioning = isAccepting || isDeclining;
                     const liveTitle = r.host_activation_id
                       ? activations.find((a) => a.id === r.host_activation_id)?.events?.title
                       : null;
@@ -765,7 +767,7 @@ export default function DashboardPage() {
                               disabled={isActioning}
                               className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition-colors font-medium"
                             >
-                              {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                              {isAccepting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
                               Accepter
                             </button>
                             <button
@@ -773,7 +775,7 @@ export default function DashboardPage() {
                               disabled={isActioning}
                               className="flex-1 flex items-center justify-center gap-1.5 text-sm px-3 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 disabled:opacity-50 transition-colors font-medium"
                             >
-                              {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                              {isDeclining ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
                               Refuser
                             </button>
                           </div>
