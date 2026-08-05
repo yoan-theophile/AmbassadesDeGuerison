@@ -18,7 +18,7 @@ export default async function ContactEquipePage({ searchParams }: Props) {
               Dis-nous ce qui se passe
             </h1>
             <p className="text-slate-500 text-sm leading-relaxed">
-              On te recontacte rapidement. Aucune demande n'est ignorée.
+              On lit chaque message. Si besoin, on te recontacte à l'adresse indiquée.
             </p>
           </div>
           <ContactEquipeForm token={token ?? null} />
