@@ -22,10 +22,10 @@ export default function AcceptationVisite({
     <EmailLayout preview={`${hostFirstName} vous accueille — voici l'adresse`}>
       <Text style={p}>Bonjour {visitorFirstName},</Text>
       <Text style={p}>Bonne nouvelle — <strong>{hostFirstName}</strong> vous accueille pour le live <strong>{eventTitle}</strong> du <strong>{eventDate}</strong>.</Text>
-      <Text style={highlight}>📍 Adresse : {hostAddress}</Text>
-      {hostPhone && <Text style={p}>📞 Téléphone : <strong>{hostPhone}</strong></Text>}
-      {hostEmail && <Text style={p}>✉️ E-mail : <Link href={`mailto:${hostEmail}`} style={link}>{hostEmail}</Link></Text>}
-      {hostWhatsappGroupUrl && <Text style={p}>💬 Groupe WhatsApp : <Link href={hostWhatsappGroupUrl} style={link}>Rejoindre le groupe</Link></Text>}
+      <Text style={highlight}>Adresse : {hostAddress}</Text>
+      {hostPhone && <Text style={p}>Téléphone : <strong>{hostPhone}</strong></Text>}
+      {hostEmail && <Text style={p}>E-mail : <Link href={`mailto:${hostEmail}`} style={link}>{hostEmail}</Link></Text>}
+      {hostWhatsappGroupUrl && <Text style={p}>Groupe WhatsApp : <Link href={hostWhatsappGroupUrl} style={link}>Rejoindre le groupe</Link></Text>}
       <Text style={p}>Présentez-vous quelques minutes avant le début du live.</Text>
       <Text style={muted}>Un souci ? <Link href={contactEquipeUrl} style={link}>Contactez l'équipe</Link></Text>
     </EmailLayout>
