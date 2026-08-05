@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 
@@ -42,7 +42,7 @@ export default function RefuserPage() {
         <AppHeader />
         <main className="flex-1 flex items-center justify-center bg-slate-50">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
-            <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin" />
+            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
             Chargement…
           </div>
         </main>
@@ -56,8 +56,10 @@ export default function RefuserPage() {
         <AppHeader />
         <main className="flex-1 flex items-center justify-center bg-slate-50 px-4">
           <div className="text-center max-w-sm">
-            <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-            <p className="text-slate-700 font-medium mb-1">Lien invalide ou expiré</p>
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
+            </div>
+            <h1 className="text-slate-800 font-semibold text-lg mb-1">Lien invalide ou expiré</h1>
             <p className="text-slate-400 text-sm">Ce lien est valable 7 jours.</p>
             <Link href="/" className="mt-4 inline-block text-indigo-600 text-sm hover:underline">Retour à la carte</Link>
           </div>
@@ -72,8 +74,10 @@ export default function RefuserPage() {
         <AppHeader />
         <main className="flex-1 flex items-center justify-center bg-slate-50 px-4">
           <div className="text-center max-w-sm">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-3" />
-            <p className="text-slate-800 font-medium mb-1">Demande refusée</p>
+            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            </div>
+            <h1 className="text-slate-800 font-semibold text-lg mb-1">Demande refusée</h1>
             <p className="text-slate-500 text-sm">
               {step === 'already' ? 'Cette demande avait déjà été refusée.' : 'Le visiteur en a été informé par e-mail.'}
             </p>
@@ -89,20 +93,25 @@ export default function RefuserPage() {
       <AppHeader />
       <main className="flex-1 flex items-center justify-center bg-slate-50 px-4">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 max-w-sm w-full text-center">
-          <p className="text-slate-800 font-semibold text-lg mb-2">Refuser la demande de {names?.visitor_first_name} ?</p>
+          <h1 className="text-slate-800 font-semibold text-lg mb-2">Refuser la demande de {names?.visitor_first_name} ?</h1>
           <p className="text-slate-500 text-sm mb-6 leading-relaxed">
             {names?.visitor_first_name} sera prévenu par e-mail et pourra chercher une autre ambassade.
           </p>
-          <button
-            onClick={handleDecline}
-            disabled={submitting}
-            className="w-full bg-red-600 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-red-700 disabled:opacity-50 transition-colors mb-3"
-          >
-            {submitting ? 'En cours…' : 'Oui, refuser cette demande'}
-          </button>
-          <Link href="/dashboard" className="block text-slate-400 text-sm hover:text-slate-600 transition-colors">
-            Annuler — retour au tableau de bord
-          </Link>
+          <div className="space-y-3">
+            <button
+              onClick={handleDecline}
+              disabled={submitting}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-medium text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'En cours…' : 'Refuser'}
+            </button>
+            <Link
+              href="/dashboard"
+              className="block w-full border border-slate-200 text-slate-600 py-3 rounded-xl font-medium text-sm hover:bg-slate-50 transition-colors"
+            >
+              Annuler
+            </Link>
+          </div>
         </div>
       </main>
     </>
