@@ -4,7 +4,7 @@ import AppHeader from '@/components/AppHeader';
 import FaqAccordion from '@/components/FaqAccordion';
 import { createServiceClient } from '@/lib/supabase/server';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 // Témoignage vedette — jamais d'état vide visible (design doc Pass 2) :
 // fallback sur le témoignage global le plus récent si aucun n'est publié

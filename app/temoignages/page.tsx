@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import TemoignageCard from '@/components/TemoignageCard';
@@ -6,52 +7,74 @@ import TemoignageLiveFilter from '@/components/TemoignageLiveFilter';
 import Link from 'next/link';
 import { MapPin, Sparkles, PenLine, Users, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ambassades-guerison.fr';
 const PAGE_SIZE = 20;
 
+// revalidate=60 seul est un no-op ici : la lecture de searchParams (?live=,
+// ?page=) force Next.js en rendu dynamique quelle que soit la valeur de
+// revalidate. unstable_cache met en cache les requêtes Supabase elles-mêmes
+// (clé = event+page), indépendamment de ce comportement.
 async function getTemoignages(eventId?: string, page = 1) {
-  const supabase = createServiceClient();
-  const offset = (page - 1) * PAGE_SIZE;
+  return unstable_cache(
+    async () => {
+      const supabase = createServiceClient();
+      const offset = (page - 1) * PAGE_SIZE;
 
-  let query = supabase
-    .from('testimonials')
-    .select('id, content, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city, country), event:events(id, title)', { count: 'exact' })
-    .eq('is_visible', true)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
+      let query = supabase
+        .from('testimonials')
+        .select('id, content, created_at, visitor_name, submitter_city, host_profile:host_profiles(first_name, city, country), event:events(id, title)', { count: 'exact' })
+        .eq('is_visible', true)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
 
-  if (eventId) query = query.eq('event_id', eventId);
-  const { data, count } = await query;
-  return { temoignages: data ?? [], total: count ?? 0 };
+      if (eventId) query = query.eq('event_id', eventId);
+      const { data, count } = await query;
+      return { temoignages: data ?? [], total: count ?? 0 };
+    },
+    ['temoignages', eventId ?? 'all', String(page)],
+    { revalidate: 60, tags: ['temoignages'] }
+  )();
 }
 
 async function getTotalCities(eventId?: string) {
-  const supabase = createServiceClient();
-  let query = supabase
-    .from('testimonials')
-    .select('submitter_city, host_profile:host_profiles(city)', { count: 'exact' })
-    .eq('is_visible', true);
-  if (eventId) query = query.eq('event_id', eventId);
-  const { data } = await query;
-  const cities = new Set<string>();
-  (data ?? []).forEach((t) => {
-    const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
-    const city = (hp as { city?: string } | null)?.city ?? (t as Record<string, unknown>).submitter_city as string | null;
-    if (city) cities.add(city);
-  });
-  return cities.size;
+  return unstable_cache(
+    async () => {
+      const supabase = createServiceClient();
+      let query = supabase
+        .from('testimonials')
+        .select('submitter_city, host_profile:host_profiles(city)', { count: 'exact' })
+        .eq('is_visible', true);
+      if (eventId) query = query.eq('event_id', eventId);
+      const { data } = await query;
+      const cities = new Set<string>();
+      (data ?? []).forEach((t) => {
+        const hp = Array.isArray(t.host_profile) ? t.host_profile[0] : t.host_profile;
+        const city = (hp as { city?: string } | null)?.city ?? (t as Record<string, unknown>).submitter_city as string | null;
+        if (city) cities.add(city);
+      });
+      return cities.size;
+    },
+    ['temoignages-cities', eventId ?? 'all'],
+    { revalidate: 60, tags: ['temoignages'] }
+  )();
 }
 
 async function getEvents() {
-  const supabase = createServiceClient();
-  const { data } = await supabase
-    .from('events')
-    .select('id, title, event_date')
-    .order('event_date', { ascending: false })
-    .limit(20);
-  return data ?? [];
+  return unstable_cache(
+    async () => {
+      const supabase = createServiceClient();
+      const { data } = await supabase
+        .from('events')
+        .select('id, title, event_date')
+        .order('event_date', { ascending: false })
+        .limit(20);
+      return data ?? [];
+    },
+    ['temoignages-events'],
+    { revalidate: 60, tags: ['events'] }
+  )();
 }
 
 export default async function TemoignagesPage({
