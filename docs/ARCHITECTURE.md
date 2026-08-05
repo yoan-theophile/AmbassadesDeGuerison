@@ -475,6 +475,7 @@ Mis à jour manuellement à chaque PR significative.
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
 | Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
+| Signalement photo visiteur (côté hôte) | ⚠️ | `POST /api/dashboard/report-visitor-photo` | **Bouton masqué dans `/dashboard`** (2026-08-05, TODO-25) — la route met `visitor_profiles.photo_reported = true` mais aucun flux ne l'exploite (pas de page admin, pas de blocage auto). Réactiver le bouton une fois qu'un flux admin (page dédiée ou intégration à `/admin/blacklist`) consomme ce flag. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
 | Blacklist | ✅ | `/admin/blacklist` + filtre dans `/api/visit-requests` et `/api/visitor-help-request` | Choix éthique : refus honnête (403) avec message neutre + voie de recours, pas de shadow-ban (faux 201 silencieux). Voir « Modération anti-abus visiteur » dans CLAUDE.md. |
 | Configuration timing | ✅ | `GET /api/onboarding/config`, `/admin/settings/timing` | |

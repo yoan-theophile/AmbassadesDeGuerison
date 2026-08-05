@@ -733,19 +733,11 @@ export default function DashboardPage() {
                               {liveTitle && (
                                 <p className="text-indigo-600 text-xs mt-0.5">Pour le live : {liveTitle}</p>
                               )}
-                              {visitorPhotoUrls[r.id] && (
-                                reportedPhotoIds.has(r.id) ? (
-                                  <p className="text-slate-400 text-xs mt-0.5">Photo signalée</p>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleReportPhoto(r.id)}
-                                    className="text-slate-400 hover:text-red-600 text-xs mt-0.5 transition-colors"
-                                  >
-                                    Signaler cette photo
-                                  </button>
-                                )
-                              )}
+                              {/* Bouton "Signaler cette photo" masqué — TODO-25 : le signalement
+                                  (visitor_profiles.photo_reported) n'a aujourd'hui aucune conséquence
+                                  automatique (pas de page admin, pas de blocage), voir
+                                  app/api/dashboard/report-visitor-photo/route.ts. Réactiver une fois
+                                  qu'un flux admin exploite ce flag. */}
                             </div>
                           </div>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${s.cls}`}>
