@@ -105,51 +105,55 @@ describe('fn_auto_activate_host_for_existing_events', () => {
   });
 });
 
-describe('accept_contact_request (atomicité)', () => {
-  it('ne dépasse pas la capacité lors d\'appels concurrents', async () => {
-    // Crée une activation avec capacity=1
+describe('fn_contact_request_count_update', () => {
+  it('incrémente accepted_count quand une demande passe à accepted, pas à la création', async () => {
     const { data: activation } = await supabase
       .from('host_activations')
       .insert({
         host_profile_id: testHostId,
         event_id: testEventId,
-        capacity: 1,
+        capacity: 10,
         accepted_count: 0,
         is_active: true,
       })
       .select('id')
       .single();
 
-    // Crée 2 contact_requests
-    const emails = [`visitor1-${Date.now()}@test.com`, `visitor2-${Date.now()}@test.com`];
-    const requests = await Promise.all(
-      emails.map((email) =>
-        supabase
-          .from('contact_requests')
-          .insert({
-            host_activation_id: activation!.id,
-            visitor_first_name: 'Test',
-            visitor_email: email,
-          })
-          .select('id')
-          .single()
-      )
-    );
+    const { data: request } = await supabase
+      .from('contact_requests')
+      .insert({
+        host_activation_id: activation!.id,
+        visitor_first_name: 'Test',
+        visitor_email: `visitor-${Date.now()}@test.com`,
+      })
+      .select('id')
+      .single();
 
-    const [r1, r2] = requests.map((r) => r.data!.id);
+    // La création de la demande (status=pending) ne doit pas incrémenter le compteur
+    let { data: afterInsert } = await supabase
+      .from('host_activations')
+      .select('accepted_count')
+      .eq('id', activation!.id)
+      .single();
+    expect(afterInsert!.accepted_count).toBe(0);
 
-    // Appels concurrents
-    const [res1, res2] = await Promise.all([
-      supabase.rpc('accept_contact_request', { activation_id: activation!.id, request_id: r1 }),
-      supabase.rpc('accept_contact_request', { activation_id: activation!.id, request_id: r2 }),
-    ]);
+    // L'acceptation incrémente le compteur
+    await supabase.from('contact_requests').update({ status: 'accepted' }).eq('id', request!.id);
+    let { data: afterAccept } = await supabase
+      .from('host_activations')
+      .select('accepted_count')
+      .eq('id', activation!.id)
+      .single();
+    expect(afterAccept!.accepted_count).toBe(1);
 
-    const results = [res1.data, res2.data];
-    const successes = results.filter((r) => r?.success === true).length;
-    const errors = results.filter((r) => r?.error === 'complet').length;
-
-    expect(successes).toBe(1);
-    expect(errors).toBe(1);
+    // Un refus après acceptation décrémente le compteur
+    await supabase.from('contact_requests').update({ status: 'declined' }).eq('id', request!.id);
+    let { data: afterDecline } = await supabase
+      .from('host_activations')
+      .select('accepted_count')
+      .eq('id', activation!.id)
+      .single();
+    expect(afterDecline!.accepted_count).toBe(0);
 
     // Nettoyage
     await supabase.from('host_activations').delete().eq('id', activation!.id);

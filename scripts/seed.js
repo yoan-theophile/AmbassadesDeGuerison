@@ -549,6 +549,9 @@ async function run() {
     const act = actBy(c.host);
     if (!act) { console.log(`  · Activation manquante pour ${c.first} (${c.host})`); continue; }
     try {
+      // Insertion en 'pending' puis PATCH vers le statut final : le trigger
+      // fn_contact_request_count_update n'incrémente accepted_count que sur le
+      // passage à 'accepted' (UPDATE OF status), jamais à la création.
       const [row] = await req('POST', '/contact_requests', {
         host_activation_id: act.id,
         visitor_first_name: c.first,
@@ -556,15 +559,18 @@ async function run() {
         visitor_phone: c.phone,
         nb_personnes: c.nb_personnes,
         visitor_message: c.msg,
-        status: c.status,
+        status: 'pending',
       });
+      if (c.status !== 'pending') {
+        await patch(`/contact_requests?id=eq.${row.id}`, { status: c.status });
+      }
       contactIdMap[c.email] = row.id;
       contactCreated++;
     } catch (e) {
       console.log(`  ERR ${c.first}: ${e.message.slice(0, 120)}`);
     }
   }
-  console.log(`  OK ${contactCreated} demandes créées (trigger accepted_count actif)`);
+  console.log(`  OK ${contactCreated} demandes créées (trigger accepted_count actif sur passage à accepted)`);
 
   // ── 6. Témoignages ────────────────────────────────────────────────────────
   console.log('\n→ Témoignages...');

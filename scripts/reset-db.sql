@@ -415,11 +415,13 @@ AFTER UPDATE OF status ON host_profiles
 FOR EACH ROW EXECUTE FUNCTION fn_auto_activate_host_for_existing_events();
 
 -- Trigger D : suivi capacité sur contact_requests
--- INSERT → +1, passage à declined/cancelled_no_response → -1
+-- Passage à accepted → +1, passage depuis accepted vers declined/cancelled_no_response → -1
 CREATE OR REPLACE FUNCTION fn_contact_request_count_update()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF TG_OP = 'INSERT' THEN
+  IF TG_OP = 'UPDATE'
+        AND OLD.status IS DISTINCT FROM 'accepted'
+        AND NEW.status = 'accepted' THEN
     UPDATE host_activations
     SET
       accepted_count = accepted_count + 1,
@@ -427,10 +429,12 @@ BEGIN
     WHERE id = NEW.host_activation_id;
 
   ELSIF TG_OP = 'UPDATE'
-        AND OLD.status NOT IN ('declined', 'cancelled_no_response')
+        AND OLD.status = 'accepted'
         AND NEW.status IN ('declined', 'cancelled_no_response') THEN
     UPDATE host_activations
-    SET accepted_count = GREATEST(accepted_count - 1, 0)
+    SET
+      accepted_count = GREATEST(accepted_count - 1, 0),
+      is_full = CASE WHEN GREATEST(accepted_count - 1, 0) >= capacity THEN is_full ELSE FALSE END
     WHERE id = NEW.host_activation_id;
   END IF;
 
@@ -442,7 +446,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_contact_request_count
-AFTER INSERT OR UPDATE OF status ON contact_requests
+AFTER UPDATE OF status ON contact_requests
 FOR EACH ROW EXECUTE FUNCTION fn_contact_request_count_update();
 
 -- ============================================================
