@@ -131,6 +131,34 @@ function flowerIconHtml(color: string, size = 10): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;display:inline-block;"><path d="M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1"/><circle cx="12" cy="8" r="2"/><path d="M12 10v12"/></svg>`;
 }
 
+const MAP_VIEW_STORAGE_KEY = 'map-view-state';
+
+function readSavedMapView(): { lat: number; lng: number; zoom: number } | null {
+  try {
+    const raw = localStorage.getItem(MAP_VIEW_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && typeof parsed.zoom === 'number') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMapView(map: any) {
+  try {
+    const center = map.getCenter();
+    localStorage.setItem(
+      MAP_VIEW_STORAGE_KEY,
+      JSON.stringify({ lat: center.lat, lng: center.lng, zoom: map.getZoom() })
+    );
+  } catch {
+    // localStorage indisponible (mode privé strict) — pas bloquant
+  }
+}
+
 function makeClusterIcon(L: any, count: number) {
   return L.divIcon({
     html: `<div style="width:36px;height:36px;border-radius:50%;background:#4f46e5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;line-height:1;">${count}</div>`,
@@ -514,7 +542,11 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       if (cancelled || !containerRef.current) return;
       if ((containerRef.current as any)._leaflet_id) return;
 
-      const map = L.map(containerRef.current, { zoomControl: false }).setView([20, 10], 3);
+      const savedView = readSavedMapView();
+      const map = L.map(containerRef.current, { zoomControl: false }).setView(
+        savedView ? [savedView.lat, savedView.lng] : [20, 10],
+        savedView ? savedView.zoom : 3
+      );
       L.control.zoom({ position: 'bottomleft' }).addTo(map);
       if (cancelled) { map.remove(); return; }
       mapRef.current = map;
@@ -590,7 +622,12 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
       // enableHighAccuracy: false → résolution ~50km (cell tower / Wi-Fi triangulation)
       // au lieu de ~10m (GPS). Plus rapide (100-500 ms vs 1-5 s) et largement suffisant
       // pour un zoom niveau métropole (zoom 9).
-      map.locate({ enableHighAccuracy: false });
+      // Sauté si une position de carte a déjà été mémorisée (retour visiteur) —
+      // sinon chaque refresh réanime un flyTo qui écrase la vue que l'utilisateur
+      // avait volontairement choisie.
+      if (!savedView) {
+        map.locate({ enableHighAccuracy: false });
+      }
 
       function updateViewport() {
         const bounds = map.getBounds();
@@ -611,6 +648,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
         wasHintVisibleRef.current = hintVisible;
       }
       map.on('moveend zoomend', updateViewport);
+      map.on('moveend zoomend', () => saveMapView(map));
     }
 
     initMap();
