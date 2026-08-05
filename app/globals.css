@@ -17,6 +17,13 @@ body {
   font-family: var(--font-geist), system-ui, sans-serif;
 }
 
+button:not(:disabled),
+[role="button"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled) {
+  cursor: pointer;
+}
+
 /* react-phone-number-input — style projet */
 .phone-input {
   display: flex;
