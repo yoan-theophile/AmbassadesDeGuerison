@@ -370,6 +370,30 @@ qui ne dépasse pas quelques dizaines de connexions simultanées.
 
 ---
 
+## Cache des pages publiques — `revalidate` vs `force-dynamic`
+
+Les pages publiques dont les données changent rarement (témoignages, contenu
+éditorial) utilisent `export const revalidate = 60` plutôt que `force-dynamic`
+— sans ça, chaque chargement repaie la latence réseau vers Supabase (~200-400ms
+par requête) sans aucun cache. `force-dynamic` doit rester réservé aux pages qui
+reflètent un état quasi temps-réel (ex: `/ambassade/[id]`, capacité/activation
+d'un hôte qui peut changer en quelques minutes pendant un live).
+
+**Piège non-évident : `searchParams` désactive tout cache statique, même avec
+`revalidate` fixé.** `/temoignages` (filtres `?live=`, `?page=`) reste marqué
+`ƒ Dynamic` au build quel que soit `revalidate` — Next.js désactive l'ISR dès
+qu'une route lit `searchParams`. Pour ces routes, `revalidate` seul est un
+no-op silencieux : il faut envelopper les requêtes Supabase elles-mêmes dans
+`unstable_cache()` (clé incluant les paramètres qui varient, ex. `[eventId, page]`),
+indépendamment du cache de la route. Voir `app/temoignages/page.tsx`.
+
+**`revalidate`/`unstable_cache` sont no-op en `next dev`** — Next.js désactive
+ce cache en développement pour toujours refléter le code à jour. Le gain de
+perf n'est mesurable qu'en build de production (`npm run build && npm start`)
+ou sur Vercel, jamais en dev local.
+
+---
+
 ## Formatage des dates et fuseaux horaires
 
 Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server
