@@ -199,7 +199,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
 
   const requiresNameAndCity = !ambassadorCity;
   const canSubmit =
-    content.trim().length >= 20 &&
+    content.trim().length > 0 &&
     (!requiresNameAndCity || (name.trim().length > 0 && city.trim().length > 0));
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,7 +273,6 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
               value={content}
               onChange={(e) => setContent(e.target.value)}
               required
-              minLength={20}
               maxLength={2000}
               rows={5}
               placeholder="Ce que j'ai vécu pendant ce live..."

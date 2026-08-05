@@ -58,9 +58,6 @@ export async function POST(request: NextRequest) {
   if (!content || typeof content !== 'string' || !content.trim()) {
     return NextResponse.json({ error: 'Le témoignage ne peut pas être vide.' }, { status: 400 });
   }
-  if (content.trim().length < 20) {
-    return NextResponse.json({ error: 'Le témoignage doit faire au moins 20 caractères.' }, { status: 400 });
-  }
   if (content.trim().length > 2000) {
     return NextResponse.json({ error: 'Le témoignage ne peut pas dépasser 2000 caractères.' }, { status: 400 });
   }
