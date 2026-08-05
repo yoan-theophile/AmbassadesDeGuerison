@@ -120,11 +120,15 @@ items-start obligatoire — les hauteurs de colonnes sont libres
 ### Admin sidebar (mobile icon-only)
 ```
 <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col">
-  {/* Logo : icône toujours visible, texte caché sur mobile */}
+  {/* Monogramme AG : même identité que AppHeader.tsx (carte publique), mais
+      fond indigo-600 plein (pas indigo-50) — le fond quasi-blanc de la version
+      claire manque de contraste sur bg-slate-900. Pas de nom complet à côté :
+      "Ambassades de Guérison" ne tient pas dans sm:w-52 sans troncature. */}
   <div className="px-4 py-5 border-b border-slate-800">
-    <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
-    <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
-    <p className="sm:hidden text-white text-sm font-semibold">✦</p>
+    <div className="w-7 h-7 shrink-0 bg-indigo-600 rounded-lg flex items-center justify-center">
+      <span className="text-[11px] font-bold text-white tracking-tight">AG</span>
+    </div>
+    <p className="hidden sm:block text-slate-500 text-xs">Espace admin</p>
   </div>
   {/* Nav items : icône toujours, label caché sur mobile */}
   <Link className="flex items-center justify-center sm:justify-start gap-3 px-3 py-2 ...">
@@ -158,3 +162,4 @@ items-start obligatoire — les hauteurs de colonnes sont libres
 | 2026-07-27 | CTA "première fois" sur la carte : coin bas-droit, masquable + mémorisé `localStorage` | Évite le chevauchement avec le hint "Pas d'ambassade dans ta ville" (centré) et la barre de recherche (haut-gauche). Même pattern de persistance que `tz-city` pour ne pas fatiguer les visiteurs récurrents. |
 | 2026-07-27 | `AddressInput` calqué sur `CityInput` (autocomplétion Nominatim) plutôt qu'un nouveau pattern | Cohérence UX — le visiteur/ambassadeur retrouve la même interaction (dropdown + confirmation) pour ville et adresse précise. |
 | 2026-07-29 | Clustering carte publique : `leaflet.markercluster` (proximité pixel) au lieu du groupement par coordonnées exactes | Bug QA : deux ambassadeurs proches mais géocodés à des coordonnées légèrement différentes ne se regroupaient jamais — à faible zoom l'un masquait silencieusement l'autre, sans badge ni indice. Le plugin recalcule le regroupement par distance à l'écran à chaque zoom, pas par égalité stricte de coordonnées. |
+| 2026-08-05 | Monogramme "AG" dans `AdminLayout.tsx`, fond indigo-600 plein (pas indigo-50 comme `AppHeader.tsx`), sans nom complet à côté | L'admin affichait seulement "✦ David Théry" — aucun signal reliant l'espace admin au produit. Première tentative avec indigo-50 (calque exact de `AppHeader.tsx`) + nom complet a été rejetée après capture d'écran : contraste trop faible sur `bg-slate-900`, et "Ambassades de Guérison" tronqué dans `sm:w-52`. Monogramme seul + "Espace admin" suffit, cohérent avec l'esprit minimal du design system. |

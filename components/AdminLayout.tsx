@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +14,6 @@ import {
   AlertTriangle,
   Ban,
   Shield,
-  Bell,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 
@@ -34,29 +32,6 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [hasNewReport, setHasNewReport] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel('admin-reports-bell')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'live_feedbacks',
-        filter: 'reported=eq.true',
-      }, () => {
-        setHasNewReport(true);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  useEffect(() => {
-    if (pathname.startsWith('/admin/feedback')) {
-      setHasNewReport(false);
-    }
-  }, [pathname]);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -68,22 +43,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen">
       <aside className="w-14 sm:w-52 shrink-0 bg-slate-900 flex flex-col sticky top-0 h-screen self-start">
         <div className="px-4 py-5 border-b border-slate-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="hidden sm:block text-white text-sm font-semibold">✦ David Théry</p>
-              <p className="hidden sm:block text-slate-500 text-xs mt-0.5">Espace admin</p>
-              <p className="sm:hidden text-white text-sm font-semibold">✦</p>
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Monogramme — même identité de marque que AppHeader.tsx (carte publique),
+                adapté au fond sombre de la sidebar (indigo-600 plein, texte blanc). */}
+            <div className="w-7 h-7 shrink-0 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <span className="text-[11px] font-bold text-white tracking-tight">AG</span>
             </div>
-            <Link
-              href="/admin/feedback"
-              className="relative text-slate-500 hover:text-white transition-colors"
-              title="Signalements"
-            >
-              <Bell className="w-4 h-4" />
-              {hasNewReport && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              )}
-            </Link>
+            <p className="hidden sm:block text-slate-500 text-xs">Espace admin</p>
           </div>
         </div>
 
