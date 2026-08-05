@@ -152,7 +152,16 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
         .eq('status', 'validated')
         .single()
         .then(({ data }) => {
-          if (data?.city) setAmbassadorCity(data.city);
+          if (data?.city) {
+            setAmbassadorCity(data.city);
+            return;
+          }
+          fetch('/api/visitor/profile')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((profile) => {
+              if (profile?.first_name) setName(profile.first_name);
+            })
+            .catch(() => {});
         });
     });
   }, []);
@@ -188,9 +197,14 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
     );
   }
 
+  const requiresNameAndCity = !ambassadorCity;
+  const canSubmit =
+    content.trim().length >= 20 &&
+    (!requiresNameAndCity || (name.trim().length > 0 && city.trim().length > 0));
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!canSubmit) return;
     setLoading(true);
     setError('');
 
@@ -265,20 +279,21 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
               placeholder="Ce que j'ai vécu pendant ce live..."
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"
             />
-            <p className="mt-1 text-xs text-slate-400 text-right">{content.length}/2000</p>
+            <p className="mt-1 text-xs text-slate-400 text-right">{content.trim().length}/2000</p>
           </div>
 
           {!ambassadorCity && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Prénom <span className="text-slate-400 font-normal">(optionnel)</span>
+                  Prénom
                 </label>
                 <input
                   id="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  required
                   maxLength={60}
                   placeholder="Marie"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
@@ -286,13 +301,14 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
               </div>
               <div>
                 <label htmlFor="city" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Ville <span className="text-slate-400 font-normal">(optionnel)</span>
+                  Ville
                 </label>
                 <input
                   id="city"
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  required
                   maxLength={80}
                   placeholder="Lyon"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
@@ -307,7 +323,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
 
           <button
             type="submit"
-            disabled={loading || content.trim().length < 20}
+            disabled={loading || !canSubmit}
             className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Envoi en cours…' : 'Envoyer mon témoignage'}
