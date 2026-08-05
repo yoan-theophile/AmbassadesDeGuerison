@@ -547,29 +547,26 @@ export default function DashboardPage() {
                   className="absolute inset-0 w-full h-full"
                 />
               </div>
+              <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-100">
+                <div>
+                  <p className="font-semibold text-slate-800 text-sm">Guide pratique de l&apos;ambassade</p>
+                  <p className="text-slate-500 text-xs mt-0.5">Informations pratiques pour accueillir lors des lives</p>
+                </div>
+                <a
+                  href={onboardingConfig.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-indigo-100 transition-colors shrink-0"
+                >
+                  <Download className="w-4 h-4" />
+                  Télécharger
+                </a>
+              </div>
             </div>
 
-            {/* Gate onboarding — PDF + checkbox + bouton, uniquement pending_review */}
+            {/* Gate onboarding — checkbox + bouton, uniquement pending_review */}
             {profile.status === 'pending_review' && (
               <>
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-800 text-sm">Guide pratique de l&apos;ambassade</p>
-                      <p className="text-slate-500 text-xs mt-0.5">Informations pratiques pour accueillir lors des lives</p>
-                    </div>
-                    <a
-                      href={onboardingConfig.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium px-3 py-2 rounded-xl hover:bg-indigo-100 transition-colors shrink-0"
-                    >
-                      <Download className="w-4 h-4" />
-                      Télécharger
-                    </a>
-                  </div>
-                </div>
-
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
                   {!videoStarted && (
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
