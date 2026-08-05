@@ -152,13 +152,13 @@ export default function InscriptionPage() {
                 <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
                 <p className="text-xs text-slate-400 mt-1">Sert à vous connecter (lien de connexion, sans mot de passe) et à recevoir les notifications de demandes de visite.</p>
               </Field>
-              <Field label="Téléphone (WhatsApp de préférence)" required>
+              <Field label="Téléphone" required>
                 <PhoneInput
                   id="phone"
                   value={form.phone}
                   onChange={(v) => set('phone', v)}
                 />
-                <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
+                <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre.</p>
               </Field>
               <CityInput
                 label="Ville"

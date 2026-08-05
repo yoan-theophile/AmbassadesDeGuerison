@@ -24,7 +24,7 @@ export default function PhoneInput({
     <div>
       {label && (
         <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
-          {label}
+          {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
       )}
       <PhoneInputLib

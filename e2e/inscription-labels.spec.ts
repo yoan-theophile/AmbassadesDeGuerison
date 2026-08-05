@@ -16,9 +16,9 @@ test.describe('Inscription — labels et copy', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('Step 1 — téléphone mentionne WhatsApp', async ({ page }) => {
-    await expect(page.getByText(/Téléphone.*WhatsApp de préférence/)).toBeVisible();
-    await expect(page.getByText('WhatsApp facilite les échanges')).toBeVisible();
+  test('Step 1 — champ téléphone sans mention WhatsApp', async ({ page }) => {
+    await expect(page.getByText('Téléphone', { exact: true })).toBeVisible();
+    await expect(page.getByText(/utilisé par David pour vous joindre/)).toBeVisible();
   });
 
   test('Step 1 — le bouton Continuer est désactivé sans ville confirmée', async ({ page }) => {

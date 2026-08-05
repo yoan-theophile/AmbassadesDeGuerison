@@ -23,15 +23,15 @@ export default function ContactReceivedHost({
     <EmailLayout preview={`${visitorFirstName} souhaite rejoindre votre ambassade`}>
       <Text style={p}>Bonjour {hostFirstName},</Text>
       <Text style={p}><strong>{visitorFirstName}</strong> souhaite rejoindre votre ambassade.</Text>
-      <Text style={p}>✉️ E-mail : <Link href={`mailto:${visitorEmail}`} style={link}>{visitorEmail}</Link></Text>
+      <Text style={p}>E-mail : <Link href={`mailto:${visitorEmail}`} style={link}>{visitorEmail}</Link></Text>
       {visitorWhatsapp && (
-        <Text style={p}>📱 WhatsApp : <Link href={`https://wa.me/${visitorWhatsapp.replace(/\D/g, '')}`} style={link}>{visitorWhatsapp}</Link></Text>
+        <Text style={p}>Numéro : <Link href={`https://wa.me/${visitorWhatsapp.replace(/\D/g, '')}`} style={link}>{visitorWhatsapp}</Link></Text>
       )}
       {visitorMessage && (
         <Text style={p}>Message : <em>"{visitorMessage}"</em></Text>
       )}
       {dashboardUrl && (
-        <Text style={p}>📷 {visitorFirstName} a ajouté une photo de profil — <Link href={dashboardUrl} style={link}>voir dans mon tableau de bord</Link></Text>
+        <Text style={p}>{visitorFirstName} a ajouté une photo de profil — <Link href={dashboardUrl} style={link}>voir dans mon tableau de bord</Link></Text>
       )}
       <Btn href={acceptUrl}>J'accueille {visitorFirstName}</Btn>
       <Text style={muted}>Si vous n'êtes pas en mesure de l'accueillir :</Text>

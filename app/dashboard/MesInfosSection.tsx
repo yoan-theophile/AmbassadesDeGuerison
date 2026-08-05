@@ -127,13 +127,11 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
           value={form.country}
           onChange={(c) => { setForm((f) => ({ ...f, country: c })); setSaved(false); }}
           label="Pays"
+          required
         />
 
         <div>
-          <label className="block text-sm text-slate-700 mb-1.5">
-            Quartier
-            <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel)</span>
-          </label>
+          <label className="block text-sm text-slate-700 mb-1.5">Quartier</label>
           <input
             type="text"
             value={form.quartier}
@@ -149,7 +147,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
         <div>
           <label className="block text-sm text-slate-700 mb-1.5">
             Message de présentation
-            <span className="ml-1.5 text-xs font-normal text-slate-400">(optionnel, visible sur la carte)</span>
+            <span className="ml-1.5 text-xs font-normal text-slate-400">(visible sur la carte)</span>
           </label>
           <textarea
             value={form.presentation_message}
@@ -197,7 +195,7 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
         </div>
 
         <div>
-          <label className="block text-sm text-slate-700 mb-1.5">Détails utiles pour vos visiteurs (optionnel)</label>
+          <label className="block text-sm text-slate-700 mb-1.5">Détails utiles pour vos visiteurs</label>
           <textarea
             value={form.consignes}
             onChange={(e) => { setForm((f) => ({ ...f, consignes: e.target.value })); setSaved(false); }}
@@ -209,12 +207,13 @@ export default function MesInfosSection({ profile }: { profile: Profile }) {
 
         <div>
           <PhoneInput
-            label="Téléphone (WhatsApp de préférence)"
+            label="Téléphone"
             id="phone"
             value={form.phone}
             onChange={(v) => { setForm((f) => ({ ...f, phone: v })); setSaved(false); }}
+            required
           />
-          <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre. WhatsApp facilite les échanges.</p>
+          <p className="text-xs text-slate-400 mt-1">Privé — utilisé par David pour vous joindre.</p>
         </div>
 
         {profile.host_type === 'individual' && (
