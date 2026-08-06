@@ -683,6 +683,53 @@ export default function DashboardPage() {
                   activations={activations}
                 />
 
+                {/* Témoignage — visible pendant un live */}
+                {currentEvent && (
+                  <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-emerald-600" />
+                      <h2 className="font-semibold text-slate-800 text-sm">Partager un témoignage</h2>
+                    </div>
+
+                    {testimonialsSentCount > 0 && (
+                      <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-sm">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        {testimonialsSentCount} témoignage{testimonialsSentCount > 1 ? 's' : ''} envoyé{testimonialsSentCount > 1 ? 's' : ''} — merci !
+                      </div>
+                    )}
+
+                    <p className="text-slate-500 text-xs">
+                      Chaque personne de votre ambassade peut partager son témoignage. Soumissions multiples acceptées.
+                    </p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Comment s&apos;est passé le live chez vous ?
+                      </label>
+                      <textarea
+                        value={testimonialContent}
+                        onChange={(e) => setTestimonialContent(e.target.value)}
+                        rows={4}
+                        placeholder="Partagez ce que vous avez vécu pendant ce live…"
+                        className={inputCls}
+                      />
+                    </div>
+
+                    {testimonialError && (
+                      <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
+                    )}
+
+                    <button
+                      onClick={submitTestimonial}
+                      disabled={testimonialSubmitting || !testimonialContent.trim()}
+                      className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
+                    </button>
+                  </section>
+                )}
+
                 {/* Mes lives */}
                 {activations.length > 0 && (
                   <section>
@@ -748,53 +795,6 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                  </section>
-                )}
-
-                {/* Témoignage — visible pendant un live */}
-                {currentEvent && (
-                  <section className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-emerald-600" />
-                      <h2 className="font-semibold text-slate-800 text-sm">Partager un témoignage</h2>
-                    </div>
-
-                    {testimonialsSentCount > 0 && (
-                      <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg text-sm">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        {testimonialsSentCount} témoignage{testimonialsSentCount > 1 ? 's' : ''} envoyé{testimonialsSentCount > 1 ? 's' : ''} — merci !
-                      </div>
-                    )}
-
-                    <p className="text-slate-500 text-xs">
-                      Chaque personne de votre ambassade peut partager son témoignage. Soumissions multiples acceptées.
-                    </p>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                        Comment s&apos;est passé le live chez vous ?
-                      </label>
-                      <textarea
-                        value={testimonialContent}
-                        onChange={(e) => setTestimonialContent(e.target.value)}
-                        rows={4}
-                        placeholder="Partagez ce que vous avez vécu pendant ce live…"
-                        className={inputCls}
-                      />
-                    </div>
-
-                    {testimonialError && (
-                      <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{testimonialError}</p>
-                    )}
-
-                    <button
-                      onClick={submitTestimonial}
-                      disabled={testimonialSubmitting || !testimonialContent.trim()}
-                      className="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      {testimonialSubmitting ? 'Envoi…' : 'Envoyer le témoignage'}
-                    </button>
                   </section>
                 )}
               </>
