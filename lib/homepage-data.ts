@@ -5,6 +5,7 @@ export type LiveEvent = {
   title: string;
   event_date: string;
   live_link: string | null;
+  closed_at?: string | null;
 };
 
 export type PublicTestimonial = {
@@ -51,7 +52,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       .maybeSingle(),
     supabase
       .from('events')
-      .select('id, title, event_date, live_link')
+      .select('id, title, event_date, live_link, closed_at')
       .lte('event_date', nowISO)
       .order('event_date', { ascending: false })
       .limit(1)
@@ -82,7 +83,7 @@ export async function getHomepageData(): Promise<HomepageData> {
 
   const nextEvent = (nextEventRes.data as LiveEvent | null) ?? null;
   const lastEvent = (lastEventRes.data as LiveEvent | null) ?? null;
-  const liveInProgress = !!lastEvent && lastEvent.event_date >= windowStart;
+  const liveInProgress = !!lastEvent && !lastEvent.closed_at && lastEvent.event_date >= windowStart;
   const totalAmbassadors = ambassadeursRes.count ?? 0;
   const countries = countriesRes.data ?? [];
   const totalCountries = new Set(countries.map(h => h.country)).size;

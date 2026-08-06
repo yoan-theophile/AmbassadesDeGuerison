@@ -13,10 +13,10 @@ export async function GET() {
   const windowHours = Number(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS ?? 4);
   const windowStart = new Date(now.getTime() - windowHours * 3_600_000).toISOString();
 
-  // Priorité : live en cours → prochain event → dernier event passé (carte vide)
+  // Priorité : live en cours (non clôturé) → prochain event → dernier event passé (carte vide)
   let referenceEvent =
     (await supabase.from('events').select('id')
-      .lte('event_date', nowISO).gte('event_date', windowStart)
+      .lte('event_date', nowISO).gte('event_date', windowStart).is('closed_at', null)
       .order('event_date', { ascending: false }).limit(1).maybeSingle()).data ??
     (await supabase.from('events').select('id')
       .gt('event_date', nowISO)
