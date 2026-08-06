@@ -54,9 +54,11 @@ export async function PATCH(
       try {
         await sendSignalApproved(hp.email, hp.first_name, ev.live_link);
         emailSent = true;
-      } catch {
-        emailSent = false;
+      } catch (err) {
+        console.error('[live-signals] échec envoi sendSignalApproved', { signalId: id, err });
       }
+    } else {
+      console.error('[live-signals] email non tenté, données manquantes', { signalId: id, email: hp?.email, liveLink: ev?.live_link });
     }
   }
 
