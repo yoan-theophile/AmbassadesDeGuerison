@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 
 // Logique metier extraite de TemoignagesAdmin
 
+// Supabase renvoie une relation FK many-to-one (event_id -> events) comme un
+// objet simple, pas un tableau — voir app/admin/temoignages/page.tsx.
 interface Temoignage {
   id: string;
   content: string;
   is_visible: boolean;
-  host_profile: { first_name: string; city: string }[] | null;
-  event: { title: string }[] | null;
+  host_profile: { first_name: string; city: string } | null;
+  event: { title: string } | null;
 }
 
 type Filter = 'all' | 'visible' | 'hidden';
@@ -23,9 +25,9 @@ function applySearch(items: Temoignage[], search: string): Temoignage[] {
   return items.filter((t) => {
     const haystack = [
       t.content,
-      t.host_profile?.[0]?.first_name,
-      t.host_profile?.[0]?.city,
-      t.event?.[0]?.title,
+      t.host_profile?.first_name,
+      t.host_profile?.city,
+      t.event?.title,
     ]
       .filter(Boolean)
       .join(' ')
@@ -40,7 +42,7 @@ function applySearch(items: Temoignage[], search: string): Temoignage[] {
 
 function applyEventFilter(items: Temoignage[], eventTitle: string): Temoignage[] {
   if (!eventTitle) return items;
-  return items.filter((t) => t.event?.[0]?.title === eventTitle);
+  return items.filter((t) => t.event?.title === eventTitle);
 }
 
 function paginate<T>(items: T[], page: number, pageSize: number) {
@@ -56,13 +58,13 @@ function paginate<T>(items: T[], page: number, pageSize: number) {
 
 const sample: Temoignage[] = [
   { id: '1', content: 'Guerison miraculeuse ce soir',  is_visible: true,
-    host_profile: [{ first_name: 'Marie', city: 'Paris' }],    event: [{ title: 'Live #14' }] },
+    host_profile: { first_name: 'Marie', city: 'Paris' },    event: { title: 'Live #14' } },
   { id: '2', content: 'Moment de paix intense',        is_visible: false,
-    host_profile: [{ first_name: 'Ahmed', city: 'Lyon' }],     event: [{ title: 'Live #15' }] },
+    host_profile: { first_name: 'Ahmed', city: 'Lyon' },     event: { title: 'Live #15' } },
   { id: '3', content: 'Priere collective puissante',   is_visible: false,
-    host_profile: [{ first_name: 'Marie', city: 'Bordeaux' }], event: [{ title: 'Live #14' }] },
+    host_profile: { first_name: 'Marie', city: 'Bordeaux' }, event: { title: 'Live #14' } },
   { id: '4', content: 'Transformation profonde',       is_visible: true,
-    host_profile: null,                                         event: [{ title: 'Live #15' }] },
+    host_profile: null,                                       event: { title: 'Live #15' } },
 ];
 
 describe("TemoignagesAdmin — filtrage par onglet", () => {
@@ -122,7 +124,7 @@ describe("TemoignagesAdmin — filtre par live", () => {
   it("filtre par titre exact", () => {
     const result = applyEventFilter(sample, 'Live #14');
     expect(result).toHaveLength(2);
-    expect(result.every((t) => t.event?.[0]?.title === 'Live #14')).toBe(true);
+    expect(result.every((t) => t.event?.title === 'Live #14')).toBe(true);
   });
 
   it("filtre vide retourne tout", () => {
@@ -131,6 +133,17 @@ describe("TemoignagesAdmin — filtre par live", () => {
 
   it("titre inconnu retourne zero resultat", () => {
     expect(applyEventFilter(sample, 'Live #99')).toHaveLength(0);
+  });
+
+  it("regression: event comme objet Supabase (pas tableau) — bug carte 'temoignages recus'", () => {
+    // Reproduit le shape reel retourne par .select('event:events(title)') sur une
+    // relation FK many-to-one : un objet, jamais un tableau. Avant le fix,
+    // applyEventFilter utilisait t.event?.[0]?.title, qui vaut toujours undefined
+    // sur un objet -> 0 resultat des qu'un eventFilter (venant de ?event_id=)
+    // etait applique, meme si des temoignages existaient bel et bien pour ce live.
+    const result = applyEventFilter(sample, 'Live #15');
+    expect(result).toHaveLength(2);
+    expect(result.map((t) => t.id).sort()).toEqual(['2', '4']);
   });
 });
 

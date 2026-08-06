@@ -12,7 +12,11 @@ async function getTemoignages() {
     .from('testimonials')
     .select('id, content, is_visible, created_at, host_profile:host_profiles(first_name, city), event:events(title)')
     .order('created_at', { ascending: false });
-  return data ?? [];
+  return (data ?? []).map((t) => ({
+    ...t,
+    host_profile: Array.isArray(t.host_profile) ? t.host_profile[0] ?? null : t.host_profile,
+    event: Array.isArray(t.event) ? t.event[0] ?? null : t.event,
+  }));
 }
 
 async function getEventTitle(eventId: string): Promise<string | null> {

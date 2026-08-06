@@ -10,8 +10,8 @@ interface Temoignage {
   content: string;
   is_visible: boolean;
   created_at: string;
-  host_profile: { first_name: string; city: string }[] | null;
-  event: { title: string }[] | null;
+  host_profile: { first_name: string; city: string } | null;
+  event: { title: string } | null;
 }
 
 
@@ -111,11 +111,11 @@ export default function TemoignagesAdmin({
   const [copied, setCopied] = useState(false);
 
   const eventTitles = Array.from(
-    new Set(items.map((t) => t.event?.[0]?.title).filter(Boolean) as string[])
+    new Set(items.map((t) => t.event?.title).filter(Boolean) as string[])
   ).sort();
 
   const byEvent = eventFilter
-    ? items.filter((t) => t.event?.[0]?.title === eventFilter)
+    ? items.filter((t) => t.event?.title === eventFilter)
     : items;
 
   const byTab = byEvent.filter((t) => {
@@ -128,9 +128,9 @@ export default function TemoignagesAdmin({
     ? byTab.filter((t) => {
         const haystack = [
           t.content,
-          t.host_profile?.[0]?.first_name,
-          t.host_profile?.[0]?.city,
-          t.event?.[0]?.title,
+          t.host_profile?.first_name,
+          t.host_profile?.city,
+          t.event?.title,
         ]
           .filter(Boolean)
           .join(' ')
@@ -199,7 +199,7 @@ export default function TemoignagesAdmin({
   const statsSource = eventFilter ? byEvent : items;
   const statsPublished = statsSource.filter((t) => t.is_visible).length;
   const statsCities = new Set(
-    statsSource.map((t) => t.host_profile?.[0]?.city).filter(Boolean) as string[]
+    statsSource.map((t) => t.host_profile?.city).filter(Boolean) as string[]
   ).size;
 
   function handleCopyLink() {
@@ -347,13 +347,13 @@ export default function TemoignagesAdmin({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-700 leading-relaxed">{t.content}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
-                    {t.host_profile?.[0] && (
+                    {t.host_profile && (
                       <span className="font-medium text-slate-600">
-                        {t.host_profile[0].first_name}, {t.host_profile[0].city}
+                        {t.host_profile.first_name}, {t.host_profile.city}
                       </span>
                     )}
-                    {t.event?.[0] && (
-                      <span className="text-indigo-500 truncate">{t.event[0].title}</span>
+                    {t.event && (
+                      <span className="text-indigo-500 truncate">{t.event.title}</span>
                     )}
                     <span>{new Date(t.created_at).toLocaleDateString('fr-FR')}</span>
                   </div>
