@@ -199,6 +199,13 @@ Après le live
   │  Hôte soumet un signal → POST /api/live-signals
   │  Visiteur soumet un témoignage → POST /api/temoignages
   │  Admin modère → /admin/temoignages
+  │
+  ▼
+Admin clique "Clôturer le live" (/admin/live)
+  │  POST /api/admin/live/close
+  │  → host_activations.is_active = FALSE (pins retirés de la carte publique)
+  │  → events.closed_at = now() (exclu de getCurrentEvent() "en cours")
+  │  → getCurrentEvent() bascule sur le dernier live passé / prochain live futur
 ```
 
 ---
@@ -494,7 +501,7 @@ Mis à jour manuellement à chaque PR significative.
 | Blacklist par-ambassadeur | ✅ | `blacklist.host_profile_id` (nullable) | `NULL` = blocage global (`/admin/blacklist`), renseigné = blocage scopé à un hôte (déclenché depuis le formulaire de feedback). Le check dans `/api/visit-requests` matche les deux. |
 | Notation admin filtrable | ✅ | `/admin/feedback` (`FeedbackModerationClient`) | 2 onglets : "Signalements" (modération) et "Toutes les notations" (filtres event/direction/tri). |
 | Feed live — signaux mains levées | ✅ | `GET /api/live-signals`, `/admin/live` | Helper `getCurrentEvent()` factorisé dans `lib/admin/event-window.ts` (réutilisé par `/admin/stats`). |
-| Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. |
+| Clôture live | ✅ | `POST /api/admin/live/close` + `LiveCloseButton` | Bouton dans `/admin/live`. Confirmation utilisateur avant clôture. Désactive `host_activations.is_active` (carte publique) **et** renseigne `events.closed_at` (corrigé août 2026 — l'ancienne version ne touchait que `host_activations`, donc `getCurrentEvent()` continuait de désigner le même live comme "en cours" par fenêtre horaire après refresh, et le bouton se réaffichait comme si de rien n'était). `getCurrentEvent()` exclut désormais tout event avec `closed_at` non nul de la sélection "en cours" — bascule immédiate sur le fallback "dernier live passé". `router.refresh()` après clôture pour refléter le changement sans reload manuel. |
 | Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
