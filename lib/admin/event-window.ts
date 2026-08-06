@@ -19,6 +19,7 @@ export type AdminEvent = {
   id: string;
   title: string;
   event_date: string;
+  closed_at: string | null;
 };
 
 export type CurrentEventResult = {
@@ -36,7 +37,8 @@ export async function getCurrentEvent(): Promise<CurrentEventResult> {
 
   const { data: current } = await supabase
     .from('events')
-    .select('id, title, event_date')
+    .select('id, title, event_date, closed_at')
+    .is('closed_at', null)
     .gte('event_date', windowStart)
     .lte('event_date', windowEnd)
     .order('event_date', { ascending: false })
@@ -47,7 +49,7 @@ export async function getCurrentEvent(): Promise<CurrentEventResult> {
 
   const { data: last } = await supabase
     .from('events')
-    .select('id, title, event_date')
+    .select('id, title, event_date, closed_at')
     .lte('event_date', now.toISOString())
     .order('event_date', { ascending: false })
     .limit(1)
@@ -57,7 +59,7 @@ export async function getCurrentEvent(): Promise<CurrentEventResult> {
 
   const { data: next } = await supabase
     .from('events')
-    .select('id, title, event_date')
+    .select('id, title, event_date, closed_at')
     .gt('event_date', now.toISOString())
     .order('event_date', { ascending: true })
     .limit(1)
@@ -83,7 +85,7 @@ export async function getCurrentEventWindow(): Promise<EventWindow> {
     getCurrentEvent(),
     supabase
       .from('events')
-      .select('id, title, event_date')
+      .select('id, title, event_date, closed_at')
       .lte('event_date', now)
       .order('event_date', { ascending: false })
       .limit(3),

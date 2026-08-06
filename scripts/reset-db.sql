@@ -48,6 +48,7 @@ CREATE TABLE events (
   registration_opens_at  TIMESTAMPTZ,
   registration_closes_at TIMESTAMPTZ,
   feedback_sent          BOOLEAN     DEFAULT FALSE,
+  closed_at              TIMESTAMPTZ,
   created_at             TIMESTAMPTZ DEFAULT NOW()
 );
 

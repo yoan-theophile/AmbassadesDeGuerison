@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PowerOff } from 'lucide-react';
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function LiveCloseButton({ eventId }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -26,6 +28,7 @@ export default function LiveCloseButton({ eventId }: Props) {
         return;
       }
       setDone(true);
+      router.refresh();
     } finally {
       setLoading(false);
     }
