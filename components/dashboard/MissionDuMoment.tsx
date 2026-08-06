@@ -125,7 +125,7 @@ export default function MissionDuMoment({
               : `${pendingCount} personnes attendent votre réponse`}
           </p>
           <p className="text-amber-700 text-xs mt-0.5">
-            Consultez la section « Mes demandes » ci-dessous pour accepter ou refuser.
+            Ouvrez l&apos;onglet « Demandes » pour accepter ou refuser.
           </p>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function MissionDuMoment({
             Live {dateLabel ?? 'bientôt'} — confirmez votre participation
           </p>
           <p className="text-blue-700 text-xs mt-0.5">
-            Cliquez sur « Je participe à ce live » dans la section ci-dessous.
+            Cliquez sur « Je participe à ce live » dans l&apos;onglet Accueil.
           </p>
         </div>
       </div>

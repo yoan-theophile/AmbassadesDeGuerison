@@ -127,7 +127,7 @@ export default function DevOverlay() {
   const needsSecret = SECRET_REQUIRED && !secret;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] font-mono text-xs">
+    <div className="fixed bottom-20 right-4 sm:bottom-4 z-[9999] font-mono text-xs">
       {!isOpen ? (
         <button
           onClick={() => setIsOpen(true)}

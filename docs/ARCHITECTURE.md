@@ -360,6 +360,7 @@ en JS — le guard utilise `=== 'true'`).
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
 | `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
 | `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
+| `DashboardTabs` | Client Component | Navigation `/dashboard` par onglets (Accueil/Demandes/Profil/Formation) — **uniquement pour validés**, bottom tabs mobile + tabs sticky desktop. Badge compteur sur "Demandes". Onboarding reste linéaire (pas d'onglets). |
 | `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse précise + consignes + tel) |
 | `AddressInput` | Client Component | Autocomplétion Nominatim `mode=address` — calqué sur `CityInput` |
 | `FaqAccordion` | Client Component | Accordéon accessible (`<button aria-expanded>`), état local d'ouverture |
