@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthEmailsById } from '@/lib/auth/list-all-users';
 import AdminLayout from '@/components/AdminLayout';
 import BlacklistClient from './BlacklistClient';
 
@@ -18,8 +19,8 @@ export default async function AdminBlacklistPage() {
     .order('created_at', { ascending: false });
 
   // Résoudre l'e-mail de l'admin auteur du blocage (audit 7.5).
-  const { data: { users } } = await supabase.auth.admin.listUsers();
-  const emailById = new Map(users.map((u) => [u.id, u.email ?? '']));
+  // Paginé : `listUsers()` seul s'arrête à 50 comptes.
+  const emailById = await getAuthEmailsById(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = ((entries ?? []) as any[]).map((e) => {

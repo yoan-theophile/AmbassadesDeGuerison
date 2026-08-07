@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthEmailsById } from '@/lib/auth/list-all-users';
 import AdminLayout from '@/components/AdminLayout';
 import TeamClient from './TeamClient';
 
@@ -47,9 +48,11 @@ export default async function AdminTeamPage() {
       .order('added_at', { ascending: true }),
   ]);
 
-  // Enrichir avec les emails depuis auth.users (service role)
-  const { data: { users } } = await supabase.auth.admin.listUsers();
-  const userMap = new Map(users.map((u) => [u.id, u.email ?? '']));
+  // Enrichir avec les emails depuis auth.users (service role).
+  // Pagination obligatoire : `listUsers()` sans argument s'arrête à 50 comptes,
+  // et les admins les plus anciens tombaient au-delà — ils s'affichaient
+  // « Inconnu » (trouvé 2026-08-07 avec 78 comptes en base).
+  const userMap = await getAuthEmailsById(supabase);
 
   const members = (adminUsers ?? []).map((a) => ({
     user_id: a.user_id,

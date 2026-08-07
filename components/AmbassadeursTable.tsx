@@ -685,10 +685,15 @@ export default function AmbassadeursTable({
                   <th className="text-left px-4 py-3 font-medium">Nom</th>
                   <th className="text-left px-4 py-3 font-medium">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium">Ville / Pays</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
-                  <th className="text-left px-4 py-3 font-medium">Cap.</th>
+                  {/* Type, capacité et date d'inscription restent lisibles dans
+                      le panneau déplié — les masquer sous 1280px garde la
+                      colonne « Action » à l'écran sans scroll horizontal
+                      (constaté sur un portable 1056px : 290px de débordement,
+                      l'action se retrouvait hors champ). */}
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Type</th>
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Cap.</th>
                   <th className="text-left px-4 py-3 font-medium">Statut</th>
-                  <th className="text-left px-4 py-3 font-medium">Inscription</th>
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Inscription</th>
                   <th className="text-left px-4 py-3 font-medium">Action</th>
                 </tr>
               </thead>
@@ -739,8 +744,8 @@ export default function AmbassadeursTable({
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{a.city}, {a.country}</td>
-                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
-                        <td className="px-4 py-3 text-slate-500">{a.capacity ?? '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap hidden xl:table-cell">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
+                        <td className="px-4 py-3 text-slate-500 hidden xl:table-cell">{a.capacity ?? '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
@@ -749,7 +754,7 @@ export default function AmbassadeursTable({
                             {displayStatus === 'enrichment_pending' && <GapsBadge gaps={gaps} />}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap hidden xl:table-cell">
                           {new Date(a.created_at).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="px-4 py-3">

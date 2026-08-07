@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
 import { requireSuperAdmin } from '@/lib/auth/require-admin';
+import { getAuthUsersByEmail } from '@/lib/auth/list-all-users';
 
 export async function POST(req: NextRequest) {
   const ctx = await requireSuperAdmin(req);
@@ -17,14 +19,18 @@ export async function POST(req: NextRequest) {
 
   const { supabase, user } = ctx;
 
-  // Cherche l'utilisateur auth par email
-  const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-  if (listError) {
-    return NextResponse.json({ error: listError.message }, { status: 500 });
+  // Cherche l'utilisateur auth par email, sur l'ensemble des comptes :
+  // `listUsers()` sans pagination s'arrête à 50 et aurait réinvité un compte
+  // déjà existant au-delà (trouvé 2026-08-07).
+  let byEmail: Map<string, User>;
+  try {
+    byEmail = await getAuthUsersByEmail(supabase);
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  let target = users.find(u => u.email === normalizedEmail);
+  let target: User | undefined = byEmail.get(normalizedEmail);
 
   // Audit admin 2026-08-07 (8.1) : l'ajout exigeait un compte préexistant, sans
   // qu'aucun écran n'explique où le créer — et il n'en existait aucun. Le seul

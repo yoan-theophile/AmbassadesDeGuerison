@@ -57,7 +57,7 @@ export default async function AdminAmbassadeursPage({ searchParams }: PageProps)
 
   return (
     <AdminLayout>
-      <AdminPage width="wide">
+      <AdminPage width="full">
         <AdminPageHeader
           title="Ambassadeurs"
           subtitle="Les candidatures et les ambassades actives."
