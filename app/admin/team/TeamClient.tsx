@@ -213,7 +213,7 @@ export default function TeamClient({ members: initial, currentRole, currentUserI
             {addError && <ErrorMessage>{addError}</ErrorMessage>}
             {success && (
               <p
-                className={`text-sm border px-3 py-2 rounded-lg ${
+                className={`text-sm leading-relaxed border px-3 py-2 rounded-lg ${
                   emailFailed
                     ? 'text-amber-900 bg-amber-50 border-amber-100'
                     : 'text-emerald-800 bg-emerald-50 border-emerald-100'
