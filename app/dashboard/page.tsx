@@ -20,6 +20,7 @@ const LIVE_WINDOW_HOURS = parseInt(process.env.NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HO
 import Link from 'next/link';
 import { ONBOARDING } from '@/config/onboarding';
 import { buildVideoUrl } from '@/lib/youtube';
+import { isDossierComplet } from '@/lib/host-profile';
 
 interface HostProfile {
   id: string;
@@ -412,7 +413,7 @@ export default function DashboardPage() {
 
   const isValidated = profile.status === 'validated';
   const isOnboarding = ['pending_review', 'pre_approved', 'enrichment_pending'].includes(profile.status);
-  const dossierComplet = !!profile.profile_photo_url && (profile.room_photo_urls?.length ?? 0) > 0;
+  const dossierComplet = isDossierComplet(profile.profile_photo_url, profile.room_photo_urls);
 
   const statusLabels: Record<string, string> = {
     pending_review:     'Candidature en cours',

@@ -544,6 +544,7 @@ export default function AmbassadeursTable({
                   const s = STATUS_LABELS[displayStatus] ?? { label: displayStatus, className: 'bg-slate-50 text-slate-600' };
                   const isLoading = actionLoading === a.id;
                   const isExpanded = expandedId === a.id;
+                  const gaps = questionnaireGaps(a);
                   return (
                     <React.Fragment key={a.id}>
                       <tr className="hover:bg-slate-50/50">
@@ -591,13 +592,13 @@ export default function AmbassadeursTable({
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
                               {s.label}
                             </span>
-                            {displayStatus === 'enrichment_pending' && questionnaireGaps(a).length > 0 && (
+                            {displayStatus === 'enrichment_pending' && gaps.length > 0 && (
                               <span
-                                title={`À relancer : ${questionnaireGaps(a).join(', ')}`}
+                                title={`À relancer : ${gaps.join(', ')}`}
                                 className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-100"
                               >
                                 <AlertCircle className="w-2.5 h-2.5" />
-                                {questionnaireGaps(a).length} manquant{questionnaireGaps(a).length > 1 ? 's' : ''}
+                                {gaps.length} manquant{gaps.length > 1 ? 's' : ''}
                               </span>
                             )}
                           </div>

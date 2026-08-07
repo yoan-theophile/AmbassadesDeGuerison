@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { sendValidationFinale, sendNouvelleActivationAdmin, sendRefusCandidature } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
+import { isDossierComplet } from '@/lib/host-profile';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   // un candidat refusé avant d'avoir complété son questionnaire (photos) n'a pas de dossier
   // à restaurer. Si le dossier est complet → validated direct (comme une ré-activation réelle).
   // Sinon → renvoyé à enrichment_pending, pas d'email (rien à annoncer, le dossier reste à finir).
-  const dossierComplet = !!profile.profile_photo_url && (profile.room_photo_urls?.length ?? 0) > 0;
+  const dossierComplet = isDossierComplet(profile.profile_photo_url, profile.room_photo_urls);
   const newStatus = action === 'reactiver'
     ? (dossierComplet ? 'validated' : 'enrichment_pending')
     : ACTION_STATUS[action as Exclude<Action, 'reactiver'>];

@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { isDossierComplet } from '@/lib/host-profile';
 
 type Step = {
   label: string;
@@ -49,7 +50,7 @@ export default function StatusTimeline({
   // chemin (test, script, migration) peut violer l'invariant. Sans cette
   // revérification, un ambassadeur au dossier vide verrait "Profil enrichi ✓"
   // alors que David n'a rien à examiner.
-  const dossierComplet = !!profilePhotoUrl && (roomPhotoUrls?.length ?? 0) > 0;
+  const dossierComplet = isDossierComplet(profilePhotoUrl, roomPhotoUrls);
   const effectiveStatus = status === 'enrichment_pending' && !dossierComplet
     ? 'pre_approved'
     : status;
