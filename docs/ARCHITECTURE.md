@@ -407,6 +407,59 @@ ou sur Vercel, jamais en dev local.
 
 ---
 
+## Limites de pagination silencieuses
+
+Deux API Supabase tronquent leurs résultats **sans erreur ni indicateur** : le
+tableau retourné est incomplet mais indiscernable d'un tableau complet. Les deux
+ont déjà produit un bug réel (audit admin du 2026-08-07).
+
+| API | Limite par défaut | Helper à utiliser |
+|-----|-------------------|-------------------|
+| `supabase.auth.admin.listUsers()` | **50 comptes** | `lib/auth/list-all-users.ts` |
+| `SELECT` via PostgREST (`.from().select()`) | **1000 lignes** (configurable dans les API Settings Supabase) | `lib/supabase/fetch-all.ts` |
+
+**`listUsers()` — bug constaté.** Avec 78 comptes en base, `/admin/team`
+affichait « Inconnu » à la place des deux super admins, créés en premier donc
+au-delà de la première page. Le même défaut touchait des chemins moins visibles :
+`classify-email` classait `new` une adresse déjà prise (collision non détectée à
+la création de compte visiteur), et `/api/inscriptions` ne retrouvait pas le
+compte après une erreur « already registered », créant un profil ambassadeur
+orphelin sans compte auth rattaché. Ne jamais appeler `listUsers()` directement —
+utiliser `listAllAuthUsers()`, `getAuthUsersByEmail()` ou `getAuthEmailsById()`.
+
+**`fetchAllRows()` — où l'appliquer.** Uniquement là où l'exhaustivité a une
+conséquence irréversible : envois de masse, snapshots, exports. Appliqué à
+`POST /api/admin/campaigns` (snapshot des destinataires — au-delà de 1000
+ambassadeurs validés, les suivants n'auraient jamais reçu leur lien d'activation,
+donc aucune présence sur la carte) et à `/api/cron/send-feedback-emails` (les
+visiteurs au-delà du 1000e n'auraient jamais été invités à témoigner, et
+`feedback_sent` aurait quand même été posé, rendant l'oubli définitif).
+
+La requête passée à `fetchAllRows()` **doit porter un `.order()` sur une colonne
+stable** : sans ordre explicite, PostgreSQL ne garantit pas que deux pages
+successives voient les lignes dans le même ordre — des lignes pourraient être
+vues deux fois et d'autres jamais.
+
+**Ce qui n'a délibérément pas été paginé.** L'audit a recensé 23 lectures non
+bornées ; 20 sont restées telles quelles, pour trois raisons :
+
+- **Cardinalité structurellement faible** — `admin_users` (une poignée),
+  `events` (quelques lives par an), `scheduled_campaigns`, `blacklist` filtrée
+  par email/téléphone.
+- **Déjà bornée en amont** — `/admin/ambassadeurs` pagine par `range()`,
+  `/api/cron/dispatch-campaigns` avance par curseur sur `id`,
+  `getRecentFruits()` utilise `.limit(3)`.
+- **Troncature sans conséquence** — un affichage de liste tronqué à 1000 entrées
+  (témoignages admin, feed des signaux) dégrade l'affichage sans rien casser ni
+  rien perdre. Y ajouter de la pagination avant d'avoir le volume qui la
+  justifie ajouterait de la complexité pour rien.
+
+Le seuil de vigilance concerne `contact_requests`, `testimonials` et
+`live_feedbacks` : ce sont les seules tables dont le volume croît avec chaque
+live. À surveiller quand elles approcheront le millier de lignes.
+
+---
+
 ## Formatage des dates et fuseaux horaires
 
 Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server

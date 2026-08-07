@@ -4,6 +4,7 @@ import React, { useState, useTransition, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronUp, User, Flower2, X, ChevronLeft, ChevronRight, AlertCircle, Info } from 'lucide-react';
 import { apiCall } from '@/lib/admin/api-call';
+import { questionnaireGaps, type QuestionnaireGaps } from '@/lib/admin/questionnaire-gaps';
 import ErrorMessage from '@/components/admin/ErrorMessage';
 import ConfirmDialog, { type ConfirmSpec } from '@/components/admin/ConfirmDialog';
 
@@ -161,27 +162,10 @@ function QuestionnairPanel({ a }: { a: Ambassadeur }) {
   );
 }
 
-// Signal rapide pour Camille, visible sans déplier la ligne.
-//
-// Audit admin 2026-08-07 (2.5) : le badge comptait le parcours spirituel comme
-// un manque au même titre que les photos, alors que la validation API n'exige
-// que ces dernières. Un dossier affichait « 1 manquant » tout en étant
-// parfaitement validable, sans que l'admin sache si c'était bloquant.
-// `blocking` correspond exactement à l'invariant de `isDossierComplet`.
-function questionnaireGaps(a: Ambassadeur): { blocking: string[]; informational: string[] } {
-  const blocking: string[] = [];
-  if (!a.profile_photo_signed_url) blocking.push('photo de profil manquante');
-  if (a.room_photo_signed_urls.length === 0) blocking.push('photo du lieu manquante');
-
-  const informational: string[] = [];
-  if (!a.parcours_spirituel) informational.push('parcours spirituel non renseigné');
-
-  return { blocking, informational };
-}
-
 // Badge de complétude — rouge si le dossier ne peut pas être validé en l'état,
 // gris si l'information manquante est seulement utile au discernement.
-function GapsBadge({ gaps }: { gaps: ReturnType<typeof questionnaireGaps> }) {
+// Logique dans lib/admin/questionnaire-gaps.ts (testée unitairement).
+function GapsBadge({ gaps }: { gaps: QuestionnaireGaps }) {
   if (gaps.blocking.length > 0) {
     return (
       <span

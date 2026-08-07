@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { fetchAllRows } from '@/lib/supabase/fetch-all';
 
 export async function POST(req: NextRequest) {
   const ctx = await requireAdmin(req);
@@ -50,26 +51,36 @@ export async function POST(req: NextRequest) {
   // Snapshot destinataires (atomique : si échoue → supprimer la campagne)
   let recipients: { email: string; first_name: string | null; recipient_type: string }[] = [];
 
+  // Pagination obligatoire ici : PostgREST tronque à 1000 lignes en silence.
+  // Un snapshot tronqué priverait les ambassadeurs au-delà du 1000e de leur
+  // lien d'activation — donc de toute présence sur la carte au prochain live —
+  // sans qu'aucune erreur ne le signale.
   if (type === 'ambassadeurs') {
-    const { data: hosts } = await supabase
-      .from('host_profiles')
-      .select('email, first_name')
-      .eq('status', 'validated');
-    recipients = (hosts ?? []).map((h) => ({
+    const hosts = await fetchAllRows<{ email: string; first_name: string | null }>(() =>
+      supabase
+        .from('host_profiles')
+        .select('email, first_name')
+        .eq('status', 'validated')
+        .order('created_at', { ascending: true })
+    );
+    recipients = hosts.map((h) => ({
       email: h.email,
       first_name: h.first_name,
       recipient_type: 'ambassador',
     }));
   } else {
     // visiteurs : contact_requests acceptées pour cet event via host_activations
-    const { data: contacts } = await supabase
-      .from('contact_requests')
-      .select('visitor_email, visitor_first_name, host_activations!inner(event_id)')
-      .eq('host_activations.event_id', event_id)
-      .eq('status', 'accepted');
+    const contacts = await fetchAllRows<{ visitor_email: string; visitor_first_name: string | null }>(() =>
+      supabase
+        .from('contact_requests')
+        .select('visitor_email, visitor_first_name, host_activations!inner(event_id)')
+        .eq('host_activations.event_id', event_id)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: true })
+    );
 
     const seen = new Set<string>();
-    for (const c of contacts ?? []) {
+    for (const c of contacts) {
       if (!seen.has(c.visitor_email)) {
         seen.add(c.visitor_email);
         recipients.push({

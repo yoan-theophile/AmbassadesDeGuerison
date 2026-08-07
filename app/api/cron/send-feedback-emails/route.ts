@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/fetch-all';
 import { getTimingConfig } from '@/lib/timing-config';
 import { sendFeedbackPostLive, sendFeedbackPostLiveHost } from '@/lib/email/templates';
 
@@ -38,25 +39,35 @@ export async function POST(req: NextRequest) {
     // retournait TOUS les contact_requests acceptés, tous events confondus.
     // Fix : résoudre d'abord les host_activations de CET event, puis filtrer
     // contact_requests par host_activation_id IN (...).
-    const { data: activations } = await supabase
-      .from('host_activations')
-      .select('id, host_profile_id, host_profiles!inner(email, first_name)')
-      .eq('event_id', event.id);
+    // Paginé : PostgREST tronque à 1000 lignes en silence. Sur un live à forte
+    // affluence, les visiteurs au-delà du 1000e n'auraient jamais reçu leur
+    // invitation à témoigner — et `feedback_sent` aurait quand même été posé,
+    // rendant l'oubli définitif.
+    const activations = await fetchAllRows<{ id: string; host_profile_id: string; host_profiles: { email: string; first_name: string } }>(() =>
+      supabase
+        .from('host_activations')
+        .select('id, host_profile_id, host_profiles!inner(email, first_name)')
+        .eq('event_id', event.id)
+        .order('id', { ascending: true })
+    );
 
-    if (!activations?.length) {
+    if (!activations.length) {
       await supabase.from('events').update({ feedback_sent: true }).eq('id', event.id);
       continue;
     }
 
     const activationIds = activations.map((a) => a.id);
 
-    const { data: contacts } = await supabase
-      .from('contact_requests')
-      .select('id, visitor_email, visitor_first_name, action_token, host_activation_id')
-      .eq('status', 'accepted')
-      .in('host_activation_id', activationIds);
+    const contacts = await fetchAllRows<{ id: string; visitor_email: string; visitor_first_name: string; action_token: string; host_activation_id: string }>(() =>
+      supabase
+        .from('contact_requests')
+        .select('id, visitor_email, visitor_first_name, action_token, host_activation_id')
+        .eq('status', 'accepted')
+        .in('host_activation_id', activationIds)
+        .order('id', { ascending: true })
+    );
 
-    if (contacts?.length) {
+    if (contacts.length) {
       await Promise.allSettled(
         contacts.map((c) =>
           sendFeedbackPostLive(
@@ -74,7 +85,7 @@ export async function POST(req: NextRequest) {
     // (pas un email par visiteur — la page /feedback/host liste tous ses
     // visiteurs sur une seule page, un seul lien à envoyer).
     const activationsWithContacts = activations.filter((a) =>
-      contacts?.some((c) => c.host_activation_id === a.id)
+      contacts.some((c) => c.host_activation_id === a.id)
     );
 
     if (activationsWithContacts.length) {
