@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { requireSuperAdmin } from '@/lib/auth/require-admin';
 import { getAuthUsersByEmail } from '@/lib/auth/list-all-users';
+import { sendMagicLink } from '@/lib/email/templates';
 
 export async function POST(req: NextRequest) {
   const ctx = await requireSuperAdmin(req);
@@ -37,22 +38,27 @@ export async function POST(req: NextRequest) {
   // chemin était que la personne se connecte d'abord d'elle-même sur /auth, ce
   // que rien ne suggérait. Parcours en cul-de-sac.
   //
-  // On invite désormais l'adresse : Supabase crée le compte et envoie un lien
-  // de connexion. `invited` remonte au client pour que l'UI dise ce qui s'est
-  // réellement passé.
+  // `createUser` + `generateLink`, jamais `inviteUserByEmail` : cette dernière
+  // délègue l'envoi au SMTP interne de Supabase, qui ignore `USE_MAILHOG` et
+  // Resend. En local rien n'arrivait dans Mailhog, en prod l'e-mail aurait
+  // échappé aux logs Resend — dans les deux cas sans la moindre erreur, la
+  // méthode répondant 200 avec `invited_at` renseigné (trouvé 2026-08-07).
+  // Même raison qu'à l'inscription ambassadeur, qui évite déjà cette méthode
+  // (cf app/api/inscriptions/route.ts) : elle est aussi rate-limitée ~2-4/h.
   let invited = false;
   if (!target) {
-    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-      normalizedEmail,
-      { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm` }
-    );
-    if (inviteError || !inviteData?.user) {
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email: normalizedEmail,
+      email_confirm: true, // pas de mail de confirmation Supabase : on envoie le nôtre
+      user_metadata: { role: 'admin' },
+    });
+    if (createError || !created?.user) {
       return NextResponse.json(
-        { error: `Invitation impossible : ${inviteError?.message ?? 'erreur inconnue'}` },
+        { error: `Création du compte impossible : ${createError?.message ?? 'erreur inconnue'}` },
         { status: 500 }
       );
     }
-    target = inviteData.user;
+    target = created.user;
     invited = true;
   }
 
@@ -78,7 +84,32 @@ export async function POST(req: NextRequest) {
     notes: `role=${role}${invited ? ' (compte créé par invitation)' : ''}`,
   });
 
-  return NextResponse.json({ success: true, invited, email: normalizedEmail }, { status: 201 });
+  // Lien de connexion envoyé par notre propre couche e-mail (Mailhog en local,
+  // Resend en prod) — donc visible dans les logs et testable hors production.
+  // `type: 'magiclink'` correspond à ce que `/auth/confirm` sait vérifier ; un
+  // lien `type: 'invite'` aurait échoué sur cette page même s'il était arrivé.
+  //
+  // Best-effort : l'accès admin est déjà accordé en base à ce stade. Un échec
+  // d'envoi ne doit pas faire croire que l'ajout a échoué — il est journalisé
+  // et remonté au client, qui propose de renvoyer le lien.
+  let emailSent = true;
+  try {
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: normalizedEmail,
+    });
+    if (linkError || !linkData) throw linkError ?? new Error('generateLink a échoué');
+
+    const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`
+      + `?token_hash=${linkData.properties.hashed_token}&type=magiclink`
+      + `&redirect=${encodeURIComponent('/admin/stats')}`;
+    await sendMagicLink(normalizedEmail, confirmUrl);
+  } catch (err) {
+    console.error(`[admin/team] envoi du lien de connexion échoué pour ${normalizedEmail}:`, err);
+    emailSent = false;
+  }
+
+  return NextResponse.json({ success: true, invited, emailSent, email: normalizedEmail }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {

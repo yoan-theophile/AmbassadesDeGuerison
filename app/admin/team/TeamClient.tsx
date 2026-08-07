@@ -50,6 +50,9 @@ export default function TeamClient({ members: initial, currentRole, currentUserI
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
   const [success, setSuccess] = useState('');
+  // Distingue « accès accordé + e-mail parti » de « accès accordé, e-mail en
+  // échec » — deux issues valides qui n'appellent pas la même action de l'admin.
+  const [emailFailed, setEmailFailed] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
   const [busy, setBusy] = useState(false);
   const [removeError, setRemoveError] = useState('');
@@ -66,16 +69,22 @@ export default function TeamClient({ members: initial, currentRole, currentUserI
     setAddError('');
     setSuccess('');
 
-    const res = await apiCall<{ invited: boolean; email: string }>('/api/admin/team', {
+    const res = await apiCall<{ invited: boolean; emailSent: boolean; email: string }>('/api/admin/team', {
       body: { email: newEmail, role: newRole },
     });
 
     if (res.ok) {
       setNewEmail('');
+      const { invited, emailSent, email } = res.data;
+      setEmailFailed(!emailSent);
+      // L'accès est accordé en base même si l'e-mail n'est pas parti — le dire
+      // franchement plutôt que d'annoncer un envoi qui n'a pas eu lieu.
       setSuccess(
-        res.data.invited
-          ? `Invitation envoyée à ${res.data.email}. La personne recevra un lien pour activer son accès.`
-          : `${res.data.email} a reçu l'accès à l'espace d'administration.`
+        emailSent
+          ? invited
+            ? `Compte créé pour ${email}. Un lien de connexion vient de lui être envoyé.`
+            : `${email} a reçu l'accès. Un lien de connexion vient de lui être envoyé.`
+          : `${email} a bien reçu l'accès, mais l'e-mail n'a pas pu être envoyé. Prévenez la personne : elle peut se connecter depuis /auth avec cette adresse.`
       );
       router.refresh();
     } else {
@@ -203,7 +212,13 @@ export default function TeamClient({ members: initial, currentRole, currentUserI
 
             {addError && <ErrorMessage>{addError}</ErrorMessage>}
             {success && (
-              <p className="text-emerald-800 text-sm bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
+              <p
+                className={`text-sm border px-3 py-2 rounded-lg ${
+                  emailFailed
+                    ? 'text-amber-900 bg-amber-50 border-amber-100'
+                    : 'text-emerald-800 bg-emerald-50 border-emerald-100'
+                }`}
+              >
                 {success}
               </p>
             )}
