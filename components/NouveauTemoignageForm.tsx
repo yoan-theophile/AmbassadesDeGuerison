@@ -240,7 +240,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
         <h1 className="text-xl font-semibold text-slate-800 mb-1">Partage ton témoignage</h1>
         <p className="text-slate-500 text-sm mb-6">
-          Qu'as-tu vécu pendant ce live ? En attente de modération avant publication.
+          Qu'as-tu vécu pendant ce live ?
         </p>
 
         {ambassadorCity && (
@@ -266,7 +266,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
 
           <div>
             <label htmlFor="content" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Ton témoignage <span className="text-slate-400 font-normal">(requis)</span>
+              Ton témoignage <span className="text-red-500">*</span>
             </label>
             <textarea
               id="content"
@@ -285,7 +285,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Prénom
+                  Prénom <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="name"
@@ -294,13 +294,13 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
                   onChange={(e) => setName(e.target.value)}
                   required
                   maxLength={60}
-                  placeholder="Marie"
+                  placeholder="Ton prénom"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
               <div>
                 <label htmlFor="city" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Ville
+                  Ville <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="city"
@@ -309,7 +309,7 @@ export default function NouveauTemoignageForm({ events, defaultEventId }: Props)
                   onChange={(e) => setCity(e.target.value)}
                   required
                   maxLength={80}
-                  placeholder="Lyon"
+                  placeholder="Ta ville"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
