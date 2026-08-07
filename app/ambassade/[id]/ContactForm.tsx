@@ -16,7 +16,9 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
   const [form, setForm] = useState({
     nb_personnes: 1,
     visitor_message: '',
-    visitor_notifications_optin: true,
+    // Jamais pré-coché : la CJUE (1er oct. 2019) a jugé qu'une case cochée par
+    // défaut ne vaut pas consentement — le RGPD exige un acte positif clair.
+    visitor_notifications_optin: false,
   });
   const [gender, setGender] = useState<'female' | 'male' | null>(null);
   const [loading, setLoading] = useState(false);
@@ -236,6 +238,7 @@ export default function ContactForm({ hostProfileId, hostName, eventId, isWomenO
             />
             <span className="text-xs text-slate-500">
               Je souhaite être informé(e) des prochains lives de David Théry.
+              <span className="text-slate-400"> Désinscription possible à tout moment.</span>
             </span>
           </label>
 

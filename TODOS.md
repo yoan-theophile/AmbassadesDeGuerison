@@ -240,7 +240,30 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 
 ---
 
-## TODO-23 : CGU visiteur — pré-requis avant PR3 (photo visiteur)
+## TODO-23 : CGU visiteur — **LARGEMENT TRAITÉ (2026-08-07), reste 2 placeholders**
+
+**Statut :** `/office-hours` du 2026-08-07 a livré la transparence inline **et** la page `/confidentialite` (8 sections, fondée sur le guide CNIL associations + référentiel durées de conservation). Design doc : `~/.gstack/projects/DavidTheryApp/tagne-develop-design-20260807-transparence-donnees-visiteur.md`.
+
+**Ce qui a été livré :**
+- Légendes de finalité sur téléphone et e-mail (`/mon-espace/creer`) — le téléphone, champ **obligatoire**, n'en avait aucune.
+- Lien vers la politique de confidentialité sur l'écran de création de compte.
+- Opt-in notifications **décoché par défaut** + mention « Désinscription possible à tout moment », sur `ContactForm.tsx` **et** `VisitRequestForm.tsx`.
+- Page `app/confidentialite/page.tsx` : responsable, données collectées, ce qu'on ne fait pas, bases légales, durées, droits, sous-traitants, mineurs.
+
+**Correction d'inventaire :** ce TODO affirmait que PR1 avait retiré les légendes explicatives. En réalité la **photo** — le champ le plus sensible — avait conservé la sienne (« jamais publiée, visible uniquement par lui »). C'est le **téléphone obligatoire** qui n'avait aucune explication.
+
+**Correction de fond :** le pré-coché de l'opt-in n'était pas un arbitrage produit mais un consentement invalide (CJUE, 1er oct. 2019 — le RGPD exige un acte positif clair, excluant les cases pré-cochées).
+
+**Reste à faire :**
+1. Deux placeholders `[À COMPLÉTER]` dans `app/confidentialite/page.tsx` (entité juridique + adresse postale + e-mail de contact) — **bloque la publication publique**, pas le développement.
+2. Valider les durées proposées avec David (12 mois demandes / 3 ans compte inactif).
+3. Lien accessible depuis chaque page — l'app n'a pas de footer, un footer global casserait la carte plein écran. Choix de design à trancher.
+4. Chemin de suppression de compte visiteur (n'existe pas ; la politique renvoie vers l'e-mail de contact, acceptable en v1).
+5. Registre des traitements (obligatoire, document interne — pas du code).
+
+---
+
+**Contexte d'origine ci-dessous.**
 
 **Quoi :** Rédiger et intégrer des CGU/mentions de confidentialité couvrant la collecte de photo visiteur, avant que PR3 (photo visiteur) ne ship.
 

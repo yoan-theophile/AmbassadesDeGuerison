@@ -324,6 +324,70 @@ de proximité. `lat_precise`/`lng_precise` viennent de l'adresse complète saisi
 
 ---
 
+## Transparence des données (RGPD)
+
+Ajouté le 2026-08-07 (TODO-23). Deux niveaux, volontairement séparés : la
+transparence **au moment de la saisie** (qui ne dépend de personne) et la
+politique formelle (qui attend des informations que seul David détient).
+
+### Règle : tout champ collecté dit sa finalité, à côté du champ
+
+`/mon-espace/creer` porte une légende `text-xs text-slate-400 mt-2` sous chaque
+champ : à quoi il sert, et qui le voit. Le motif de référence est celui de la
+photo — *« Aide l'ambassadeur à savoir qui il accueille — jamais publiée, visible
+uniquement par lui »* — qui énonce finalité + destinataire + non-publication.
+
+Un audit du 2026-08-07 a montré l'inverse de ce qu'on attendrait : la photo (champ
+le plus sensible, facultatif) était bien expliquée, tandis que le **téléphone —
+seul champ obligatoire** — n'avait aucune légende. Ne pas réintroduire un champ
+sans sa finalité, en particulier s'il est requis.
+
+### Règle : consentement jamais pré-coché
+
+`visitor_notifications_optin` est initialisé à `false` dans
+`app/ambassade/[id]/ContactForm.tsx` **et**
+`app/live/[event_id]/ambassade/[host_id]/VisitRequestForm.tsx` (les deux
+formulaires portaient le défaut). Ce n'est pas un arbitrage produit : la CJUE a
+jugé le 1er octobre 2019 qu'une case cochée par défaut ne vaut pas consentement —
+le RGPD exige un « acte positif clair », ce qui exclut le silence, les cases
+pré-cochées et l'inaction. **Ne jamais repasser ce défaut à `true`** pour gonfler
+le volume d'inscrits.
+
+Le libellé mentionne la sortie (« Désinscription possible à tout moment »), ce que
+`GET /api/unsubscribe/[token]` honore réellement depuis le correctif du même jour.
+
+### Durées de conservation
+
+Valeurs par défaut alignées sur le référentiel CNIL (3 ans à compter du dernier
+contact actif pour un contact/prospect), déclarées en constantes en tête de
+`app/confidentialite/page.tsx` :
+
+| Donnée | Durée annoncée |
+|--------|----------------|
+| Demandes de visite | 12 mois après le live |
+| Compte visiteur | 3 ans sans activité |
+| Témoignages publiés | tant que publiés, suppression sur demande |
+| Profil ambassadeur | 12 mois après retrait de l'ambassade |
+
+⚠️ **Ces durées sont annoncées, pas appliquées** — aucune purge automatique
+n'existe. Écart à combler avant un lancement public : soit un cron de purge, soit
+une révision du texte.
+
+### Points ouverts
+
+- **Lien accessible depuis chaque page** — la CNIL demande que les mentions soient
+  atteignables partout (un lien en pied de page suffit). L'app **n'a pas de
+  footer** (`app/layout.tsx` ne rend que `children`) ; en ajouter un casserait la
+  carte Leaflet plein écran de la home. Aujourd'hui le lien n'existe que sur
+  `/mon-espace/creer`. Choix de design à trancher, pas un oubli.
+- **Suppression de compte visiteur** — aucun chemin dans l'app. La politique
+  renvoie vers l'e-mail de contact (acceptable en v1, un bouton dans
+  `/mon-espace` serait plus propre).
+- **Registre des traitements** — obligatoire pour une association même sans
+  déclaration CNIL. Document interne, hors code.
+
+---
+
 ## Sécurité — points critiques
 
 **RLS (Row Level Security)** — PostgreSQL garantit qu'un hôte ne peut pas lire les
@@ -535,6 +599,7 @@ Mis à jour manuellement à chaque PR significative.
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
 | Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto par proximité en pixels à l'écran (`leaflet.markercluster`, recalculé à chaque zoom — remplace juillet 2026 l'ancien groupement par coordonnées exactes qui masquait silencieusement les pins proches mais non identiques). Champ `quartier` + message de présentation (`presentation_message`, 240 car. max) + photo de profil (avatar 28px, signed URL 24h) affichés dans les popups (cluster + pin individuel) si renseignés. Bouton "Trier par distance" dans les clusters (géolocalisation éphémère, voir section dédiée). |
+| Politique de confidentialité (`/confidentialite`) | ⚠️ | `app/confidentialite/page.tsx` | Page statique 8 sections (responsable, données collectées, ce qu'on ne fait pas, bases légales, durées, droits, sous-traitants, mineurs). **3 placeholders `[À COMPLÉTER]` bloquent la publication publique** : entité juridique, adresse du siège, e-mail de contact RGPD — mentions obligatoires (art. 13 RGPD), volontairement laissées visibles plutôt que remplies d'une valeur plausible qui passerait la relecture. Voir § Transparence des données. |
 | Page de préparation visiteur (`/decouvrir`) | ✅ | `app/decouvrir/page.tsx` | Réassurance + 3 étapes + FAQ accessible (`FaqAccordion`) + témoignage vedette (fallback global si aucun pour le prochain live) + CTA retour carte. CTA discret "C'est votre première fois ?" sur `MapPublique` (coin bas-droit, masquable, mémorisé `localStorage`). |
 | Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). Sautée si une position de carte est déjà mémorisée (`localStorage['map-view-state']`) — voir ligne dédiée ci-dessous. |
 | Mémorisation de la position carte (centre + zoom) | ✅ | `components/MapPublique.tsx` → `readSavedMapView()`/`saveMapView()` | `localStorage['map-view-state']` (`{lat, lng, zoom}`), mis à jour sur `moveend`/`zoomend`. Au montage suivant, la carte s'initialise directement sur cette position — pas de `setView([20,10],3)` ni de géolocalisation auto/`flyTo` — pour éviter de réanimer un zoom à chaque refresh alors que le visiteur avait déjà positionné la carte. Le bouton "Me localiser" (manuel) garde son `flyTo` animé. |

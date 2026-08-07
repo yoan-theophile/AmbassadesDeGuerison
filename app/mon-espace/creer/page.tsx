@@ -188,16 +188,27 @@ function CreerCompteContent() {
                     Merci d'utiliser une autre adresse pour votre compte visiteur.
                   </div>
                 )}
+
+                {emailStatus !== 'collision' && emailStatus !== 'visitor_existing' && (
+                  <p className="text-xs text-slate-400 mt-2">
+                    Sert à vous connecter et à recevoir la réponse de l'ambassadeur.
+                  </p>
+                )}
               </div>
 
-              <PhoneInput
-                label="Téléphone"
-                id="visitor-account-phone"
-                required
-                value={phone}
-                onChange={setPhone}
-                placeholder="+33 6 12 34 56 78"
-              />
+              <div>
+                <PhoneInput
+                  label="Téléphone"
+                  id="visitor-account-phone"
+                  required
+                  value={phone}
+                  onChange={setPhone}
+                  placeholder="+33 6 12 34 56 78"
+                />
+                <p className="text-xs text-slate-400 mt-2">
+                  Permet à l'ambassadeur de vous joindre s'il accepte votre demande — jamais affiché publiquement.
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -250,6 +261,14 @@ function CreerCompteContent() {
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Créer mon compte
               </button>
+
+              <p className="text-center text-xs text-slate-400">
+                En créant votre compte, vous acceptez notre{' '}
+                <Link href="/confidentialite" className="text-indigo-600 hover:underline">
+                  politique de confidentialité
+                </Link>
+                .
+              </p>
 
               <p className="text-center text-xs text-slate-400">
                 Déjà un compte ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link>
