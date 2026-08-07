@@ -72,19 +72,30 @@ export default function HostFeedbackForm({ eventId, hostProfileId, contactReques
       <p className="text-sm font-medium text-slate-800">{visitorFirstName}</p>
 
       <div>
-        <p className="text-sm font-medium text-slate-700 mb-2">Seriez-vous à l'aise que cette personne revienne chez vous ?</p>
-        <div className="flex gap-2">
+        <p id={`q-${contactRequestId}`} className="text-sm font-medium text-slate-700 mb-2">
+          Seriez-vous à l&apos;aise que cette personne revienne chez vous ?
+        </p>
+        {/* role=radio + aria-checked : sans ça un lecteur d'écran annonçait deux
+            boutons ordinaires, sans dire lequel était sélectionné — l'état
+            n'était porté que par la couleur. min-h-11 = 44px (DESIGN.md). */}
+        <div role="radiogroup" aria-labelledby={`q-${contactRequestId}`} className="flex gap-2">
           <button
             type="button"
+            role="radio"
+            aria-checked={wouldHostAgain === true}
+            tabIndex={wouldHostAgain === false ? -1 : 0}
             onClick={() => setWouldHostAgain(true)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${wouldHostAgain === true ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+            className={`flex-1 min-h-11 py-2 rounded-lg text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${wouldHostAgain === true ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
           >
             Oui
           </button>
           <button
             type="button"
+            role="radio"
+            aria-checked={wouldHostAgain === false}
+            tabIndex={wouldHostAgain === false ? 0 : -1}
             onClick={() => setWouldHostAgain(false)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${wouldHostAgain === false ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+            className={`flex-1 min-h-11 py-2 rounded-lg text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${wouldHostAgain === false ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
           >
             Non
           </button>
@@ -97,7 +108,7 @@ export default function HostFeedbackForm({ eventId, hostProfileId, contactReques
             type="checkbox"
             checked={blockVisitor}
             onChange={(e) => setBlockVisitor(e.target.checked)}
-            className="mt-0.5 accent-amber-600"
+            className="mt-0.5 w-5 h-5 shrink-0 accent-amber-600"
           />
           <span className="text-xs text-amber-800 leading-relaxed">
             Ne plus recevoir de demande de la part de cette personne. Elle pourra toujours contacter d'autres ambassades.

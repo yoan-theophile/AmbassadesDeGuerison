@@ -10,6 +10,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AdminNotice from '@/components/admin/AdminNotice';
 import ErrorMessage from '@/components/admin/ErrorMessage';
 import ConfirmDialog, { type ConfirmSpec } from '@/components/admin/ConfirmDialog';
+import { de } from '@/lib/elision';
 
 type Feedback = {
   id: string;
@@ -253,7 +254,7 @@ export default function FeedbackModerationClient({ feedbacks: initial }: Props) 
                     <p className="text-xs text-slate-400">{participantLabel(fb.direction)}</p>
                     <p className="text-sm font-medium text-slate-800 break-all">{fb.visitor_email}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {one(fb.events)?.title ?? 'Live'} — ambassade de {host?.first_name}, {host?.city}
+                      {one(fb.events)?.title ?? 'Live'} — ambassade {de(host?.first_name)}, {host?.city}
                     </p>
                   </div>
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${STATUS_COLORS[status]}`}>
@@ -375,7 +376,7 @@ export default function FeedbackModerationClient({ feedbacks: initial }: Props) 
                     <p className="text-xs text-slate-400">{participantLabel(fb.direction)}</p>
                     <p className="text-sm font-medium text-slate-800 break-all">{fb.visitor_email}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {one(fb.events)?.title ?? 'Live'} — ambassade de {host?.first_name}, {host?.city}
+                      {one(fb.events)?.title ?? 'Live'} — ambassade {de(host?.first_name)}, {host?.city}
                     </p>
                   </div>
                   {fb.direction === 'visitor_to_host' && avg != null && (

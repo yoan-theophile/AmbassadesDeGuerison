@@ -524,6 +524,23 @@ live. À surveiller quand elles approcheront le millier de lignes.
 
 ---
 
+## Élision devant un prénom — `lib/elision.ts`
+
+Les prénoms d'ambassadeurs viennent d'une saisie libre : on ne peut pas figer
+« Ambassade de … » dans le texte. Sans traitement, l'app affichait « Ambassade de
+Alpha », « de Antoine », « de Étienne » (trouvé en QA le 2026-08-07, sur 6
+surfaces : fiche publique `/ambassade/[id]`, fiche live, page de feedback, page
+de confirmation visiteur et modération admin).
+
+Utiliser `de(firstName)` — retourne `"d'Alpha"` ou `"de Marie"` selon l'initiale,
+et `"de"` seul si le nom est vide (jamais de `d'` orphelin). Le `h` est traité
+comme une voyelle : « d'Hugo » est la forme usuelle, et se tromper dans ce sens
+reste plus discret que « de Hugo ».
+
+**Ne jamais réintroduire `de {first_name}` en dur dans du JSX.**
+
+---
+
 ## Formatage des dates et fuseaux horaires
 
 Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server
@@ -628,7 +645,7 @@ Mis à jour manuellement à chaque PR significative.
 | Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
-| Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
+| Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif). QA UX 2026-08-07 : la page vérifie désormais `live_feedbacks` **avant** d'afficher le formulaire — un visiteur qui reclique son lien voit « Vous avez déjà donné votre avis » au lieu de tout ressaisir pour finir sur un « Feedback déjà soumis » rouge (la contrainte `live_feedbacks_unique` rejetait l'insert, la saisie était perdue). Étoiles : pattern `radiogroup` complet (un seul arrêt de tabulation par critère, navigation aux flèches, 44px) — il en fallait 20 pour traverser le formulaire. |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | Écrit deux traces (`campaign_recipients.status='unsubscribed'` + `contact_requests.visitor_notifications_optin=false`), **toutes deux relues** par `getUnsubscribedEmails()` avant chaque envoi. Jusqu'au 2026-08-07 aucune n'était consultée : le lien de désabonnement était décoratif, le visiteur recevait la campagne suivante. |
 | Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo (requise). Room = max 5, append, au moins 1 requise (garde côté API `PATCH /api/ambassadeur/enrichissement`, 2026-08-07). Le questionnaire de validation expose les deux. |
 | Signalement photo visiteur (côté hôte) | ⚠️ | `POST /api/dashboard/report-visitor-photo` | **Bouton masqué dans `/dashboard`** (2026-08-05, TODO-25) — la route met `visitor_profiles.photo_reported = true` mais aucun flux ne l'exploite (pas de page admin, pas de blocage auto). Réactiver le bouton une fois qu'un flux admin (page dédiée ou intégration à `/admin/blacklist`) consomme ce flag. |

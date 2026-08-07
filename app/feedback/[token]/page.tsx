@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
+import { CheckCircle2 } from 'lucide-react';
 import { createServiceClient } from '@/lib/supabase/server';
+import { de } from '@/lib/elision';
 import AppHeader from '@/components/AppHeader';
 import FeedbackForm from './FeedbackForm';
 
@@ -38,6 +40,20 @@ export default async function FeedbackPage({ params }: Props) {
       })
     : '';
 
+  // Avis déjà donné : on le dit AVANT le formulaire plutôt que de laisser le
+  // visiteur tout ressaisir pour finir sur un « Feedback déjà soumis » rouge en
+  // bas de page (la contrainte `live_feedbacks_unique` rejette l'insert, donc la
+  // saisie était simplement perdue). Même garde que la page hôte, qui retire
+  // déjà les visiteurs notés de sa liste. Trouvé en QA le 2026-08-07.
+  const { data: existingFeedback } = await supabase
+    .from('live_feedbacks')
+    .select('id')
+    .eq('event_id', ha?.event_id ?? '')
+    .eq('host_profile_id', ha?.host_profile_id ?? '')
+    .eq('visitor_email', contact.visitor_email.trim().toLowerCase())
+    .eq('direction', 'visitor_to_host')
+    .maybeSingle();
+
   return (
     <>
       <AppHeader />
@@ -48,16 +64,26 @@ export default async function FeedbackPage({ params }: Props) {
             <h1 className="text-lg font-semibold text-slate-800 mb-0.5">
               Live du {eventDate}
             </h1>
-            <p className="text-slate-500 text-sm">Ambassade de {host?.first_name}</p>
+            <p className="text-slate-500 text-sm">Ambassade {de(host?.first_name)}</p>
           </div>
 
-          <FeedbackForm
-            eventId={ha?.event_id ?? ''}
-            hostProfileId={ha?.host_profile_id ?? ''}
-            contactRequestId={contact.id}
-            visitorEmail={contact.visitor_email}
-            direction="visitor_to_host"
-          />
+          {existingFeedback ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-4" />
+              <p className="text-slate-800 font-semibold text-lg mb-2">Vous avez déjà donné votre avis</p>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Merci ! Votre retour pour ce live a bien été enregistré.
+              </p>
+            </div>
+          ) : (
+            <FeedbackForm
+              eventId={ha?.event_id ?? ''}
+              hostProfileId={ha?.host_profile_id ?? ''}
+              contactRequestId={contact.id}
+              visitorEmail={contact.visitor_email}
+              direction="visitor_to_host"
+            />
+          )}
         </div>
       </main>
     </>

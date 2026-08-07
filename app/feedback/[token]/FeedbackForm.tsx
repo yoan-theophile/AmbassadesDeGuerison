@@ -30,6 +30,23 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
+  // Flèches : déplace la sélection ET le focus (le bouton cible devient le seul
+  // tabbable du groupe au re-render). Home/End vont aux extrémités.
+  function handleStarKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, key: CriterionKey, star: number) {
+    const NEXT: Record<string, number> = {
+      ArrowRight: star + 1, ArrowUp: star + 1,
+      ArrowLeft: star - 1,  ArrowDown: star - 1,
+      Home: 1, End: 5,
+    };
+    const target = NEXT[e.key];
+    if (target === undefined) return;
+    e.preventDefault();
+    const clamped = Math.min(5, Math.max(1, target));
+    setRatings((r) => ({ ...r, [key]: clamped }));
+    const group = e.currentTarget.parentElement;
+    (group?.children[clamped - 1] as HTMLButtonElement | undefined)?.focus();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -87,6 +104,12 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
           <div role="radiogroup" aria-label={c.label} className="flex gap-1">
             {[1, 2, 3, 4, 5].map((star) => {
               const active = (hover[c.key] ?? ratings[c.key] ?? 0) >= star;
+              const selected = ratings[c.key] ?? 0;
+              // Pattern radiogroup : un seul arrêt de tabulation par critère, on
+              // navigue ensuite aux flèches. Sans ça les 4 critères imposaient 20
+              // tabulations pour traverser le formulaire (trouvé en QA 2026-08-07).
+              // Aucune note encore posée → la 1re étoile porte le focus.
+              const focusable = selected === star || (selected === 0 && star === 1);
               return (
                 <button
                   key={star}
@@ -94,12 +117,14 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
                   role="radio"
                   aria-checked={ratings[c.key] === star}
                   aria-label={`${star} étoile${star > 1 ? 's' : ''}`}
-                  className={`w-10 h-11 flex items-center justify-center rounded-lg transition-colors ${
+                  tabIndex={focusable ? 0 : -1}
+                  className={`w-11 h-11 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     active ? 'text-indigo-600' : 'text-slate-200 hover:text-slate-300'
                   }`}
                   onMouseEnter={() => setHover((h) => ({ ...h, [c.key]: star }))}
                   onMouseLeave={() => setHover((h) => ({ ...h, [c.key]: 0 }))}
                   onClick={() => setRatings((r) => ({ ...r, [c.key]: star }))}
+                  onKeyDown={(e) => handleStarKeyDown(e, c.key, star)}
                 >
                   <Star className={`w-8 h-8 ${active ? 'fill-indigo-600' : 'fill-current'}`} />
                 </button>
@@ -111,10 +136,11 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
 
       {/* Texte libre */}
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        <label htmlFor="feedback-free-text" className="block text-sm font-medium text-slate-700 mb-1.5">
           Un mot à partager ? (optionnel)
         </label>
         <textarea
+          id="feedback-free-text"
           value={freeText}
           onChange={(e) => setFreeText(e.target.value)}
           rows={3}
@@ -126,12 +152,15 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
 
       {/* Signalement */}
       <div>
-        <label className="flex items-start gap-2.5 cursor-pointer">
+        {/* Touch target 44px (DESIGN.md) : la case faisait 13x13px — le contrôle
+            le plus important de la page était le plus dur à atteindre au doigt.
+            py-2.5 + case w-5 h-5 portent la zone cliquable du label à 44px. */}
+        <label className="flex items-center gap-2.5 cursor-pointer py-2.5 -my-2.5 min-h-[44px]">
           <input
             type="checkbox"
             checked={reported}
             onChange={(e) => setReported(e.target.checked)}
-            className="mt-0.5 accent-red-600"
+            className="w-5 h-5 shrink-0 accent-red-600"
           />
           <span className="flex items-center gap-1.5 text-sm text-slate-600">
             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
@@ -140,6 +169,7 @@ export default function FeedbackForm({ eventId, hostProfileId, contactRequestId,
         </label>
         {reported && (
           <textarea
+            aria-label="Décrivez le problème rencontré"
             value={reportReason}
             onChange={(e) => setReportReason(e.target.value)}
             rows={2}
