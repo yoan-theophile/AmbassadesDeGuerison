@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -17,21 +18,42 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/browser';
 
-const NAV = [
-  { href: '/admin/stats',         label: 'Vue générale',  Icon: LayoutDashboard },
-  { href: '/admin/ambassadeurs',  label: 'Ambassadeurs',  Icon: Users           },
-  { href: '/admin/live',          label: 'Live en cours', Icon: Radio           },
-  { href: '/admin/calendrier',    label: 'Calendrier',    Icon: Calendar        },
-  { href: '/admin/temoignages',   label: 'Témoignages',   Icon: MessageSquare   },
-  { href: '/admin/feedback',      label: 'Signalements',  Icon: AlertTriangle   },
-  { href: '/admin/blacklist',     label: 'Blocages',      Icon: Ban             },
-  { href: '/admin/team',          label: 'Équipe',        Icon: Shield          },
-  { href: '/admin/settings',      label: 'Paramètres',    Icon: Settings        },
+// `badgeKey` relie l'entrée au compteur retourné par /api/admin/queue-counts.
+// `label` est aussi utilisé comme tooltip : sous 640px la sidebar se réduit à
+// des icônes, et neuf icônes sans libellé sont indistinctes pour un nouvel
+// admin (audit 2026-08-07, T.8).
+const NAV: { href: string; label: string; Icon: typeof Users; badgeKey?: 'ambassadeurs' | 'temoignages' | 'feedback' }[] = [
+  { href: '/admin/stats',         label: 'Vue générale',      Icon: LayoutDashboard },
+  { href: '/admin/ambassadeurs',  label: 'Ambassadeurs',      Icon: Users,           badgeKey: 'ambassadeurs' },
+  // « Live en cours » promettait un live actif alors que la page affiche le plus
+  // souvent le dernier live passé, avec un bandeau d'avertissement (audit 3.3).
+  { href: '/admin/live',          label: 'Live',              Icon: Radio           },
+  { href: '/admin/calendrier',    label: 'Calendrier',        Icon: Calendar        },
+  { href: '/admin/temoignages',   label: 'Témoignages',       Icon: MessageSquare,   badgeKey: 'temoignages' },
+  // La sidebar disait « Signalements », la page « Retours post-live » — deux
+  // noms pour le même écran, dont le contenu réel est mixte (audit 6.1).
+  { href: '/admin/feedback',      label: 'Retours post-live', Icon: AlertTriangle,   badgeKey: 'feedback' },
+  { href: '/admin/blacklist',     label: 'Blocages',          Icon: Ban             },
+  { href: '/admin/team',          label: 'Équipe',            Icon: Shield          },
+  { href: '/admin/settings',      label: 'Paramètres',        Icon: Settings        },
 ];
+
+type Counts = Partial<Record<'ambassadeurs' | 'temoignages' | 'feedback', number>>;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [counts, setCounts] = useState<Counts>({});
+
+  // Best-effort : un échec laisse simplement la sidebar sans badge.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/queue-counts')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && !cancelled) setCounts(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [pathname]);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -54,20 +76,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {NAV.map(({ href, label, Icon }) => {
+          {NAV.map(({ href, label, Icon, badgeKey }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
+            const count = badgeKey ? counts[badgeKey] ?? 0 : 0;
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center justify-center sm:justify-start gap-3 px-2 sm:px-3 py-2 rounded-lg text-sm transition-colors ${
+                title={label}
+                className={`relative flex items-center justify-center sm:justify-start gap-3 px-2 sm:px-3 py-2 rounded-lg text-sm transition-colors ${
                   active
                     ? 'bg-slate-800 text-white'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span className="hidden sm:inline">{label}</span>
+                <span className="hidden sm:inline flex-1 min-w-0 truncate">{label}</span>
+                {count > 0 && (
+                  <>
+                    {/* Desktop : pastille chiffrée alignée à droite du libellé. */}
+                    <span className="hidden sm:inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-violet-600 text-white text-[10px] font-semibold shrink-0">
+                      {count}
+                    </span>
+                    {/* Mobile (icônes seules) : point de notification, le chiffre ne tiendrait pas. */}
+                    <span
+                      className="sm:hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500 ring-2 ring-slate-900"
+                      aria-hidden="true"
+                    />
+                  </>
+                )}
+                {count > 0 && <span className="sr-only">{`— ${count} en attente`}</span>}
               </Link>
             );
           })}
@@ -76,6 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="px-2 py-4 border-t border-slate-800 space-y-1">
           <Link
             href="/"
+            title="Carte publique"
             className="flex items-center justify-center sm:justify-start gap-2 px-2 sm:px-3 py-2 text-slate-500 hover:text-slate-300 text-xs transition-colors rounded-lg"
           >
             <ChevronLeft className="w-3 h-3 shrink-0" />
@@ -83,6 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <button
             onClick={handleSignOut}
+            title="Se déconnecter"
             className="w-full flex items-center justify-center sm:justify-start gap-2 px-2 sm:px-3 py-2 text-slate-500 hover:text-red-400 text-xs transition-colors rounded-lg"
           >
             <LogOut className="w-3 h-3 shrink-0" />
