@@ -210,7 +210,7 @@ ORDER BY ls.created_at DESC;
 
 ### Templates disponibles
 
-19 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
+20 templates TSX dans `emails/*.tsx` (React Email v6). Preview visuelle sur `/dev/emails` (local ou Vercel Preview avec `EMAIL_PREVIEW=true`).
 
 > Le template `pre-validation-accordee.tsx` a été supprimé en mai 2026 quand la transition `pending_review → pre_approved` est passée en self-service (le candidat clique "J'accepte" sur son dashboard, le questionnaire s'affiche immédiatement sans email intermédiaire).
 
@@ -220,6 +220,7 @@ ORDER BY ls.created_at DESC;
 | Compte visiteur créé | Confirmation après `/mon-espace/creer` (`sendVisitorCompteCree`), en parallèle du bootstrap de session immédiat |
 | Bienvenue ambassadeur | Admin valide définitivement → ambassade active |
 | Validation finale | Confirmation de l'activation finale |
+| Candidature refusée | Admin refuse une candidature (`action: 'rejected'`, n'importe quel statut de départ) → message sobre + raison optionnelle (champ `notes` du payload admin) |
 | Confirmation inscription | Nouvel ambassadeur inscrit |
 | Campagne ambassadeurs | Cron envoie la campagne → lien activation par live |
 | Feedback post-live (visiteur) | Visiteur invité à donner son retour après le live |

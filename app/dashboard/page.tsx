@@ -412,6 +412,7 @@ export default function DashboardPage() {
 
   const isValidated = profile.status === 'validated';
   const isOnboarding = ['pending_review', 'pre_approved', 'enrichment_pending'].includes(profile.status);
+  const dossierComplet = !!profile.profile_photo_url && (profile.room_photo_urls?.length ?? 0) > 0;
 
   const statusLabels: Record<string, string> = {
     pending_review:     'Candidature en cours',
@@ -519,7 +520,11 @@ export default function DashboardPage() {
         {isOnboarding && (
           <>
             {/* Stepper parcours — uniquement pour les non-validés */}
-            <StatusTimeline status={profile.status} />
+            <StatusTimeline
+              status={profile.status}
+              profilePhotoUrl={profile.profile_photo_url}
+              roomPhotoUrls={profile.room_photo_urls}
+            />
 
             {/* Encart candidature reçue — gate self-service vidéo + PDF + CGU */}
             {profile.status === 'pending_review' && (
@@ -563,8 +568,11 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Encart enrichissement en attente */}
-            {profile.status === 'enrichment_pending' && (
+            {/* Encart enrichissement en attente — le statut seul ne suffit pas : une donnée
+                créée hors du chemin PATCH /api/ambassadeur/enrichissement (test, script) peut
+                avoir enrichment_pending sans dossier complet. Sans cette revérification,
+                l'ambassadeur voit "en cours d'examen chez David" alors qu'il n'a rien envoyé. */}
+            {profile.status === 'enrichment_pending' && dossierComplet && (
               <div className="bg-purple-50 border border-purple-100 rounded-2xl p-5">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">

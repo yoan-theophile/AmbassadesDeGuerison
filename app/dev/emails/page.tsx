@@ -5,6 +5,7 @@ import { MOCKS } from '@/emails/__mocks__';
 
 import MagicLink from '@/emails/magic-link';
 import ValidationFinale from '@/emails/validation-finale';
+import RefusCandidature from '@/emails/refus-candidature';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
@@ -28,6 +29,7 @@ export default async function EmailPreviewPage() {
   const [
     htmlMagicLink,
     htmlValidation,
+    htmlRefusCandidature,
     htmlRegistration,
     htmlCampagneAmb,
     htmlFeedback,
@@ -45,6 +47,7 @@ export default async function EmailPreviewPage() {
   ] = await Promise.all([
     render(<MagicLink magicLinkUrl={m.magicLink} />),
     render(<ValidationFinale firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} carteUrl={m.carteUrl} />),
+    render(<RefusCandidature firstName={m.jp.firstName} reason="Nous cherchons pour le moment des ambassades avec un espace dédié à l'accueil." />),
     render(<RegistrationConfirmation firstName={m.marie.firstName} dashboardUrl={m.dashboardUrl} />),
     render(<CampagneAmbassadeurs firstName={m.marie.firstName} eventTitle={m.liveTitle} eventDate={m.liveDate} activateUrl={m.activateUrl} customMessage={m.customMessage} />),
     render(<FeedbackPostLive firstName={m.marie.firstName} eventTitle={m.liveTitle} feedbackUrl={m.feedbackUrl} />),
@@ -64,6 +67,7 @@ export default async function EmailPreviewPage() {
   const ambassadeur = [
     { label: 'Magic link (connexion standard)', html: htmlMagicLink },
     { label: 'Validation finale — ambassade active', html: htmlValidation },
+    { label: 'Candidature refusée', html: htmlRefusCandidature },
     { label: 'Confirmation inscription', html: htmlRegistration },
     { label: 'Campagne — invitation au prochain live', html: htmlCampagneAmb },
     { label: 'Feedback post-live', html: htmlFeedback },

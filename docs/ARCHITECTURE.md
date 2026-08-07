@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  19 templates TSX (React Email v6) — emails transactionnels │
+│  20 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -153,9 +153,9 @@ Hôte visible sur la carte au prochain live
 Transitions admin valides (`PATCH /api/admin/ambassadeurs/[id]/status`) :
 - `validated` (depuis enrichment_pending uniquement)
 - `validated_bypass` (escape hatch API uniquement — plus de bouton UI ; usage support/script SQL)
-- `rejected` (depuis n'importe quel statut)
+- `rejected` (depuis n'importe quel statut) — envoie `sendRefusCandidature` au candidat si `profile.user_id` a un email associé (message sobre + raison optionnelle reprise du champ `notes` du payload)
 - `suspended` (depuis validated)
-- `reactiver` (depuis suspended ou rejected, → validated)
+- `reactiver` (depuis suspended ou rejected) — restaure `validated` (+ email) **uniquement si le dossier est complet** (`profile_photo_url` non NULL et `room_photo_urls` non vide) ; sinon route vers `enrichment_pending` sans email. Empêche de valider silencieusement un candidat refusé avant d'avoir jamais complété son questionnaire (même risque que `validated_bypass`, sans le bouton dédié pour s'en prémunir).
 
 L'action `pre_approve` n'existe **plus** côté admin — la transition `pending_review → pre_approved` est exclusivement self-service.
 
@@ -366,7 +366,7 @@ en JS — le guard utilise `=== 'true'`).
 | `app/admin/*` | Server Components + Client Components mixtes | Données init en SSR, interactions en client |
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
 | `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
-| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
+| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Revérifie `profilePhotoUrl`/`roomPhotoUrls` avant d'afficher l'étape "Profil enrichi" comme atteinte — un `status='enrichment_pending'` sans dossier complet (possible seulement via donnée créée hors du flux API, ex. script/test) retombe visuellement sur l'étape précédente plutôt que d'afficher un faux "en cours d'examen" (trouvé 2026-08-07, cf `app/dashboard/page.tsx` où l'encart "Ton dossier est en cours d'examen" applique la même garde). |
 | `DashboardTabs` | Client Component | Navigation `/dashboard` par onglets (Accueil/Demandes/Profil/Formation) — **uniquement pour validés**, bottom tabs mobile + tabs sticky desktop. Badge compteur sur "Demandes". Onboarding reste linéaire (pas d'onglets). |
 | `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse précise + consignes + tel) |
 | `AddressInput` | Client Component | Autocomplétion Nominatim `mode=address` — calqué sur `CityInput` |
@@ -485,7 +485,7 @@ Mis à jour manuellement à chaque PR significative.
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. Champ optionnel `quartier` (texte libre). |
 | Champ quartier (profil ambassadeur) | ✅ | `host_profiles.quartier`, `PATCH /api/ambassadeur/profile` | Texte libre optionnel (ex : "Paris 15e"). Saisissable à l'inscription et modifiable dans `MesInfosSection`. Affiché dans les popups carte + fiche publique `/ambassade/[id]` + fiche live `/live/[event_id]/ambassade/[host_id]` sous la ligne ville/pays. |
 | Onboarding self-service | ✅ | `PATCH /api/onboarding/complete` | Gate inline dans `/dashboard` pour `pending_review` : vidéo + PDF + CGU + bouton. Idempotent. Aucune action admin requise. |
-| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
+| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected` (email `sendRefusCandidature` au candidat), `suspended`, `reactiver` (→ `validated` + email uniquement si dossier complet, sinon → `enrichment_pending` sans email). L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse précise (`lat_precise`/`lng_precise` via `AddressInput`/Nominatim), consignes, téléphone. Email admin si ville change. |
