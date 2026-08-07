@@ -14,10 +14,12 @@ function useMailhog() {
   return process.env.USE_MAILHOG === 'true';
 }
 
-// Un nouveau transport par envoi : un transport nodemailer partagé entre appels
-// gardait une connexion SMTP keep-alive vers Mailhog qui pouvait déjà être fermée
-// côté serveur, provoquant un "Unexpected socket close" silencieux sur le 2e envoi
-// d'une séquence rapprochée (ex: confirmation candidat + notification admin).
+// Un nouveau transport par envoi (pas de singleton partagé) : filet de sécurité
+// en cas de connexion SMTP keep-alive qui traînerait fermée côté serveur.
+// MAILHOG_SMTP_HOST doit rester 127.0.0.1 (pas "localhost") — la résolution
+// localhost peut basculer entre IPv4/IPv6 selon l'environnement (Docker
+// Desktop/WSL2 sous Windows), causant des "Unexpected socket close"
+// intermittents et silencieux (trouvé par David, 2026-08-07).
 function getMailhogTransport() {
   return nodemailer.createTransport({
     host: process.env.MAILHOG_SMTP_HOST || 'localhost',

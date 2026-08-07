@@ -335,6 +335,27 @@ Alerte l'admin si 0 hôtes actifs pour le prochain live.
 3. Vérifier l'adresse email dans `host_profiles.email`
 4. Vérifier les spams côté destinataire
 
+### "En local avec Mailhog, un email n'arrive jamais (échec silencieux)"
+
+**Symptôme** : `USE_MAILHOG=true`, le conteneur `davidthery-mailhog` tourne normalement
+(`docker ps`, 0% CPU), mais un envoi échoue de façon intermittente avec `Unexpected socket
+close` côté nodemailer — sans qu'aucune tentative de connexion n'apparaisse dans
+`docker logs davidthery-mailhog`. L'échec peut toucher un seul email d'une paire (ex:
+confirmation candidat OK, notification admin en échec) ou les deux. Repro'd sur inscription
+ambassadeur (`POST /api/inscriptions`) en août 2026.
+
+**Cause** : `MAILHOG_SMTP_HOST=localhost` dans `.env.local` — la résolution de `localhost`
+peut basculer entre IPv4 (`127.0.0.1`) et IPv6 (`::1`) selon l'environnement (observé sous
+Docker Desktop/WSL2 sur Windows), et une des deux routes est instable pour le port SMTP
+mappé. Le mapping Docker (`docker port davidthery-mailhog`) montre pourtant les deux
+adresses écoutées — le problème n'est pas le conteneur, mais la résolution côté client Node.
+
+**Fix** : dans `.env.local`, forcer `MAILHOG_SMTP_HOST=127.0.0.1` (jamais `localhost`) —
+puis **redémarrer le serveur dev** (les variables d'environnement ne sont pas rechargées à
+chaud par Next.js). `lib/email/send.ts` logge désormais toute erreur d'envoi
+(`console.error`) au lieu de l'avaler silencieusement — vérifier les logs serveur en premier
+si un email semble manquant.
+
 ### "Le feed admin ne se rafraîchit plus"
 
 Le feed utilise du polling (rafraîchissement toutes les 5 secondes).
