@@ -373,13 +373,19 @@ contact actif pour un contact/prospect), déclarées en constantes en tête de
 n'existe. Écart à combler avant un lancement public : soit un cron de purge, soit
 une révision du texte.
 
+### Lien vers /confidentialite depuis la homepage
+
+Corrigé 2026-08-08 : le lien n'existait auparavant que sur `/mon-espace/creer`,
+inatteignable pour un visiteur qui consulte la carte publique sans jamais créer
+de compte — la page la plus visitée du site. La correction précédente de cette
+doc affirmait que l'app "n'a pas de footer" et qu'en ajouter un "casserait la
+carte plein écran" ; c'était inexact. `app/page.tsx` a **déjà** un footer
+(`shrink-0`, sous la carte `flex-1`, layout `h-screen flex-col`) — le lien y a
+été ajouté directement, sans nouveau composant ni décision de layout. Ne pas
+réintroduire l'idée que la home n'a pas de footer sans revérifier le fichier.
+
 ### Points ouverts
 
-- **Lien accessible depuis chaque page** — la CNIL demande que les mentions soient
-  atteignables partout (un lien en pied de page suffit). L'app **n'a pas de
-  footer** (`app/layout.tsx` ne rend que `children`) ; en ajouter un casserait la
-  carte Leaflet plein écran de la home. Aujourd'hui le lien n'existe que sur
-  `/mon-espace/creer`. Choix de design à trancher, pas un oubli.
 - **Suppression de compte visiteur** — aucun chemin dans l'app. La politique
   renvoie vers l'e-mail de contact (acceptable en v1, un bouton dans
   `/mon-espace` serait plus propre).
