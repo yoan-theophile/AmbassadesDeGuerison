@@ -127,7 +127,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="title"
               placeholder="Live Guérison #16 — …"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
               required
             />
           </div>
@@ -136,7 +136,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="event_date"
               type="datetime-local"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600"
               required
             />
           </div>
@@ -145,7 +145,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
             <input
               name="live_link"
               placeholder="https://youtube.com/live/..."
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
             />
           </div>
           <div className="flex gap-2 pt-1">
@@ -197,7 +197,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher un live…"
-          className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
         />
       </div>
 
@@ -221,7 +221,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
                   <input
                     name="title"
                     defaultValue={editingEvent.title}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     required
                     autoFocus
                   />
@@ -232,7 +232,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
                     name="event_date"
                     type="datetime-local"
                     defaultValue={utcToLocalInput(editingEvent.event_date)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     required
                   />
                 </div>
@@ -242,7 +242,7 @@ export default function PlanningClient({ events }: { events: Event[] }) {
                     name="live_link"
                     defaultValue={editingEvent.live_link ?? ''}
                     placeholder="https://youtube.com/live/..."
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                   />
                 </div>
                 <div className="flex gap-2 pt-1">

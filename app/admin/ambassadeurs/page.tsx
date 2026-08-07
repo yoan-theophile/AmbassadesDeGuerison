@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { getAdminPhotoUrl } from '@/lib/storage/photo-url';
 import AdminLayout from '@/components/AdminLayout';
+import AdminPage from '@/components/admin/AdminPage';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import AmbassadeursTable from '@/components/AmbassadeursTable';
 
 export const dynamic = 'force-dynamic';
@@ -55,8 +57,11 @@ export default async function AdminAmbassadeursPage({ searchParams }: PageProps)
 
   return (
     <AdminLayout>
-      <div className="px-6 py-8">
-        <h1 className="text-base font-semibold text-slate-800 mb-6">Ambassadeurs</h1>
+      <AdminPage width="wide">
+        <AdminPageHeader
+          title="Ambassadeurs"
+          subtitle="Les candidatures et les ambassades actives."
+        />
         <AmbassadeursTable
           ambassadeurs={ambassadeurs}
           total={total}
@@ -65,7 +70,7 @@ export default async function AdminAmbassadeursPage({ searchParams }: PageProps)
           searchQ={q}
           filterStatus={filterStatus}
         />
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 }
