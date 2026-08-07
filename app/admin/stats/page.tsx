@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import AdminLayout from '@/components/AdminLayout';
+import AdminPage from '@/components/admin/AdminPage';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { getCurrentEventWindow } from '@/lib/admin/event-window';
 import {
   getActionQueue,
@@ -10,6 +12,7 @@ import {
 } from '@/lib/admin/stats-helpers';
 import { logPageView } from '@/lib/admin/page-view-log';
 import ActionQueue from './components/ActionQueue';
+import HowItWorks from './components/HowItWorks';
 import RecentFruits from './components/RecentFruits';
 import HostsToCheck from './components/HostsToCheck';
 import SnapshotFooter from './components/SnapshotFooter';
@@ -70,17 +73,17 @@ export default async function AdminStatsPage() {
 
   return (
     <AdminLayout>
-      <div className="px-6 py-8 max-w-3xl">
-        <h1 className="text-base font-semibold text-slate-800 mb-1">À noter depuis le dernier live</h1>
-        <p className="text-sm text-slate-500 mb-6">{headerLabel}</p>
+      <AdminPage>
+        <AdminPageHeader title="À noter depuis le dernier live" subtitle={headerLabel} />
 
         <div className="space-y-4">
+          <HowItWorks />
           <ActionQueue queue={queue} />
           <RecentFruits fruits={fruits} />
           <HostsToCheck hosts={hostsToCheck} />
           <SnapshotFooter totals={totals} />
         </div>
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 }
@@ -98,7 +101,8 @@ function headerLabelFromWindow(w: Awaited<ReturnType<typeof getCurrentEventWindo
     // current.event est un futur event (fallback 3 dans getCurrentEvent)
     return `Aucun live passé. Prochain live le ${formatDate(current.event.event_date)}.`;
   }
-  return 'Aucun live encore programmé. Crée le premier dans le calendrier.';
+  // Audit 1.3 : ce message tutoyait, alors que tout le reste de l'admin vouvoie.
+  return 'Aucun live encore programmé. Créez le premier dans le calendrier.';
 }
 
 function formatDate(iso: string): string {

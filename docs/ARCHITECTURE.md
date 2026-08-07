@@ -324,6 +324,76 @@ de proximité. `lat_precise`/`lng_precise` viennent de l'adresse complète saisi
 
 ---
 
+## Transparence des données (RGPD)
+
+Ajouté le 2026-08-07 (TODO-23). Deux niveaux, volontairement séparés : la
+transparence **au moment de la saisie** (qui ne dépend de personne) et la
+politique formelle (qui attend des informations que seul David détient).
+
+### Règle : tout champ collecté dit sa finalité, à côté du champ
+
+`/mon-espace/creer` porte une légende `text-xs text-slate-400 mt-2` sous chaque
+champ : à quoi il sert, et qui le voit. Le motif de référence est celui de la
+photo — *« Aide l'ambassadeur à savoir qui il accueille — jamais publiée, visible
+uniquement par lui »* — qui énonce finalité + destinataire + non-publication.
+
+Un audit du 2026-08-07 a montré l'inverse de ce qu'on attendrait : la photo (champ
+le plus sensible, facultatif) était bien expliquée, tandis que le **téléphone —
+seul champ obligatoire** — n'avait aucune légende. Ne pas réintroduire un champ
+sans sa finalité, en particulier s'il est requis.
+
+### Règle : consentement jamais pré-coché
+
+`visitor_notifications_optin` est initialisé à `false` dans
+`app/ambassade/[id]/ContactForm.tsx` **et**
+`app/live/[event_id]/ambassade/[host_id]/VisitRequestForm.tsx` (les deux
+formulaires portaient le défaut). Ce n'est pas un arbitrage produit : la CJUE a
+jugé le 1er octobre 2019 qu'une case cochée par défaut ne vaut pas consentement —
+le RGPD exige un « acte positif clair », ce qui exclut le silence, les cases
+pré-cochées et l'inaction. **Ne jamais repasser ce défaut à `true`** pour gonfler
+le volume d'inscrits.
+
+Le libellé mentionne la sortie (« Désinscription possible à tout moment »), ce que
+`GET /api/unsubscribe/[token]` honore réellement depuis le correctif du même jour.
+
+### Durées de conservation
+
+Valeurs par défaut alignées sur le référentiel CNIL (3 ans à compter du dernier
+contact actif pour un contact/prospect), déclarées en constantes en tête de
+`app/confidentialite/page.tsx` :
+
+| Donnée | Durée annoncée |
+|--------|----------------|
+| Demandes de visite | 12 mois après le live |
+| Compte visiteur | 3 ans sans activité |
+| Témoignages publiés | tant que publiés, suppression sur demande |
+| Profil ambassadeur | 12 mois après retrait de l'ambassade |
+
+⚠️ **Ces durées sont annoncées, pas appliquées** — aucune purge automatique
+n'existe. Écart à combler avant un lancement public : soit un cron de purge, soit
+une révision du texte.
+
+### Lien vers /confidentialite depuis la homepage
+
+Corrigé 2026-08-08 : le lien n'existait auparavant que sur `/mon-espace/creer`,
+inatteignable pour un visiteur qui consulte la carte publique sans jamais créer
+de compte — la page la plus visitée du site. La correction précédente de cette
+doc affirmait que l'app "n'a pas de footer" et qu'en ajouter un "casserait la
+carte plein écran" ; c'était inexact. `app/page.tsx` a **déjà** un footer
+(`shrink-0`, sous la carte `flex-1`, layout `h-screen flex-col`) — le lien y a
+été ajouté directement, sans nouveau composant ni décision de layout. Ne pas
+réintroduire l'idée que la home n'a pas de footer sans revérifier le fichier.
+
+### Points ouverts
+
+- **Suppression de compte visiteur** — aucun chemin dans l'app. La politique
+  renvoie vers l'e-mail de contact (acceptable en v1, un bouton dans
+  `/mon-espace` serait plus propre).
+- **Registre des traitements** — obligatoire pour une association même sans
+  déclaration CNIL. Document interne, hors code.
+
+---
+
 ## Sécurité — points critiques
 
 **RLS (Row Level Security)** — PostgreSQL garantit qu'un hôte ne peut pas lire les
@@ -407,6 +477,76 @@ ou sur Vercel, jamais en dev local.
 
 ---
 
+## Limites de pagination silencieuses
+
+Deux API Supabase tronquent leurs résultats **sans erreur ni indicateur** : le
+tableau retourné est incomplet mais indiscernable d'un tableau complet. Les deux
+ont déjà produit un bug réel (audit admin du 2026-08-07).
+
+| API | Limite par défaut | Helper à utiliser |
+|-----|-------------------|-------------------|
+| `supabase.auth.admin.listUsers()` | **50 comptes** | `lib/auth/list-all-users.ts` |
+| `SELECT` via PostgREST (`.from().select()`) | **1000 lignes** (configurable dans les API Settings Supabase) | `lib/supabase/fetch-all.ts` |
+
+**`listUsers()` — bug constaté.** Avec 78 comptes en base, `/admin/team`
+affichait « Inconnu » à la place des deux super admins, créés en premier donc
+au-delà de la première page. Le même défaut touchait des chemins moins visibles :
+`classify-email` classait `new` une adresse déjà prise (collision non détectée à
+la création de compte visiteur), et `/api/inscriptions` ne retrouvait pas le
+compte après une erreur « already registered », créant un profil ambassadeur
+orphelin sans compte auth rattaché. Ne jamais appeler `listUsers()` directement —
+utiliser `listAllAuthUsers()`, `getAuthUsersByEmail()` ou `getAuthEmailsById()`.
+
+**`fetchAllRows()` — où l'appliquer.** Uniquement là où l'exhaustivité a une
+conséquence irréversible : envois de masse, snapshots, exports. Appliqué à
+`POST /api/admin/campaigns` (snapshot des destinataires — au-delà de 1000
+ambassadeurs validés, les suivants n'auraient jamais reçu leur lien d'activation,
+donc aucune présence sur la carte) et à `/api/cron/send-feedback-emails` (les
+visiteurs au-delà du 1000e n'auraient jamais été invités à témoigner, et
+`feedback_sent` aurait quand même été posé, rendant l'oubli définitif).
+
+La requête passée à `fetchAllRows()` **doit porter un `.order()` sur une colonne
+stable** : sans ordre explicite, PostgreSQL ne garantit pas que deux pages
+successives voient les lignes dans le même ordre — des lignes pourraient être
+vues deux fois et d'autres jamais.
+
+**Ce qui n'a délibérément pas été paginé.** L'audit a recensé 23 lectures non
+bornées ; 20 sont restées telles quelles, pour trois raisons :
+
+- **Cardinalité structurellement faible** — `admin_users` (une poignée),
+  `events` (quelques lives par an), `scheduled_campaigns`, `blacklist` filtrée
+  par email/téléphone.
+- **Déjà bornée en amont** — `/admin/ambassadeurs` pagine par `range()`,
+  `/api/cron/dispatch-campaigns` avance par curseur sur `id`,
+  `getRecentFruits()` utilise `.limit(3)`.
+- **Troncature sans conséquence** — un affichage de liste tronqué à 1000 entrées
+  (témoignages admin, feed des signaux) dégrade l'affichage sans rien casser ni
+  rien perdre. Y ajouter de la pagination avant d'avoir le volume qui la
+  justifie ajouterait de la complexité pour rien.
+
+Le seuil de vigilance concerne `contact_requests`, `testimonials` et
+`live_feedbacks` : ce sont les seules tables dont le volume croît avec chaque
+live. À surveiller quand elles approcheront le millier de lignes.
+
+---
+
+## Élision devant un prénom — `lib/elision.ts`
+
+Les prénoms d'ambassadeurs viennent d'une saisie libre : on ne peut pas figer
+« Ambassade de … » dans le texte. Sans traitement, l'app affichait « Ambassade de
+Alpha », « de Antoine », « de Étienne » (trouvé en QA le 2026-08-07, sur 6
+surfaces : fiche publique `/ambassade/[id]`, fiche live, page de feedback, page
+de confirmation visiteur et modération admin).
+
+Utiliser `de(firstName)` — retourne `"d'Alpha"` ou `"de Marie"` selon l'initiale,
+et `"de"` seul si le nom est vide (jamais de `d'` orphelin). Le `h` est traité
+comme une voyelle : « d'Hugo » est la forme usuelle, et se tromper dans ce sens
+reste plus discret que « de Hugo ».
+
+**Ne jamais réintroduire `de {first_name}` en dur dans du JSX.**
+
+---
+
 ## Formatage des dates et fuseaux horaires
 
 Vercel déploie en région IAD1 (Washington DC, UTC-4/UTC-5 selon DST). Si un Server
@@ -482,6 +622,7 @@ Mis à jour manuellement à chaque PR significative.
 | Feature | Statut | Routes principales | Gap / Note |
 |---------|--------|-------------------|------------|
 | Carte publique (pins) | ✅ | `GET /api/host-activations` | Cluster auto par proximité en pixels à l'écran (`leaflet.markercluster`, recalculé à chaque zoom — remplace juillet 2026 l'ancien groupement par coordonnées exactes qui masquait silencieusement les pins proches mais non identiques). Champ `quartier` + message de présentation (`presentation_message`, 240 car. max) + photo de profil (avatar 28px, signed URL 24h) affichés dans les popups (cluster + pin individuel) si renseignés. Bouton "Trier par distance" dans les clusters (géolocalisation éphémère, voir section dédiée). |
+| Politique de confidentialité (`/confidentialite`) | ⚠️ | `app/confidentialite/page.tsx` | Page statique 8 sections (responsable, données collectées, ce qu'on ne fait pas, bases légales, durées, droits, sous-traitants, mineurs). **3 placeholders `[À COMPLÉTER]` bloquent la publication publique** : entité juridique, adresse du siège, e-mail de contact RGPD — mentions obligatoires (art. 13 RGPD), volontairement laissées visibles plutôt que remplies d'une valeur plausible qui passerait la relecture. Voir § Transparence des données. |
 | Page de préparation visiteur (`/decouvrir`) | ✅ | `app/decouvrir/page.tsx` | Réassurance + 3 étapes + FAQ accessible (`FaqAccordion`) + témoignage vedette (fallback global si aucun pour le prochain live) + CTA retour carte. CTA discret "C'est votre première fois ?" sur `MapPublique` (coin bas-droit, masquable, mémorisé `localStorage`). |
 | Géolocalisation auto au premier chargement | ✅ | `MapPublique` → `map.locate()` | Zoom métropole si permission acceptée, vue monde sinon (silencieux). Sautée si une position de carte est déjà mémorisée (`localStorage['map-view-state']`) — voir ligne dédiée ci-dessous. |
 | Mémorisation de la position carte (centre + zoom) | ✅ | `components/MapPublique.tsx` → `readSavedMapView()`/`saveMapView()` | `localStorage['map-view-state']` (`{lat, lng, zoom}`), mis à jour sur `moveend`/`zoomend`. Au montage suivant, la carte s'initialise directement sur cette position — pas de `setView([20,10],3)` ni de géolocalisation auto/`flyTo` — pour éviter de réanimer un zoom à chaque refresh alors que le visiteur avait déjà positionné la carte. Le bouton "Me localiser" (manuel) garde son `flyTo` animé. |
@@ -500,7 +641,7 @@ Mis à jour manuellement à chaque PR significative.
 | Distance visiteur ↔ ambassadeur | ✅ | `POST /api/distance` | Géolocalisation navigateur éphémère (jamais persistée) + Haversine arrondi au km. Rate-limité 8 req/min/IP. Ne retourne jamais de coordonnées. |
 | Témoignages — soumission publique | ✅ | `POST /api/temoignages` | |
 | Témoignages — modération admin | ✅ | `/admin/temoignages` | |
-| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)** |
+| Campagnes email (programmées) | ⚠️ | `POST /api/cron/dispatch-campaigns` | Code opérationnel — **cron désactivé dans `vercel.json` (hors production)**. Deux correctifs 2026-08-07 (test bout-en-bout Mailhog) : (1) le **désabonnement est désormais honoré** — `lib/campaigns/unsubscribed.ts:getUnsubscribedEmails()` filtre le snapshot *et* le dispatch ; (2) une campagne dont il reste des destinataires en échec **retourne à `pending`** au lieu de passer à `sent`, pour être retentée au passage suivant. |
 | Feedback post-live visiteurs | ⚠️ | `POST /api/cron/send-feedback-emails` | **Bug SQL join corrigé** (juillet 2026, cf commit `cb02f84`) — requête en deux temps via `host_activation_id IN (...)` au lieu du `.eq()` no-op sur relation non jointe. Cron reste désactivé (hors production). |
 | Feedback bidirectionnel ambassadeur → visiteur | ✅ | `/feedback/host/[token]` + `POST /api/feedbacks` | Token = `host_activations.id` (réutilisé, pas de nouvelle colonne). Formulaire V1 : "seriez-vous à l'aise que cette personne revienne" (Oui/Non) + texte libre optionnel. `would_host_again=false` propose une case "Bloquer ce visiteur" → insère dans `blacklist` avec `host_profile_id` (blocage scopé à cet hôte, pas global). |
 | Blacklist par-ambassadeur | ✅ | `blacklist.host_profile_id` (nullable) | `NULL` = blocage global (`/admin/blacklist`), renseigné = blocage scopé à un hôte (déclenché depuis le formulaire de feedback). Le check dans `/api/visit-requests` matche les deux. |
@@ -510,8 +651,8 @@ Mis à jour manuellement à chaque PR significative.
 | Vue générale admin (Briefing factuel) | ✅ | `/admin/stats` | Refonte 2026-05-07 (v0.1.7.0) : 4 sections sobres (action queue Camille / témoignages récents / max 5 ambassades à vérifier / snapshot footer). Helpers : `lib/admin/event-window.ts`, `lib/admin/stats-helpers.ts`, `lib/admin/context-label.ts`. Tracking : `lib/admin/page-view-log.ts` (stdout JSON, Vercel logs). Pivot post-CEO/Codex : pas de narrative pastoral templaté en V1 — mesurer l'usage avant d'enrichir (cf TODO-22). |
 | Multi-admin (gestion équipe) | ✅ | `POST/DELETE /api/admin/team` | Requiert `super_admin`. UI dans `/admin/team` |
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
-| Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
-| Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
+| Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif). QA UX 2026-08-07 : la page vérifie désormais `live_feedbacks` **avant** d'afficher le formulaire — un visiteur qui reclique son lien voit « Vous avez déjà donné votre avis » au lieu de tout ressaisir pour finir sur un « Feedback déjà soumis » rouge (la contrainte `live_feedbacks_unique` rejetait l'insert, la saisie était perdue). Étoiles : pattern `radiogroup` complet (un seul arrêt de tabulation par critère, navigation aux flèches, 44px) — il en fallait 20 pour traverser le formulaire. |
+| Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | Écrit deux traces (`campaign_recipients.status='unsubscribed'` + `contact_requests.visitor_notifications_optin=false`), **toutes deux relues** par `getUnsubscribedEmails()` avant chaque envoi. Jusqu'au 2026-08-07 aucune n'était consultée : le lien de désabonnement était décoratif, le visiteur recevait la campagne suivante. |
 | Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo (requise). Room = max 5, append, au moins 1 requise (garde côté API `PATCH /api/ambassadeur/enrichissement`, 2026-08-07). Le questionnaire de validation expose les deux. |
 | Signalement photo visiteur (côté hôte) | ⚠️ | `POST /api/dashboard/report-visitor-photo` | **Bouton masqué dans `/dashboard`** (2026-08-05, TODO-25) — la route met `visitor_profiles.photo_reported = true` mais aucun flux ne l'exploite (pas de page admin, pas de blocage auto). Réactiver le bouton une fois qu'un flux admin (page dédiée ou intégration à `/admin/blacklist`) consomme ce flag. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |

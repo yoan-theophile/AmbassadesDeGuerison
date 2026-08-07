@@ -133,6 +133,17 @@ Deux mécanismes orthogonaux : **suspendre une ambassade** (`host_profiles.statu
 
 Voir [app/api/visit-requests/route.ts](app/api/visit-requests/route.ts) et [app/api/visitor-help-request/route.ts](app/api/visitor-help-request/route.ts).
 
+## Transparence des données visiteur (RGPD)
+
+Page `/confidentialite` + légendes inline, ajoutées le 2026-08-07 (TODO-23). Détail complet : ARCHITECTURE.md § Transparence des données. Deux règles à ne pas défaire :
+
+- **Tout champ collecté dit sa finalité à côté du champ** (`text-xs text-slate-400 mt-2` sous l'input). Modèle : la légende de la photo (finalité + destinataire + non-publication). Un audit a trouvé que la photo — facultative — était bien expliquée alors que le **téléphone, seul champ obligatoire**, n'avait aucune légende.
+- **`visitor_notifications_optin` est initialisé à `false`**, dans `ContactForm.tsx` *et* `VisitRequestForm.tsx`. Ce n'est pas un arbitrage produit : une case pré-cochée ne vaut pas consentement (CJUE, 1er oct. 2019 — le RGPD exige un acte positif clair). Ne jamais repasser à `true` pour gonfler le volume d'inscrits.
+
+`app/confidentialite/page.tsx` porte **3 placeholders `[À COMPLÉTER]`** (entité juridique, adresse du siège, e-mail de contact) laissés volontairement visibles — une valeur plausible mais inventée passerait la relecture sans être corrigée. Ils bloquent la publication publique, pas le développement.
+
+Les durées de conservation annoncées sur la page **ne sont appliquées par aucune purge automatique** — écart à combler avant un lancement public.
+
 ## Règles importantes
 
 - `lib/supabase/server.ts` (service_role) : JAMAIS importé depuis un Client Component

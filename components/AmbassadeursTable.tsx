@@ -2,7 +2,11 @@
 
 import React, { useState, useTransition, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, ChevronUp, User, Flower2, X, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Flower2, X, ChevronLeft, ChevronRight, AlertCircle, Info } from 'lucide-react';
+import { apiCall } from '@/lib/admin/api-call';
+import { questionnaireGaps, type QuestionnaireGaps } from '@/lib/admin/questionnaire-gaps';
+import ErrorMessage from '@/components/admin/ErrorMessage';
+import ConfirmDialog, { type ConfirmSpec } from '@/components/admin/ConfirmDialog';
 
 interface Ambassadeur {
   id: string;
@@ -36,13 +40,17 @@ interface Props {
   filterStatus: string;
 }
 
+// Audit admin 2026-08-07 (2.6) : « Inscrit » et « Questionnaire » ne disaient
+// ni ce qu'on attend, ni de qui. Un nouvel admin ne pouvait pas deviner que
+// pour `pending_review` la balle est dans le camp du candidat (transition
+// self-service), tandis que `enrichment_pending` attend une décision de sa part.
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  validated:          { label: 'Validé',                className: 'bg-emerald-50 text-emerald-700' },
-  pending_review:     { label: 'Inscrit',             className: 'bg-amber-50 text-amber-700'    },
-  pre_approved:       { label: 'Conditions acceptées',  className: 'bg-blue-50 text-blue-700'      },
-  enrichment_pending: { label: 'Questionnaire',         className: 'bg-purple-50 text-purple-700'  },
-  suspended:          { label: 'Suspendu',              className: 'bg-red-50 text-red-700'        },
-  rejected:           { label: 'Refusé',                className: 'bg-slate-100 text-slate-500'   },
+  validated:          { label: 'Validé',                 className: 'bg-emerald-50 text-emerald-700' },
+  pending_review:     { label: 'En attente du candidat', className: 'bg-amber-50 text-amber-700'    },
+  pre_approved:       { label: 'Questionnaire en cours', className: 'bg-blue-50 text-blue-700'      },
+  enrichment_pending: { label: 'À valider',              className: 'bg-purple-50 text-purple-700'  },
+  suspended:          { label: 'Suspendu',               className: 'bg-red-50 text-red-700'        },
+  rejected:           { label: 'Refusé',                 className: 'bg-slate-100 text-slate-500'   },
 };
 
 // La transition pending_review → pre_approved est self-service (le candidat l'effectue depuis /dashboard).
@@ -70,13 +78,13 @@ const CHURCH_ATTENDANCE_LABELS: Record<string, string> = {
 };
 
 const FILTERS = [
-  { value: 'all',              label: 'Tous'          },
-  { value: 'pending_review',   label: 'Inscrit'     },
-  { value: 'pre_approved',     label: 'Conditions acceptées' },
-  { value: 'enrichment_pending', label: 'Questionnaire' },
-  { value: 'validated',        label: 'Validés'       },
-  { value: 'suspended',        label: 'Suspendus'     },
-  { value: 'rejected',         label: 'Refusés'       },
+  { value: 'all',                label: 'Tous'                  },
+  { value: 'enrichment_pending', label: 'À valider'             },
+  { value: 'pending_review',     label: 'En attente du candidat' },
+  { value: 'pre_approved',       label: 'Questionnaire en cours' },
+  { value: 'validated',          label: 'Validés'               },
+  { value: 'suspended',          label: 'Suspendus'             },
+  { value: 'rejected',           label: 'Refusés'               },
 ];
 
 // Signal pastoral : ce que Camille regarde en premier pour juger l'engagement spirituel du candidat.
@@ -154,14 +162,33 @@ function QuestionnairPanel({ a }: { a: Ambassadeur }) {
   );
 }
 
-// Signal rapide pour Camille : un dossier "Questionnaire" sans photo du lieu ou sans texte de
-// parcours spirituel demande une relance avant validation — visible sans déplier la ligne.
-function questionnaireGaps(a: Ambassadeur): string[] {
-  const gaps: string[] = [];
-  if (!a.profile_photo_signed_url) gaps.push('photo de profil manquante');
-  if (a.room_photo_signed_urls.length === 0) gaps.push('photo du lieu manquante');
-  if (!a.parcours_spirituel) gaps.push('parcours spirituel vide');
-  return gaps;
+// Badge de complétude — rouge si le dossier ne peut pas être validé en l'état,
+// gris si l'information manquante est seulement utile au discernement.
+// Logique dans lib/admin/questionnaire-gaps.ts (testée unitairement).
+function GapsBadge({ gaps }: { gaps: QuestionnaireGaps }) {
+  if (gaps.blocking.length > 0) {
+    return (
+      <span
+        title={`Validation impossible : ${gaps.blocking.join(', ')}`}
+        className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-red-100"
+      >
+        <AlertCircle className="w-2.5 h-2.5" />
+        {gaps.blocking.length} photo{gaps.blocking.length > 1 ? 's' : ''} manquante{gaps.blocking.length > 1 ? 's' : ''}
+      </span>
+    );
+  }
+  if (gaps.informational.length > 0) {
+    return (
+      <span
+        title={gaps.informational.join(', ')}
+        className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+      >
+        <Info className="w-2.5 h-2.5" />
+        Parcours non renseigné
+      </span>
+    );
+  }
+  return null;
 }
 
 // Lightbox : navigation clavier + clic-hors-zone, pas de lib externe pour une seule vue.
@@ -254,6 +281,8 @@ function AmbassadeurCard({
   onToggleExpand,
   onAction,
   onOpenLightbox,
+  error,
+  notice,
 }: {
   a: Ambassadeur;
   displayStatus: string;
@@ -262,6 +291,8 @@ function AmbassadeurCard({
   onToggleExpand: () => void;
   onAction: (action: string) => void;
   onOpenLightbox: (photos: { url: string; label: string }[], index: number) => void;
+  error?: string;
+  notice?: string;
 }) {
   const s = STATUS_LABELS[displayStatus] ?? { label: displayStatus, className: 'bg-slate-50 text-slate-600' };
   const gaps = questionnaireGaps(a);
@@ -308,15 +339,7 @@ function AmbassadeurCard({
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
               {s.label}
             </span>
-            {displayStatus === 'enrichment_pending' && gaps.length > 0 && (
-              <span
-                title={`À relancer : ${gaps.join(', ')}`}
-                className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-100"
-              >
-                <AlertCircle className="w-2.5 h-2.5" />
-                {gaps.length} manquant{gaps.length > 1 ? 's' : ''}
-              </span>
-            )}
+            {displayStatus === 'enrichment_pending' && <GapsBadge gaps={gaps} />}
           </div>
         </div>
         {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
@@ -374,21 +397,31 @@ function AmbassadeurCard({
           </div>
 
           {displayStatus === 'enrichment_pending' && (
-            <div className="sticky bottom-0 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm flex gap-2">
-              <button
-                onClick={() => onAction('validated')}
-                disabled={isLoading}
-                className="px-4 py-2.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
-              >
-                {isLoading ? '…' : 'Valider le questionnaire'}
-              </button>
-              <button
-                onClick={() => onAction('rejected')}
-                disabled={isLoading}
-                className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
-              >
-                {isLoading ? '…' : 'Refuser'}
-              </button>
+            <div className="sticky bottom-0 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm space-y-2">
+              {gaps.blocking.length > 0 && (
+                <p className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+                  Validation impossible : {gaps.blocking.join(', ')}. Le candidat doit compléter son questionnaire.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onAction('validated')}
+                  disabled={isLoading || gaps.blocking.length > 0}
+                  className="px-4 py-2.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors font-medium"
+                >
+                  {isLoading ? '…' : 'Valider le questionnaire'}
+                </button>
+                <button
+                  onClick={() => onAction('rejected')}
+                  disabled={isLoading}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
+                >
+                  {isLoading ? '…' : 'Refuser'}
+                </button>
+              </div>
+              {/* Audit 2.3 : rien n'indiquait qu'une validation ou un refus
+                  envoie un e-mail au candidat. */}
+              <p className="text-[11px] text-slate-400">Ces deux actions envoient un e-mail au candidat.</p>
             </div>
           )}
 
@@ -405,6 +438,11 @@ function AmbassadeurCard({
                 </button>
               ))}
             </div>
+          )}
+
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {notice && (
+            <p className="text-sm text-slate-700 bg-slate-100 border border-slate-200 px-3 py-2 rounded-lg">{notice}</p>
           )}
         </div>
       )}
@@ -428,6 +466,10 @@ export default function AmbassadeursTable({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: { url: string; label: string }[]; index: number } | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notices, setNotices] = useState<Record<string, string>>({});
+  const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -447,18 +489,101 @@ export default function AmbassadeursTable({
     navigate({ q: search, page: '1' });
   }
 
-  async function handleAction(id: string, action: string) {
-    setActionLoading(id);
-    const res = await fetch(`/api/admin/ambassadeurs/${id}/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+  async function runAction(a: Ambassadeur, action: string) {
+    setActionLoading(a.id);
+    setErrors((e) => ({ ...e, [a.id]: '' }));
+    setNotices((n) => ({ ...n, [a.id]: '' }));
+
+    const res = await apiCall<{ status: string }>(`/api/admin/ambassadeurs/${a.id}/status`, {
+      body: { action },
     });
+
     if (res.ok) {
-      const data = await res.json();
-      setStatusOverrides((prev) => ({ ...prev, [id]: data.status }));
+      setStatusOverrides((prev) => ({ ...prev, [a.id]: res.data.status }));
+      // Audit 2.8 : l'override local seul laissait la liste désynchronisée du
+      // filtre actif (une ligne validée restait affichée sous « À valider »).
+      // `router.refresh()` conserve l'URL — donc le filtre et la page.
+      startTransition(() => router.refresh());
+
+      // Audit 2.4 : « Réactiver » a deux comportements silencieusement
+      // différents selon la complétude du dossier. L'admin s'attendait à
+      // remettre l'ambassadeur sur la carte et obtenait un statut « À valider »
+      // sans explication.
+      if (action === 'reactiver') {
+        setNotices((n) => ({
+          ...n,
+          [a.id]: res.data.status === 'validated'
+            ? `${a.first_name} est de nouveau visible sur la carte. Un e-mail de confirmation lui a été envoyé.`
+            : `Dossier incomplet : ${a.first_name} doit d'abord compléter son questionnaire (photos). Aucun e-mail envoyé.`,
+        }));
+      }
+    } else {
+      // Audit 2.1 : l'échec était avalé. L'API refuse pourtant `validated` hors
+      // `enrichment_pending` avec un message explicite qui n'était jamais montré.
+      setErrors((e) => ({ ...e, [a.id]: res.error }));
     }
     setActionLoading(null);
+  }
+
+  // Les actions visibles publiquement ou envoyant un e-mail passent par une
+  // confirmation (audit 2.2, 2.3, T.1 et T.3). « Valider » en est exempt :
+  // c'est l'issue attendue d'un dossier examiné, et elle reste réversible via
+  // « Suspendre ».
+  function handleAction(a: Ambassadeur, action: string) {
+    const name = `${a.first_name} ${a.last_name}`;
+
+    if (action === 'rejected') {
+      setConfirm({
+        title: `Refuser la candidature de ${name} ?`,
+        body: 'Le dossier passera au statut « Refusé ». Vous pourrez le réintégrer plus tard depuis le filtre « Refusés ».',
+        emailNotice: `Un e-mail de refus sera envoyé à ${a.email}. Cet envoi est immédiat et irréversible.`,
+        confirmLabel: 'Refuser la candidature',
+        onConfirm: async () => {
+          setConfirmBusy(true);
+          await runAction(a, action);
+          setConfirmBusy(false);
+          setConfirm(null);
+        },
+      });
+      return;
+    }
+
+    if (action === 'suspended') {
+      setConfirm({
+        title: `Suspendre l'ambassade de ${name} ?`,
+        body: 'Elle disparaîtra immédiatement de la carte publique et ne recevra plus de demandes de visite.',
+        confirmLabel: 'Suspendre',
+        onConfirm: async () => {
+          setConfirmBusy(true);
+          await runAction(a, action);
+          setConfirmBusy(false);
+          setConfirm(null);
+        },
+      });
+      return;
+    }
+
+    if (action === 'reactiver') {
+      const complete = !!a.profile_photo_signed_url && a.room_photo_signed_urls.length > 0;
+      setConfirm({
+        title: `Réintégrer ${name} ?`,
+        body: complete
+          ? 'Le dossier est complet : l\'ambassade redeviendra visible sur la carte au prochain live.'
+          : 'Le dossier est incomplet (photos manquantes). Le candidat sera renvoyé vers son questionnaire, pas vers la carte.',
+        emailNotice: complete ? `Un e-mail de bienvenue sera envoyé à ${a.email}.` : undefined,
+        tone: 'primary',
+        confirmLabel: 'Réintégrer',
+        onConfirm: async () => {
+          setConfirmBusy(true);
+          await runAction(a, action);
+          setConfirmBusy(false);
+          setConfirm(null);
+        },
+      });
+      return;
+    }
+
+    void runAction(a, action);
   }
 
   return (
@@ -469,7 +594,7 @@ export default function AmbassadeursTable({
           placeholder="Rechercher par nom, e-mail, ville…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+          className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent bg-white"
         />
         <button
           type="submit"
@@ -498,6 +623,17 @@ export default function AmbassadeursTable({
         </span>
       </div>
 
+      {/* Audit 2.6 : un nouvel admin ne pouvait pas deviner quelles étapes du
+          pipeline demandent une action de sa part et lesquelles avancent seules. */}
+      <p className="flex items-start gap-2 text-xs text-slate-500 bg-slate-100/70 px-3 py-2 rounded-lg">
+        <Info className="w-3.5 h-3.5 mt-px shrink-0 text-slate-400" />
+        <span>
+          Le candidat avance seul jusqu'au statut <strong className="font-medium">« À valider »</strong> : il accepte
+          les conditions, puis remplit son questionnaire. C'est à ce moment seulement que vous examinez son dossier et
+          décidez.
+        </span>
+      </p>
+
       {initial.length === 0 ? (
         <p className="text-sm text-slate-400 py-8 text-center">Aucun ambassadeur dans cette catégorie.</p>
       ) : (
@@ -515,7 +651,9 @@ export default function AmbassadeursTable({
                   isExpanded={expandedId === a.id}
                   isLoading={actionLoading === a.id}
                   onToggleExpand={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                  onAction={(action) => handleAction(a.id, action)}
+                  onAction={(action) => handleAction(a, action)}
+                  error={errors[a.id]}
+                  notice={notices[a.id]}
                   onOpenLightbox={(photos, index) => setLightbox({ photos, index })}
                 />
               );
@@ -531,10 +669,15 @@ export default function AmbassadeursTable({
                   <th className="text-left px-4 py-3 font-medium">Nom</th>
                   <th className="text-left px-4 py-3 font-medium">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium">Ville / Pays</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
-                  <th className="text-left px-4 py-3 font-medium">Cap.</th>
+                  {/* Type, capacité et date d'inscription restent lisibles dans
+                      le panneau déplié — les masquer sous 1280px garde la
+                      colonne « Action » à l'écran sans scroll horizontal
+                      (constaté sur un portable 1056px : 290px de débordement,
+                      l'action se retrouvait hors champ). */}
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Type</th>
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Cap.</th>
                   <th className="text-left px-4 py-3 font-medium">Statut</th>
-                  <th className="text-left px-4 py-3 font-medium">Inscription</th>
+                  <th className="text-left px-4 py-3 font-medium hidden xl:table-cell">Inscription</th>
                   <th className="text-left px-4 py-3 font-medium">Action</th>
                 </tr>
               </thead>
@@ -585,41 +728,36 @@ export default function AmbassadeursTable({
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{a.email}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{a.city}, {a.country}</td>
-                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
-                        <td className="px-4 py-3 text-slate-500">{a.capacity ?? '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap hidden xl:table-cell">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
+                        <td className="px-4 py-3 text-slate-500 hidden xl:table-cell">{a.capacity ?? '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
                               {s.label}
                             </span>
-                            {displayStatus === 'enrichment_pending' && gaps.length > 0 && (
-                              <span
-                                title={`À relancer : ${gaps.join(', ')}`}
-                                className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-100"
-                              >
-                                <AlertCircle className="w-2.5 h-2.5" />
-                                {gaps.length} manquant{gaps.length > 1 ? 's' : ''}
-                              </span>
-                            )}
+                            {displayStatus === 'enrichment_pending' && <GapsBadge gaps={gaps} />}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap hidden xl:table-cell">
                           {new Date(a.created_at).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5 flex-wrap">
                             {displayStatus === 'enrichment_pending' ? (
+                              // Audit 2.7 : « Voir ↓ » ne se lisait pas comme une
+                              // action, alors que c'est la seule ligne de la
+                              // colonne « Action » qui en demande vraiment une.
                               <button
                                 onClick={() => setExpandedId(isExpanded ? null : a.id)}
-                                className="text-xs px-2.5 py-1 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors whitespace-nowrap"
+                                className="text-xs px-2.5 py-1 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors whitespace-nowrap font-medium"
                               >
-                                {isExpanded ? 'Réduire' : 'Voir ↓'}
+                                {isExpanded ? 'Réduire' : 'Examiner le dossier'}
                               </button>
                             ) : (
                               (STATUS_ACTIONS[displayStatus] ?? []).map((act) => (
                                 <button
                                   key={act.action}
-                                  onClick={() => handleAction(a.id, act.action)}
+                                  onClick={() => handleAction(a, act.action)}
                                   disabled={isLoading}
                                   className={`text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap ${act.className}`}
                                 >
@@ -630,6 +768,21 @@ export default function AmbassadeursTable({
                           </div>
                         </td>
                       </tr>
+                      {/* Une action de ligne (Suspendre, Réintégrer) peut échouer
+                          sans que le panneau soit déplié — l'erreur doit rester
+                          visible dans ce cas aussi (audit 2.1). */}
+                      {!isExpanded && (errors[a.id] || notices[a.id]) && (
+                        <tr>
+                          <td colSpan={9} className="px-4 pb-3 bg-slate-50/60">
+                            {errors[a.id] && <ErrorMessage>{errors[a.id]}</ErrorMessage>}
+                            {notices[a.id] && (
+                              <p className="text-sm text-slate-700 bg-slate-100 border border-slate-200 px-3 py-2 rounded-lg">
+                                {notices[a.id]}
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
                       {isExpanded && (
                         <tr>
                           <td colSpan={9} className="px-6 pb-5 pt-3 bg-slate-50/60 border-b border-slate-100">
@@ -674,22 +827,37 @@ export default function AmbassadeursTable({
                                 <QuestionnairPanel a={a} />
                               </div>
                               {displayStatus === 'enrichment_pending' && (
-                                <div className="sticky bottom-0 mt-4 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm flex gap-2">
-                                  <button
-                                    onClick={() => handleAction(a.id, 'validated')}
-                                    disabled={isLoading}
-                                    className="px-4 py-2 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
-                                  >
-                                    {isLoading ? '…' : 'Valider le questionnaire'}
-                                  </button>
-                                  <button
-                                    onClick={() => handleAction(a.id, 'rejected')}
-                                    disabled={isLoading}
-                                    className="px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
-                                  >
-                                    {isLoading ? '…' : 'Refuser'}
-                                  </button>
+                                <div className="sticky bottom-0 mt-4 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm space-y-2">
+                                  {gaps.blocking.length > 0 && (
+                                    <p className="text-xs text-red-700 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+                                      Validation impossible : {gaps.blocking.join(', ')}. Le candidat doit compléter son questionnaire.
+                                    </p>
+                                  )}
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleAction(a, 'validated')}
+                                      disabled={isLoading || gaps.blocking.length > 0}
+                                      className="px-4 py-2 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors font-medium"
+                                    >
+                                      {isLoading ? '…' : 'Valider le questionnaire'}
+                                    </button>
+                                    <button
+                                      onClick={() => handleAction(a, 'rejected')}
+                                      disabled={isLoading}
+                                      className="px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
+                                    >
+                                      {isLoading ? '…' : 'Refuser'}
+                                    </button>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400">Ces deux actions envoient un e-mail au candidat.</p>
                                 </div>
+                              )}
+
+                              {errors[a.id] && <ErrorMessage>{errors[a.id]}</ErrorMessage>}
+                              {notices[a.id] && (
+                                <p className="text-sm text-slate-700 bg-slate-100 border border-slate-200 px-3 py-2 rounded-lg">
+                                  {notices[a.id]}
+                                </p>
                               )}
                             </div>
                           </td>
@@ -733,6 +901,8 @@ export default function AmbassadeursTable({
           onNavigate={(index) => setLightbox((prev) => (prev ? { ...prev, index } : prev))}
         />
       )}
+
+      <ConfirmDialog spec={confirm} onCancel={() => setConfirm(null)} pending={confirmBusy} />
     </div>
   );
 }

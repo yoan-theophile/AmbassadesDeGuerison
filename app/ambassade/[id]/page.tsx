@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import ContactForm from './ContactForm';
 import AppHeader from '@/components/AppHeader';
 import { Home, Users, ExternalLink, Flower2 } from 'lucide-react';
+import { de } from '@/lib/elision';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ export default async function AmbassadePage({ params }: Props) {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-slate-800">
-                Ambassade de {host.first_name}
+                Ambassade {de(host.first_name)}
               </h1>
               <p className="text-slate-500 text-sm">{host.city}, {host.country}</p>
               {host.quartier && (

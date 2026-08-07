@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUsersByEmail } from '@/lib/auth/list-all-users';
 import { sendRegistrationConfirmation, sendNouvelleInscriptionAdmin } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
 
@@ -93,8 +94,13 @@ export async function POST(req: NextRequest) {
     if (!authError.message.toLowerCase().includes('already')) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existingUser = existingUsers?.users.find((u) => u.email === email);
+    // Paginé : `listUsers()` seul s'arrête à 50 comptes. Sur une base plus
+    // grande, le compte existant (qui vient pourtant de provoquer l'erreur
+    // « already registered ») restait introuvable et `userId` nul — le profil
+    // ambassadeur était alors créé orphelin, sans compte auth rattaché
+    // (trouvé 2026-08-07).
+    const byEmail = await getAuthUsersByEmail(supabase);
+    const existingUser = byEmail.get(email.toLowerCase());
     userId = existingUser?.id;
 
     // Cas visiteur devenant ambassadeur avec le même e-mail (trouvé par /qa,

@@ -1,12 +1,13 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Camera, Loader2, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import PhoneInput from '@/components/ui/PhoneInput';
 import { isValidPhoneNumber } from 'react-phone-number-input';
+import { createClient } from '@/lib/supabase/browser';
 
 type EmailStatus = 'idle' | 'checking' | 'new' | 'visitor_existing' | 'collision';
 
@@ -16,6 +17,24 @@ function CreerCompteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
+
+  // Un visiteur déjà connecté qui atterrit ici (lien partagé, retour en
+  // arrière) n'a rien à créer — le renvoyer directement plutôt que de lui
+  // montrer un formulaire dont la soumission échouerait sur son propre
+  // e-mail (trouvé en QA 2026-07-29, TODO-24).
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.user_metadata?.role === 'visitor') {
+        const target = redirect && redirect.startsWith('/') ? redirect : '/mon-espace';
+        router.replace(target);
+        return;
+      }
+      setCheckingSession(false);
+    });
+  }, [redirect, router]);
 
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -117,6 +136,17 @@ function CreerCompteContent() {
     firstName.trim() && email.trim() && isValidPhoneNumber(phone) &&
     emailStatus !== 'collision' && emailStatus !== 'visitor_existing' && !submitting;
 
+  if (checkingSession) {
+    return (
+      <>
+        <AppHeader />
+        <main className="flex-1 flex items-center justify-center bg-slate-50">
+          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <AppHeader />
@@ -188,16 +218,27 @@ function CreerCompteContent() {
                     Merci d'utiliser une autre adresse pour votre compte visiteur.
                   </div>
                 )}
+
+                {emailStatus !== 'collision' && emailStatus !== 'visitor_existing' && (
+                  <p className="text-xs text-slate-400 mt-2">
+                    Sert à vous connecter et à recevoir la réponse de l'ambassadeur.
+                  </p>
+                )}
               </div>
 
-              <PhoneInput
-                label="Téléphone"
-                id="visitor-account-phone"
-                required
-                value={phone}
-                onChange={setPhone}
-                placeholder="+33 6 12 34 56 78"
-              />
+              <div>
+                <PhoneInput
+                  label="Téléphone"
+                  id="visitor-account-phone"
+                  required
+                  value={phone}
+                  onChange={setPhone}
+                  placeholder="+33 6 12 34 56 78"
+                />
+                <p className="text-xs text-slate-400 mt-2">
+                  Permet à l'ambassadeur de vous joindre s'il accepte votre demande — jamais affiché publiquement.
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -250,6 +291,14 @@ function CreerCompteContent() {
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Créer mon compte
               </button>
+
+              <p className="text-center text-xs text-slate-400">
+                En créant votre compte, vous acceptez notre{' '}
+                <Link href="/confidentialite" className="text-indigo-600 hover:underline">
+                  politique de confidentialité
+                </Link>
+                .
+              </p>
 
               <p className="text-center text-xs text-slate-400">
                 Déjà un compte ? <Link href="/auth" className="text-indigo-600 hover:underline">Se connecter</Link>

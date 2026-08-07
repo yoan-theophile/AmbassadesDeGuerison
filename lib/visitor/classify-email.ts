@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUsersByEmail } from '@/lib/auth/list-all-users';
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -28,9 +29,12 @@ export async function classifyVisitorEmail(
     .maybeSingle();
   if (hostProfile) return 'collision';
 
-  const { data: usersData } = await supabase.auth.admin.listUsers();
-  const existingUser = usersData?.users.find((u) => u.email === email);
-  if (existingUser) return 'collision';
+  // Pagination obligatoire : `listUsers()` sans argument s'arrête à 50 comptes.
+  // Sans ça, une adresse déjà prise au-delà du 50e compte était classée 'new',
+  // et la création de compte visiteur échouait ensuite côté Supabase avec une
+  // erreur brute au lieu du message de collision prévu (trouvé 2026-08-07).
+  const byEmail = await getAuthUsersByEmail(supabase);
+  if (byEmail.has(email.toLowerCase())) return 'collision';
 
   return 'new';
 }

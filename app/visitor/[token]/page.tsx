@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import { CheckCircle2, Clock, MapPin, AlertCircle } from 'lucide-react';
 import { formatEventDateDual } from '@/lib/format-event-date';
+import { de } from '@/lib/elision';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -78,7 +79,7 @@ export default async function VisitorConfirmationPage({ params }: Props) {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Votre demande</p>
               <p className="text-slate-800 font-medium text-sm">{event.title}</p>
-              <p className="text-slate-500 text-xs mt-0.5">{eventDate} — ambassade de {host?.first_name}, {host?.city}</p>
+              <p className="text-slate-500 text-xs mt-0.5">{eventDate} — ambassade {de(host?.first_name)}, {host?.city}</p>
             </div>
           )}
 

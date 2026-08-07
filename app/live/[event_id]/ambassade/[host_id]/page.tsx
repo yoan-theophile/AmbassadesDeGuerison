@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/AppHeader';
 import VisitRequestForm from './VisitRequestForm';
 import { formatEventDateDual } from '@/lib/format-event-date';
+import { de } from '@/lib/elision';
 
 interface Props {
   params: Promise<{ event_id: string; host_id: string }>;
@@ -46,7 +47,7 @@ export default async function VisitRequestPage({ params }: Props) {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Live · {eventDate}</p>
             <h1 className="text-lg font-semibold text-slate-800 mb-0.5">
-              Ambassade de {host.first_name}
+              Ambassade {de(host.first_name)}
             </h1>
             <p className="text-slate-500 text-sm">{host.city}, {host.country}</p>
             {host.quartier && (

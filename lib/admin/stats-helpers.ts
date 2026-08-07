@@ -9,27 +9,39 @@ import { computeContextLabel, type ContextLabel } from '@/lib/admin/context-labe
 // ─────────────────────────────────────────────────────────────────────
 
 export type ActionQueue = {
-  pendingCandidates: number;
+  /** `enrichment_pending` — dossiers complets qui attendent une décision admin. */
+  questionnairesToReview: number;
+  /** `pending_review` — informatif : la balle est dans le camp du candidat. */
+  awaitingCandidate: number;
   testimonialsPending: number;
   feedbackReports: number;
 };
 
+// Audit admin 2026-08-07 (1.1) : la file ne comptait que `pending_review` sous
+// le libellé « candidats en attente ». Or cette transition est exclusivement
+// self-service — l'admin n'a rien à y faire, c'est au candidat d'accepter les
+// conditions. Les dossiers qui attendent réellement une décision admin
+// (`enrichment_pending`) n'apparaissaient nulle part : Camille cliquait sur
+// « 3 candidats en attente », tombait sur des lignes dont la seule action était
+// « Refuser », et ratait les questionnaires à valider.
 export async function getActionQueue(): Promise<ActionQueue> {
   const supabase = createServiceClient();
   try {
-    const [candidates, testimonials, reports] = await Promise.all([
+    const [toReview, awaitingCandidate, testimonials, reports] = await Promise.all([
+      supabase.from('host_profiles').select('id', { count: 'exact', head: true }).eq('status', 'enrichment_pending'),
       supabase.from('host_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_review'),
       supabase.from('testimonials').select('id', { count: 'exact', head: true }).eq('is_visible', false),
       supabase.from('live_feedbacks').select('id', { count: 'exact', head: true }).eq('reported', true).eq('report_status', 'pending'),
     ]);
     return {
-      pendingCandidates: candidates.count ?? 0,
+      questionnairesToReview: toReview.count ?? 0,
+      awaitingCandidate: awaitingCandidate.count ?? 0,
       testimonialsPending: testimonials.count ?? 0,
       feedbackReports: reports.count ?? 0,
     };
   } catch (e) {
     console.warn('[stats-helpers] getActionQueue failed', e);
-    return { pendingCandidates: 0, testimonialsPending: 0, feedbackReports: 0 };
+    return { questionnairesToReview: 0, awaitingCandidate: 0, testimonialsPending: 0, feedbackReports: 0 };
   }
 }
 
