@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCampagneAmbassadeurs, sendCampagneVisiteurs } from '@/lib/email/templates';
 import { formatEventDateDual } from '@/lib/format-event-date';
+import { getUnsubscribedEmails } from '@/lib/campaigns/unsubscribed';
 
 const BATCH_SIZE = 50;
 
@@ -28,8 +29,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ dispatched: 0 });
   }
 
+  // Une seule lecture pour tout le run : la liste des désabonnés ne change pas
+  // pendant les quelques secondes du dispatch.
+  const unsubscribed = await getUnsubscribedEmails(supabase);
+
   let totalSent = 0;
-  const results: { campaign_id: string; sent: number; error?: string }[] = [];
+  const results: { campaign_id: string; sent: number; error?: string; pending?: number }[] = [];
 
   for (const campaign of campaigns) {
     const event = Array.isArray(campaign.events) ? campaign.events[0] : campaign.events;
@@ -40,15 +45,33 @@ export async function POST(req: NextRequest) {
       .eq('id', campaign.id);
 
     try {
-      const sent = await dispatchCampaign(supabase, campaign, event);
+      const sent = await dispatchCampaign(supabase, campaign, event, unsubscribed);
       totalSent += sent;
 
+      // Un destinataire dont l'envoi a échoué reste `pending` avec attempts+1,
+      // pour être retenté au prochain passage du cron. Marquer la campagne
+      // `sent` alors qu'il en reste la sortait définitivement de la sélection
+      // (`status = 'pending'`) : attempts restait bloqué à 1, le seuil
+      // `attempts >= 3 → failed` n'était jamais atteint et le destinataire
+      // n'était jamais réessayé ni signalé (constaté en test le 2026-08-07).
+      const { count: remaining } = await supabase
+        .from('campaign_recipients')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'pending');
+
+      const stillPending = remaining ?? 0;
+      const done = stillPending === 0;
       await supabase
         .from('scheduled_campaigns')
-        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .update(
+          done
+            ? { status: 'sent', sent_at: new Date().toISOString() }
+            : { status: 'pending', last_error: `${stillPending} destinataire(s) en échec, retenté au prochain passage` }
+        )
         .eq('id', campaign.id);
 
-      results.push({ campaign_id: campaign.id, sent });
+      results.push({ campaign_id: campaign.id, sent, ...(done ? {} : { pending: stillPending }) });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       await supabase
@@ -65,7 +88,8 @@ export async function POST(req: NextRequest) {
 async function dispatchCampaign(
   supabase: ReturnType<typeof createServiceClient>,
   campaign: { id: string; type: string; event_id: string; custom_message?: string | null },
-  event: { title: string; event_date: string } | null | undefined
+  event: { title: string; event_date: string } | null | undefined,
+  unsubscribed: Set<string>
 ) {
   if (!event) throw new Error('Événement introuvable');
 
@@ -73,9 +97,9 @@ async function dispatchCampaign(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
   if (campaign.type === 'ambassadeurs') {
-    return dispatchAmbassadeursBatch(supabase, campaign, event.title, eventDate, appUrl);
+    return dispatchAmbassadeursBatch(supabase, campaign, event.title, eventDate, appUrl, unsubscribed);
   } else if (campaign.type === 'visiteurs') {
-    return dispatchVisiteursBatch(supabase, campaign, event.title, eventDate, appUrl);
+    return dispatchVisiteursBatch(supabase, campaign, event.title, eventDate, appUrl, unsubscribed);
   }
   throw new Error(`Type de campagne inconnu : ${campaign.type}`);
 }
@@ -85,7 +109,8 @@ async function dispatchAmbassadeursBatch(
   campaign: { id: string; event_id: string; custom_message?: string | null },
   eventTitle: string,
   eventDate: string,
-  appUrl: string
+  appUrl: string,
+  unsubscribed: Set<string>
 ) {
   let lastId: string | null = null;
   let sent = 0;
@@ -107,6 +132,15 @@ async function dispatchAmbassadeursBatch(
 
     // Bug #2 fix: tracking explicite des failures
     for (const r of recipients) {
+      // Filet de sécurité : le snapshot exclut déjà les désabonnés, mais une
+      // campagne peut être créée avant un désabonnement et envoyée après.
+      if (unsubscribed.has(r.email.toLowerCase())) {
+        await supabase
+          .from('campaign_recipients')
+          .update({ status: 'unsubscribed' })
+          .eq('id', r.id);
+        continue;
+      }
       const activateUrl = `${appUrl}/accueillir/activer/${r.activation_token}`; // Bug #3 fix
       try {
         await sendCampagneAmbassadeurs(
@@ -148,7 +182,8 @@ async function dispatchVisiteursBatch(
   campaign: { id: string; event_id: string },
   eventTitle: string,
   eventDate: string,
-  appUrl: string
+  appUrl: string,
+  unsubscribed: Set<string>
 ) {
   let lastId: string | null = null;
   let sent = 0;
@@ -168,6 +203,13 @@ async function dispatchVisiteursBatch(
     if (!recipients?.length) break;
 
     for (const r of recipients) {
+      if (unsubscribed.has(r.email.toLowerCase())) {
+        await supabase
+          .from('campaign_recipients')
+          .update({ status: 'unsubscribed' })
+          .eq('id', r.id);
+        continue;
+      }
       const unsubUrl = `${appUrl}/unsubscribe/${r.unsubscribe_token}`;
       try {
         await sendCampagneVisiteurs(r.email, r.first_name ?? '', eventTitle, eventDate, unsubUrl);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { fetchAllRows } from '@/lib/supabase/fetch-all';
+import { getUnsubscribedEmails } from '@/lib/campaigns/unsubscribed';
 
 export async function POST(req: NextRequest) {
   const ctx = await requireAdmin(req);
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest) {
   // Snapshot destinataires (atomique : si échoue → supprimer la campagne)
   let recipients: { email: string; first_name: string | null; recipient_type: string }[] = [];
 
+  // Le désabonnement se joue ici, à la constitution du snapshot : une fois la
+  // ligne `campaign_recipients` écrite, le cron de dispatch envoie sans plus
+  // rien revérifier.
+  const unsubscribed = await getUnsubscribedEmails(supabase);
+
   // Pagination obligatoire ici : PostgREST tronque à 1000 lignes en silence.
   // Un snapshot tronqué priverait les ambassadeurs au-delà du 1000e de leur
   // lien d'activation — donc de toute présence sur la carte au prochain live —
@@ -63,11 +69,13 @@ export async function POST(req: NextRequest) {
         .eq('status', 'validated')
         .order('created_at', { ascending: true })
     );
-    recipients = hosts.map((h) => ({
-      email: h.email,
-      first_name: h.first_name,
-      recipient_type: 'ambassador',
-    }));
+    recipients = hosts
+      .filter((h) => !unsubscribed.has(h.email.toLowerCase()))
+      .map((h) => ({
+        email: h.email,
+        first_name: h.first_name,
+        recipient_type: 'ambassador',
+      }));
   } else {
     // visiteurs : contact_requests acceptées pour cet event via host_activations
     const contacts = await fetchAllRows<{ visitor_email: string; visitor_first_name: string | null }>(() =>
@@ -81,6 +89,7 @@ export async function POST(req: NextRequest) {
 
     const seen = new Set<string>();
     for (const c of contacts) {
+      if (unsubscribed.has(c.visitor_email.toLowerCase())) continue;
       if (!seen.has(c.visitor_email)) {
         seen.add(c.visitor_email);
         recipients.push({
