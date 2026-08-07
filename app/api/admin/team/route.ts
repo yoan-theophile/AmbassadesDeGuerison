@@ -23,10 +23,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: listError.message }, { status: 500 });
   }
 
-  const target = users.find(u => u.email === email.trim().toLowerCase());
+  const normalizedEmail = email.trim().toLowerCase();
+  let target = users.find(u => u.email === normalizedEmail);
+
+  // Audit admin 2026-08-07 (8.1) : l'ajout exigeait un compte préexistant, sans
+  // qu'aucun écran n'explique où le créer — et il n'en existait aucun. Le seul
+  // chemin était que la personne se connecte d'abord d'elle-même sur /auth, ce
+  // que rien ne suggérait. Parcours en cul-de-sac.
+  //
+  // On invite désormais l'adresse : Supabase crée le compte et envoie un lien
+  // de connexion. `invited` remonte au client pour que l'UI dise ce qui s'est
+  // réellement passé.
+  let invited = false;
   if (!target) {
-    return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 });
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+      normalizedEmail,
+      { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm` }
+    );
+    if (inviteError || !inviteData?.user) {
+      return NextResponse.json(
+        { error: `Invitation impossible : ${inviteError?.message ?? 'erreur inconnue'}` },
+        { status: 500 }
+      );
+    }
+    target = inviteData.user;
+    invited = true;
   }
+
+  // `role` dans user_metadata est ce que lisent le middleware proxy.ts et
+  // /auth/confirm pour router vers /admin — la table admin_users seule ne
+  // suffirait pas à ouvrir l'accès.
+  await supabase.auth.admin.updateUserById(target.id, {
+    user_metadata: { ...target.user_metadata, role: 'admin' },
+  });
 
   const { error } = await supabase
     .from('admin_users')
@@ -40,10 +69,10 @@ export async function POST(req: NextRequest) {
     action_type: 'admin_grant',
     target_id: target.id,
     admin_id: user.id,
-    notes: `role=${role}`,
+    notes: `role=${role}${invited ? ' (compte créé par invitation)' : ''}`,
   });
 
-  return NextResponse.json({ success: true }, { status: 201 });
+  return NextResponse.json({ success: true, invited, email: normalizedEmail }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -69,6 +98,16 @@ export async function DELETE(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Retirer aussi le rôle dans user_metadata — c'est lui que lisent proxy.ts et
+  // /auth/confirm. Sans ça, la ligne admin_users disparaît mais la personne
+  // continue d'accéder à /admin.
+  const { data: targetUser } = await supabase.auth.admin.getUserById(user_id);
+  if (targetUser?.user) {
+    const meta = { ...targetUser.user.user_metadata };
+    delete meta.role;
+    await supabase.auth.admin.updateUserById(user_id, { user_metadata: meta });
   }
 
   await supabase.from('moderation_log').insert({
