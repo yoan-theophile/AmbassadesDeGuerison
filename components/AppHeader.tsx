@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { UserPlus, MessageSquare } from 'lucide-react';
+import { UserPlus, MessageSquare, LogIn } from 'lucide-react';
 import MonEspaceLink from '@/components/MonEspaceLink';
 
 export default function AppHeader() {
@@ -44,9 +44,10 @@ export default function AppHeader() {
         {showLogin && (
           <Link
             href="/auth"
-            className="flex items-center text-sm px-3 py-2.5 sm:py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-1.5 text-sm px-3 py-2.5 sm:py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
           >
-            Se connecter
+            <LogIn className="w-4 h-4" />
+            <span className="hidden sm:inline">Se connecter</span>
           </Link>
         )}
         <MonEspaceLink
