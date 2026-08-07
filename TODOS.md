@@ -257,7 +257,7 @@ _(TODOs 11-16 convertis en tâches #58-#71 dans TASKS.md — 2026-05-01)_
 **Reste à faire :**
 1. Deux placeholders `[À COMPLÉTER]` dans `app/confidentialite/page.tsx` (entité juridique + adresse postale + e-mail de contact) — **bloque la publication publique**, pas le développement.
 2. Valider les durées proposées avec David (12 mois demandes / 3 ans compte inactif).
-3. ~~Lien accessible depuis chaque page~~ — **corrigé 2026-08-08**. La prémisse ("pas de footer, ça casserait la carte") était fausse : `app/page.tsx` a déjà un footer, le lien y a été ajouté. Reste un angle non couvert : les pages qui n'ont ni ce footer ni ne repassent par la home n'ont le lien qu'à 2 clics (logo → home → footer), pas en direct — acceptable en v1, à revoir si jugé insuffisant.
+3. ~~Lien accessible depuis chaque page~~ — **corrigé 2026-08-08**. La prémisse ("pas de footer, ça casserait la carte") était fausse : `app/page.tsx` a déjà un footer, le lien y a été ajouté. Les pages qui n'ont ni ce footer ni ne repassent par la home n'ont le lien qu'à 2 clics (logo → home → footer), pas en direct — **choix assumé** (2026-08-08) plutôt qu'un oubli : dupliquer le lien dans `AppHeader` rouvrirait un vrai arbitrage (nav mobile déjà serrée en icônes seules sous 640px) pour un gain marginal. À revoir seulement si l'usage réel montre que la home n'est pas le point d'entrée dominant.
 4. Chemin de suppression de compte visiteur (n'existe pas ; la politique renvoie vers l'e-mail de contact, acceptable en v1).
 5. Registre des traitements (obligatoire, document interne — pas du code).
 
