@@ -85,7 +85,7 @@ Flux self-service jusqu'au questionnaire (voir ARCHITECTURE.md § Cycle de vie d
 - **Transition `pending_review → pre_approved`** est exclusivement self-service (`PATCH /api/onboarding/complete`, pas d'email, idempotente). L'action admin `pre_approve` n'existe plus.
 - **Video gate** : la checkbox d'engagement reste désactivée tant que le candidat n'a pas cliqué dans la vidéo YouTube (détection via `blur` + `document.activeElement instanceof HTMLIFrameElement`, helper `buildVideoUrl` dans `lib/youtube.ts`).
 - **`validated_bypass`** reste accepté par l'API comme escape hatch (support/SQL) mais le bouton dédié a été retiré de `/admin/ambassadeurs` — un bypass produit un ambassadeur sans photo ni questionnaire, visible publiquement avec un profil incomplet.
-- `enrichment_pending` requiert `profile_photo_url` non NULL (garde côté API).
+- `enrichment_pending` requiert `profile_photo_url` non NULL et `room_photo_urls` non vide (garde côté API, `PATCH /api/ambassadeur/enrichissement`).
 
 ## Formulaire d'inscription (`/inscription`)
 

@@ -174,6 +174,10 @@ export default function QuestionnairePage() {
       setError('Une photo de profil est requise avant d\'envoyer votre profil.');
       return;
     }
+    if (roomPhotoPaths.length === 0) {
+      setError('Au moins une photo du lieu d\'accueil est requise avant d\'envoyer votre profil.');
+      return;
+    }
     setSubmitting(true);
     setError('');
 
@@ -271,7 +275,7 @@ export default function QuestionnairePage() {
                   className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span className="text-sm text-slate-700">
-                  J'ai suivi le <strong>Défi Guérison</strong> de David Théry
+                  J'ai suivi le <strong>Défi Guérison</strong>
                   <span className="block text-xs text-slate-400 mt-0.5">(formation gratuite en ligne sur la prière pour la guérison)</span>
                 </span>
               </label>
@@ -303,7 +307,7 @@ export default function QuestionnairePage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Dénomination ou courant (optionnel)">
+              <Field label="Dénomination ou courant">
                 <input
                   type="text"
                   value={form.denomination}
@@ -329,7 +333,7 @@ export default function QuestionnairePage() {
                   {form.parcours_spirituel.length}{form.parcours_spirituel.length > 500 ? ' caractères — essaie de rester concis pour faciliter la lecture' : ' / 500 (indicatif)'}
                 </p>
               </Field>
-              <Field label="Livres ou formations qui t'ont marqué (optionnel)">
+              <Field label="Livres ou formations qui t'ont marqué">
                 <textarea
                   value={form.livres_lus}
                   onChange={(e) => set('livres_lus', e.target.value)}
@@ -370,12 +374,12 @@ export default function QuestionnairePage() {
                 )}
               </div>
 
-              {/* Photos du lieu (optionnel, max 5) */}
+              {/* Photos du lieu (requises, max 5) */}
               <div className="space-y-2">
                 <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-                  Photos du lieu d&apos;accueil
+                  Photos du lieu d&apos;accueil <span className="text-red-500 normal-case font-normal">— requises</span>
                   <span className="font-normal text-slate-400 normal-case ml-1">
-                    (optionnel — max 5, {roomPhotoPaths.length}/5)
+                    (max 5, {roomPhotoPaths.length}/5)
                   </span>
                 </p>
                 <p className="text-xs text-slate-500">
@@ -420,15 +424,15 @@ export default function QuestionnairePage() {
               <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
 
-            {!profilePhotoPath && (
+            {(!profilePhotoPath || roomPhotoPaths.length === 0) && (
               <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                Une photo de profil est requise pour soumettre votre profil.
+                Une photo de profil et au moins une photo du lieu d&apos;accueil sont requises pour soumettre votre profil.
               </p>
             )}
 
             <button
               type="submit"
-              disabled={submitting || !profilePhotoPath}
+              disabled={submitting || !profilePhotoPath || roomPhotoPaths.length === 0}
               className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}

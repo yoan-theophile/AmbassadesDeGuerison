@@ -132,7 +132,7 @@ Pipeline self-service jusqu'au questionnaire — l'admin n'intervient qu'à la f
 /dashboard/questionnaire (ambassadeur, accessible dès pre_approved)
   │  Upload photos via POST /api/upload/ambassador-photo (type=profile|room)
   │   - Photo de profil : requise (path stocké dans profile_photo_url)
-  │   - Photos du lieu : optionnel, max 5 (paths dans room_photo_urls[])
+  │   - Photos du lieu : requise (au moins 1), max 5 (paths dans room_photo_urls[])
   │  Suppression d'une photo : DELETE /api/upload/ambassador-photo
   │   (ownership check par préfixe profile.id/)
   │  PATCH /api/ambassadeur/enrichissement
@@ -507,7 +507,7 @@ Mis à jour manuellement à chaque PR significative.
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo (requise). Room = max 5, append, au moins 1 requise (garde côté API `PATCH /api/ambassadeur/enrichissement`, 2026-08-07). Le questionnaire de validation expose les deux. |
 | Signalement photo visiteur (côté hôte) | ⚠️ | `POST /api/dashboard/report-visitor-photo` | **Bouton masqué dans `/dashboard`** (2026-08-05, TODO-25) — la route met `visitor_profiles.photo_reported = true` mais aucun flux ne l'exploite (pas de page admin, pas de blocage auto). Réactiver le bouton une fois qu'un flux admin (page dédiée ou intégration à `/admin/blacklist`) consomme ce flag. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
 | Blacklist | ✅ | `/admin/blacklist` + filtre dans `/api/visit-requests` et `/api/visitor-help-request` | Choix éthique : refus honnête (403) avec message neutre + voie de recours, pas de shadow-ban (faux 201 silencieux). Voir « Modération anti-abus visiteur » dans CLAUDE.md. |
