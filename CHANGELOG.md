@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9.0] - 2026-08-07
+
+### Added
+- **Notification de refus de candidature** (`sendRefusCandidature`) : un candidat refusé reçoit désormais un email — message sobre + raison optionnelle reprise du champ notes admin, plutôt qu'un silence total. Alignement avec le principe déjà en place pour le refus de visite (pas de shadow-ban, David ne laisse jamais un candidat sans réponse).
+
+### Changed
+- **Photo du lieu d'accueil devient obligatoire** au questionnaire d'enrichissement (`/dashboard/questionnaire`) — retrait des mentions "optionnel" côté texte, garde serveur 400 si aucune photo n'est fournie (`PATCH /api/ambassadeur/enrichissement`). Un dossier ambassadeur incomplet (aucune photo du lieu) ne peut plus atteindre l'étape de validation admin.
+- **Ergonomie de validation des dossiers ambassadeur** (`/admin/ambassadeurs`) : nouveau bloc "Engagement spirituel" mis en avant dans le panneau déplié, signal visuel de dossier incomplet (badge "N manquant(s)") visible sans déplier la ligne, lightbox photo avec navigation clavier, et vue carte empilée sous 640px pour éviter le scroll horizontal du tableau à 9 colonnes.
+- **`reactiver` (réintégration depuis suspendu/refusé) revérifie désormais que le dossier est complet** avant de restaurer `validated` — sinon renvoie à `enrichment_pending` sans email. Empêche de valider silencieusement un candidat refusé avant d'avoir jamais complété son questionnaire (même risque que l'escape hatch `validated_bypass`, mais accessible depuis un bouton UI standard).
+- **Échecs d'envoi d'email désormais logués** (`lib/email/send.ts`, `POST /api/inscriptions`) au lieu d'être avalés silencieusement (`.catch(() => {})`) — un envoi Resend ou Mailhog en échec remonte dans les logs serveur avec le destinataire et le sujet.
+
+### Fixed
+- **Bandeau "Live en cours" resté affiché après clôture** : `GET /api/host-activations` excluait déjà `closed_at` pour les pins carte, mais `lib/homepage-data.ts` (bandeau homepage) ne le faisait pas — un live clôturé continuait d'apparaître "en cours" jusqu'au changement de fenêtre horaire.
+- **Placeholders factices retirés du header** et flux de connexion clarifié (`AppHeader`, `MonEspaceLink`).
+- **Formulaire de témoignage remonté au-dessus de la liste des lives** sur le dashboard hôte — l'ancien ordre enterrait le CTA sous une liste qui pouvait être longue.
+- **Bug Mailhog localhost IPv4/IPv6 intermittent documenté et corrigé** : `MAILHOG_SMTP_HOST=localhost` pouvait résoudre vers IPv4 ou IPv6 selon l'environnement (Docker Desktop/WSL2 Windows), causant des échecs d'envoi silencieux et non reproductibles. Fix : forcer `127.0.0.1`, plus un transport SMTP non partagé par envoi (filet de sécurité contre les connexions keep-alive qui traînent fermées).
+
+### Internal
+- **`lib/host-profile.ts`** : nouveau helper partagé `isDossierComplet()` — la logique "photo profil + ≥1 photo lieu" était dupliquée dans 3 fichiers (route admin, dashboard, StatusTimeline), source unique de vérité désormais.
+- 7 nouveaux fichiers de tests unitaires (garde-fous reactiver/enrichissement, template email refus, gestion d'erreur email, événement clôturé, gaps questionnaire) — couverture du diff à 83%, incluant un test de régression sur la transition `reactiver`.
+
+### QA
+- ✅ 232 tests unitaires vitest passent.
+- ✅ Typecheck TypeScript propre.
+- ✅ Review pre-landing (5 findings informationnels, 0 critique) : dette technique dupliquée extraite, doc QA obsolète mise à jour.
+- ✅ Review adversariale (Claude) : aucune vulnérabilité introduite — les changements `reactiver`/`enrichissement` ferment une faille de dossier incomplet pré-existante plutôt que d'en ouvrir une.
+
 ## [0.1.8.0] - 2026-07-28
 
 ### Added
