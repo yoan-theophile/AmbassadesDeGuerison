@@ -108,8 +108,13 @@ MapWrapper (Client Component, SSR:false pour Leaflet)
 ```
 
 **`liveInProgress`** est calculé côté server :
-`lastEvent.event_date ≥ now - NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`
-(défaut 4h). Pas de requête DB supplémentaire.
+`!lastEvent.closed_at && lastEvent.event_date ≥ now - NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`
+(fenêtre par défaut 4h). Pas de requête DB supplémentaire — `closed_at` est sélectionné dans
+la même requête `lastEvent` de `getHomepageData()`. Le check `closed_at` a été ajouté en
+août 2026 (v0.1.9.0) : sans lui, un live clôturé via `/admin/live` (« Clôturer le live »)
+continuait d'afficher le bandeau "Live en cours" sur la homepage jusqu'à la fin de la fenêtre
+horaire, alors que `GET /api/host-activations` (pins carte) excluait déjà ce cas via
+`getCurrentEvent()`.
 
 ---
 

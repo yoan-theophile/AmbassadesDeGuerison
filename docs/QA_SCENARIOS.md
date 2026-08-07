@@ -429,19 +429,35 @@ node scripts/magic-link.js david.thery@demo.fr
 - [ ] Chaque ligne a un chevron (▾/▴) en première colonne
 - [ ] Cliquer le chevron d'un ambassadeur `validated` → panneau s'ouvre
 - [ ] Section "Photos" en haut du panneau : photo de profil (encadrée indigo) + photos du lieu (vue 1, vue 2…) si présentes
-- [ ] Cliquer une vignette → ouvre l'image pleine taille dans un nouvel onglet (signed URL valide 1h)
-- [ ] Section "Questionnaire ambassadeur" en dessous
+- [ ] Cliquer une vignette → ouvre la **lightbox** intégrée (pas un nouvel onglet) : image plein écran, navigation clavier (`←`/`→` entre photos, `Échap` pour fermer), flèches cliquables si plusieurs photos, légende "Vue N du lieu d'accueil — i/N", clic hors-image ferme
+- [ ] Bloc "Engagement spirituel" (fond indigo clair) en tête du panneau : Défi Guérison (Oui/Non), Conférence DT (Oui/Non), fréquentation église si renseignée, parcours spirituel, livres/formations — c'est le signal que Camille regarde en premier
+- [ ] Sous le bloc pastoral : téléphone + dénomination (si renseignés) dans une grille séparée
 - [ ] Si questionnaire non rempli → message "Questionnaire non encore rempli"
-- [ ] Si questionnaire rempli → champs affichés : téléphone, fréquentation église, dénomination, Défi Guérison (Oui/Non), Conférence DT (Oui/Non), parcours spirituel, livres/formations
+
+### Signal de dossier incomplet (badge "N manquant(s)")
+
+- [ ] Un ambassadeur `enrichment_pending` avec un dossier incomplet (photo profil manquante, photo du lieu manquante, ou parcours spirituel vide) affiche un badge ambre "N manquant(s)" à côté du badge de statut, **visible sans déplier la ligne**
+- [ ] Survoler le badge (title) → liste les éléments manquants ("photo de profil manquante", "photo du lieu manquante", "parcours spirituel vide")
+- [ ] Un ambassadeur `enrichment_pending` avec dossier complet → pas de badge
+
+### Vue mobile (<640px)
+
+- [ ] Sous 640px de large, le tableau à 9 colonnes disparaît — remplacé par des **cards empilées** (avatar, nom, ville/pays, badge statut, badge gaps) sans scroll horizontal
+- [ ] Cliquer une card → déplie le même panneau détail que la vue desktop (photos, engagement spirituel, actions)
+- [ ] Au-dessus de 640px (`sm:` et plus) → la vue tableau classique s'affiche, cards masquées
 
 ### Actions par statut
 
 - [ ] Sophie (`pending_review`) → bouton "Refuser" uniquement (la transition vers `pre_approved` est désormais self-service côté candidat — l'admin ne peut pas pré-approuver)
 - [ ] Sophie (`pre_approved`) → bouton "Refuser" uniquement (**pas** de bouton "Valider" standard tant que le questionnaire n'est pas soumis ; le bouton "Valider (bypass)" a été retiré du UI — escape hatch API uniquement)
-- [ ] Sophie (`enrichment_pending`) → boutons "Valider" + "Refuser" + CTA "Valider le questionnaire" dans le panneau détail
+- [ ] Sophie (`enrichment_pending`) → **pas de boutons Valider/Refuser dans la ligne repliée** (retiré — évite de trancher sur un dossier non lu) ; les actions vivent uniquement dans le panneau déplié, en barre sticky en bas
+- [ ] Déplier Sophie (`enrichment_pending`) → panneau avec boutons "Valider" + "Refuser" en bas, sticky (reste visible au scroll dans le panneau)
 - [ ] Marie (`validated`) → bouton "Suspendre"
 - [ ] Marie (`suspended`) → bouton "Réactiver"
 - [ ] Cliquer "Valider" depuis `enrichment_pending` → statut `validated`
+- [ ] Réintégrer un candidat `rejected` **avec dossier complet** (photo profil + ≥1 photo lieu) → statut passe directement à `validated`, email de bienvenue envoyé
+- [ ] Réintégrer un candidat `rejected` **avec dossier incomplet** (jamais soumis de questionnaire) → statut passe à `enrichment_pending` (pas `validated`), aucun email envoyé — vérifie le garde-fou `isDossierComplet()` (`lib/host-profile.ts`)
+- [ ] Refuser une candidature (n'importe quel statut de départ) avec un email associé (`profile.user_id`) → le candidat reçoit l'email "Candidature refusée" (`sendRefusCandidature`), message sobre + raison optionnelle si un champ `notes` était renseigné dans le payload admin
 
 ---
 
@@ -614,7 +630,7 @@ npm run test:e2e
 
 ### Résultats attendus
 
-- [ ] `npm run test` → 141 tests passants, 0 échec
+- [ ] `npm run test` → 232 tests passants, 0 échec
 - [ ] `npm run test:e2e` → 4 specs passantes :
   - [ ] `e2e/admin-new-pages-auth.spec.ts` — protection auth admin
   - [ ] `e2e/regression.spec.ts` — statut v2, JS errors, dashboard redirect
@@ -634,8 +650,11 @@ npm run test:e2e
 | `enrichment_pending → validated` | Admin clique "Valider" depuis `/admin/ambassadeurs` | Statut `validated`, email bienvenue envoyé |
 | `* → validated` (bypass) | Appel API direct `PATCH /api/admin/ambassadeurs/[id]/status` avec `action: 'validated_bypass'` (escape hatch — plus de bouton UI) | Statut `validated`, log `bypass_enrichment` dans `moderation_log` |
 | `validated → suspended` | Admin clique "Suspendre" | Statut `suspended`, pin disparaît de la carte |
-| `suspended → validated` | Admin clique "Réactiver" | Statut `validated`, pin réapparaît |
-| `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected` |
+| `suspended → validated` (dossier complet) | Admin clique "Réactiver" sur un profil avec photo profil + ≥1 photo lieu | Statut `validated`, pin réapparaît, email de bienvenue envoyé |
+| `suspended → enrichment_pending` (dossier incomplet) | Admin clique "Réactiver" sur un profil sans photo profil ou sans photo du lieu | Statut `enrichment_pending`, **aucun email envoyé** (garde `isDossierComplet()`, `lib/host-profile.ts`) |
+| `rejected → validated` (dossier complet) | Admin clique "Réintégrer" sur un profil avec dossier complet | Statut `validated`, email de bienvenue envoyé |
+| `rejected → enrichment_pending` (dossier incomplet) | Admin clique "Réintégrer" sur un candidat refusé avant d'avoir jamais soumis le questionnaire | Statut `enrichment_pending`, **aucun email envoyé** — empêche de restaurer silencieusement un profil incomplet via un bouton UI standard (même risque que `validated_bypass`, trouvé 2026-08-07) |
+| `pending_review → rejected` | Admin clique "Refuser" | Statut `rejected`, email `sendRefusCandidature` envoyé au candidat si un email est associé (`profile.user_id`) — message sobre + raison optionnelle (`notes`) |
 | ~~admin action `pre_approved`~~ | POST `action: 'pre_approved'` | **400 JSON** — "Action invalide" (transition désormais self-service) |
 | ~~admin valider depuis `pending_review`~~ | POST `action: 'validated'` sur `pending_review` | **400 JSON** — "Le candidat doit d'abord remplir le questionnaire. Utilisez validated_bypass si nécessaire." |
 
