@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import AdminLayout from '@/components/AdminLayout';
+import AdminPage from '@/components/admin/AdminPage';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import TemoignagesAdmin from '@/components/TemoignagesAdmin';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
@@ -42,20 +44,25 @@ export default async function AdminTemoignagesPage({
 
   return (
     <AdminLayout>
-      <div className="px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-base font-semibold text-slate-800">Témoignages</h1>
-          <Link
-            href="/temoignages"
-            target="_blank"
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            <ExternalLink className="w-3 h-3" />
-            Page publique
-          </Link>
-        </div>
+      <AdminPage width="wide">
+        <AdminPageHeader
+          title="Témoignages"
+          subtitle="Ce que les visiteurs racontent après un live. Seuls les témoignages publiés apparaissent sur le site."
+          action={
+            <Link
+              // Audit 5.1 : le lien perdait le filtre par live, alors que la
+              // page publique accepte le même paramètre.
+              href={event_id ? `/temoignages?live=${event_id}` : '/temoignages'}
+              target="_blank"
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Page publique
+            </Link>
+          }
+        />
         <TemoignagesAdmin temoignages={temoignages} initialEventTitle={initialEventTitle} />
-      </div>
+      </AdminPage>
     </AdminLayout>
   );
 }

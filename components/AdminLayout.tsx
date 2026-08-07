@@ -46,13 +46,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [counts, setCounts] = useState<Counts>({});
 
   // Best-effort : un échec laisse simplement la sidebar sans badge.
+  //
+  // Rafraîchi à la navigation et périodiquement : traiter un dossier ne change
+  // pas `pathname`, or le badge doit refléter la file après l'action.
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/admin/queue-counts')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && !cancelled) setCounts(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
+
+    function load() {
+      fetch('/api/admin/queue-counts')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && !cancelled) setCounts(d); })
+        .catch(() => {});
+    }
+
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, [pathname]);
 
   async function handleSignOut() {

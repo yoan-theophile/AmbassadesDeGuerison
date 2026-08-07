@@ -516,6 +516,10 @@ export default function AmbassadeursTable({
 
     if (res.ok) {
       setStatusOverrides((prev) => ({ ...prev, [a.id]: res.data.status }));
+      // Audit 2.8 : l'override local seul laissait la liste désynchronisée du
+      // filtre actif (une ligne validée restait affichée sous « À valider »).
+      // `router.refresh()` conserve l'URL — donc le filtre et la page.
+      startTransition(() => router.refresh());
 
       // Audit 2.4 : « Réactiver » a deux comportements silencieusement
       // différents selon la complétude du dossier. L'admin s'attendait à
