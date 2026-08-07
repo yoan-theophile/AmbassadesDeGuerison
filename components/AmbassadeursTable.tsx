@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, ChevronUp, User, Flower2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Flower2, X, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 
 interface Ambassadeur {
   id: string;
@@ -48,10 +48,11 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 // La transition pending_review → pre_approved est self-service (le candidat l'effectue depuis /dashboard).
 // L'admin valide depuis enrichment_pending (questionnaire complet, photo de profil obligatoire).
 // L'API conserve `validated_bypass` comme escape hatch pour les cas exceptionnels (script SQL, support).
+// enrichment_pending est volontairement absent d'ici : Valider/Refuser vivent uniquement dans le
+// panneau déplié (sticky en bas), pour éviter de trancher sur un dossier photos/questionnaire non lu.
 const STATUS_ACTIONS: Record<string, { action: string; label: string; className: string }[]> = {
   pending_review:     [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   pre_approved:       [{ action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
-  enrichment_pending: [{ action: 'validated',       label: 'Valider',            className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }, { action: 'rejected', label: 'Refuser', className: 'bg-slate-50 text-slate-600 hover:bg-slate-100' }],
   validated:          [{ action: 'suspended',       label: 'Suspendre',          className: 'bg-red-50 text-red-700 hover:bg-red-100' }],
   suspended:          [{ action: 'reactiver',       label: 'Réactiver',          className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }],
   rejected:           [{ action: 'reactiver',       label: 'Réintégrer',         className: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' }],
@@ -78,6 +79,49 @@ const FILTERS = [
   { value: 'rejected',         label: 'Refusés'       },
 ];
 
+// Signal pastoral : ce que Camille regarde en premier pour juger l'engagement spirituel du candidat.
+function PastoralSignals({ a }: { a: Ambassadeur }) {
+  return (
+    <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4">
+      <p className="text-xs font-medium text-indigo-700 uppercase tracking-wide mb-3">Engagement spirituel</p>
+      <div className="flex gap-6 mb-3">
+        <div>
+          <p className="text-slate-400 text-xs mb-0.5">Défi Guérison</p>
+          <p className={`text-sm font-medium ${a.healing_challenge_done ? 'text-emerald-700' : 'text-slate-500'}`}>
+            {a.healing_challenge_done ? 'Oui' : 'Non'}
+          </p>
+        </div>
+        <div>
+          <p className="text-slate-400 text-xs mb-0.5">Conférence DT</p>
+          <p className={`text-sm font-medium ${a.conferences_assistees ? 'text-emerald-700' : 'text-slate-500'}`}>
+            {a.conferences_assistees ? 'Oui' : 'Non'}
+          </p>
+        </div>
+        {a.church_attendance && (
+          <div>
+            <p className="text-slate-400 text-xs mb-0.5">Fréquentation église</p>
+            <p className="text-sm font-medium text-slate-700">
+              {CHURCH_ATTENDANCE_LABELS[a.church_attendance] ?? a.church_attendance}
+            </p>
+          </div>
+        )}
+      </div>
+      {a.parcours_spirituel && (
+        <div className="mb-3">
+          <p className="text-slate-400 text-xs mb-0.5">Parcours spirituel</p>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.parcours_spirituel}</p>
+        </div>
+      )}
+      {a.livres_lus && (
+        <div>
+          <p className="text-slate-400 text-xs mb-0.5">Livres / formations</p>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.livres_lus}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuestionnairPanel({ a }: { a: Ambassadeur }) {
   const hasQuestionnaire = a.parcours_spirituel || a.church_attendance || a.denomination || a.livres_lus || a.healing_challenge_done || a.conferences_assistees || a.phone;
 
@@ -88,45 +132,280 @@ function QuestionnairPanel({ a }: { a: Ambassadeur }) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-      {a.phone && (
-        <div>
-          <p className="text-slate-400 mb-0.5">Téléphone</p>
-          <p className="text-slate-700">{a.phone}</p>
+    <div className="space-y-4">
+      <PastoralSignals a={a} />
+      {(a.phone || a.denomination) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          {a.phone && (
+            <div>
+              <p className="text-slate-400 mb-0.5">Téléphone</p>
+              <p className="text-slate-700">{a.phone}</p>
+            </div>
+          )}
+          {a.denomination && (
+            <div>
+              <p className="text-slate-400 mb-0.5">Dénomination</p>
+              <p className="text-slate-700">{a.denomination}</p>
+            </div>
+          )}
         </div>
       )}
-      {a.church_attendance && (
-        <div>
-          <p className="text-slate-400 mb-0.5">Fréquentation église</p>
-          <p className="text-slate-700">{CHURCH_ATTENDANCE_LABELS[a.church_attendance] ?? a.church_attendance}</p>
-        </div>
+    </div>
+  );
+}
+
+// Signal rapide pour Camille : un dossier "Questionnaire" sans photo du lieu ou sans texte de
+// parcours spirituel demande une relance avant validation — visible sans déplier la ligne.
+function questionnaireGaps(a: Ambassadeur): string[] {
+  const gaps: string[] = [];
+  if (!a.profile_photo_signed_url) gaps.push('photo de profil manquante');
+  if (a.room_photo_signed_urls.length === 0) gaps.push('photo du lieu manquante');
+  if (!a.parcours_spirituel) gaps.push('parcours spirituel vide');
+  return gaps;
+}
+
+// Lightbox : navigation clavier + clic-hors-zone, pas de lib externe pour une seule vue.
+function PhotoLightbox({
+  photos,
+  index,
+  onClose,
+  onNavigate,
+}: {
+  photos: { url: string; label: string }[];
+  index: number;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
+}) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') onNavigate((index + 1) % photos.length);
+      if (e.key === 'ArrowLeft') onNavigate((index - 1 + photos.length) % photos.length);
+    },
+    [index, photos.length, onClose, onNavigate]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  const photo = photos[index];
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={photo.label}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+        aria-label="Fermer"
+      >
+        <X className="w-6 h-6" />
+      </button>
+      {photos.length > 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index - 1 + photos.length) % photos.length);
+          }}
+          className="absolute left-4 text-white/70 hover:text-white transition-colors"
+          aria-label="Photo précédente"
+        >
+          <ChevronLeft className="w-8 h-8" />
+        </button>
       )}
-      {a.denomination && (
-        <div>
-          <p className="text-slate-400 mb-0.5">Dénomination</p>
-          <p className="text-slate-700">{a.denomination}</p>
-        </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.url}
+        alt={photo.label}
+        className="max-w-full max-h-[85vh] rounded-lg object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+      {photos.length > 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index + 1) % photos.length);
+          }}
+          className="absolute right-4 text-white/70 hover:text-white transition-colors"
+          aria-label="Photo suivante"
+        >
+          <ChevronRight className="w-8 h-8" />
+        </button>
       )}
-      <div className="flex gap-4">
-        <div>
-          <p className="text-slate-400 mb-0.5">Défi Guérison</p>
-          <p className="text-slate-700">{a.healing_challenge_done ? 'Oui' : 'Non'}</p>
+      <p className="absolute bottom-4 text-white/70 text-xs">{photo.label} — {index + 1}/{photos.length}</p>
+    </div>
+  );
+}
+
+// Card mobile : le <table> à 9 colonnes ne rentre jamais sous 640px, même avec overflow-x-auto
+// (Camille doit scroller horizontalement pour voir le statut/l'action). Card empilée = même contenu,
+// zéro scroll horizontal. Desktop garde le tableau (plus dense, mieux pour scanner 20 lignes).
+function AmbassadeurCard({
+  a,
+  displayStatus,
+  isExpanded,
+  isLoading,
+  onToggleExpand,
+  onAction,
+  onOpenLightbox,
+}: {
+  a: Ambassadeur;
+  displayStatus: string;
+  isExpanded: boolean;
+  isLoading: boolean;
+  onToggleExpand: () => void;
+  onAction: (action: string) => void;
+  onOpenLightbox: (photos: { url: string; label: string }[], index: number) => void;
+}) {
+  const s = STATUS_LABELS[displayStatus] ?? { label: displayStatus, className: 'bg-slate-50 text-slate-600' };
+  const gaps = questionnaireGaps(a);
+  const photos = [
+    ...(a.profile_photo_signed_url ? [{ url: a.profile_photo_signed_url, label: 'Photo de profil' }] : []),
+    ...a.room_photo_signed_urls.map((url, idx) => ({ url, label: `Vue ${idx + 1} du lieu d'accueil` })),
+  ];
+
+  return (
+    <div className="border-b border-slate-100 last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+        aria-label={isExpanded ? 'Réduire' : 'Voir le profil'}
+      >
+        {a.profile_photo_signed_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={a.profile_photo_signed_url}
+            alt={`${a.first_name} ${a.last_name}`}
+            className="w-10 h-10 rounded-full object-cover bg-slate-100 shrink-0"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5 text-slate-400" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium text-slate-800 text-sm truncate">{a.first_name} {a.last_name}</span>
+            {a.is_women_only && (
+              <span
+                title="Groupe femmes uniquement"
+                className="inline-flex items-center gap-1 bg-pink-50 text-pink-600 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-pink-100 shrink-0"
+              >
+                <Flower2 className="w-2.5 h-2.5" />
+                Femmes
+              </span>
+            )}
+          </div>
+          <p className="text-slate-400 text-xs truncate">{a.city}, {a.country} · {HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</p>
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
+              {s.label}
+            </span>
+            {displayStatus === 'enrichment_pending' && gaps.length > 0 && (
+              <span
+                title={`À relancer : ${gaps.join(', ')}`}
+                className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-100"
+              >
+                <AlertCircle className="w-2.5 h-2.5" />
+                {gaps.length} manquant{gaps.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
-        <div>
-          <p className="text-slate-400 mb-0.5">Conférence DT</p>
-          <p className="text-slate-700">{a.conferences_assistees ? 'Oui' : 'Non'}</p>
-        </div>
-      </div>
-      {a.parcours_spirituel && (
-        <div className="sm:col-span-2">
-          <p className="text-slate-400 mb-0.5">Parcours spirituel</p>
-          <p className="text-slate-700 whitespace-pre-wrap">{a.parcours_spirituel}</p>
-        </div>
-      )}
-      {a.livres_lus && (
-        <div className="sm:col-span-2">
-          <p className="text-slate-400 mb-0.5">Livres / formations</p>
-          <p className="text-slate-700 whitespace-pre-wrap">{a.livres_lus}</p>
+        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+      </button>
+
+      {isExpanded && (
+        <div className="px-4 pb-5 pt-1 bg-slate-50/60 space-y-5">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <div>
+              <p className="text-slate-400 mb-0.5">E-mail</p>
+              <p className="text-slate-700 break-all">{a.email}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 mb-0.5">Capacité</p>
+              <p className="text-slate-700">{a.capacity ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 mb-0.5">Inscription</p>
+              <p className="text-slate-700">{new Date(a.created_at).toLocaleDateString('fr-FR')}</p>
+            </div>
+          </div>
+
+          {photos.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Photos</p>
+              <div className="flex flex-wrap gap-3">
+                {photos.map((photo, idx) => (
+                  <button
+                    key={photo.url}
+                    type="button"
+                    onClick={() => onOpenLightbox(photos, idx)}
+                    className="block group text-left"
+                    title={`${photo.label} — agrandir`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt={photo.label}
+                      className={`w-24 h-24 rounded-lg object-cover bg-slate-100 transition ${
+                        idx === 0 ? 'ring-2 ring-indigo-200 group-hover:ring-indigo-400' : 'ring-1 ring-slate-200 group-hover:ring-indigo-400'
+                      }`}
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1 text-center">
+                      {photo.label === 'Photo de profil' ? 'Profil' : photo.label.replace(" du lieu d'accueil", '')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
+            <QuestionnairPanel a={a} />
+          </div>
+
+          {displayStatus === 'enrichment_pending' && (
+            <div className="sticky bottom-0 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm flex gap-2">
+              <button
+                onClick={() => onAction('validated')}
+                disabled={isLoading}
+                className="px-4 py-2.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
+              >
+                {isLoading ? '…' : 'Valider le questionnaire'}
+              </button>
+              <button
+                onClick={() => onAction('rejected')}
+                disabled={isLoading}
+                className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
+              >
+                {isLoading ? '…' : 'Refuser'}
+              </button>
+            </div>
+          )}
+
+          {(STATUS_ACTIONS[displayStatus] ?? []).length > 0 && (
+            <div className="flex gap-1.5 flex-wrap pt-4 border-t border-slate-100">
+              {(STATUS_ACTIONS[displayStatus] ?? []).map((act) => (
+                <button
+                  key={act.action}
+                  onClick={() => onAction(act.action)}
+                  disabled={isLoading}
+                  className={`text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${act.className}`}
+                >
+                  {isLoading ? '…' : act.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -148,6 +427,7 @@ export default function AmbassadeursTable({
   const [search, setSearch] = useState(searchQ);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ photos: { url: string; label: string }[]; index: number } | null>(null);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -221,7 +501,28 @@ export default function AmbassadeursTable({
       {initial.length === 0 ? (
         <p className="text-sm text-slate-400 py-8 text-center">Aucun ambassadeur dans cette catégorie.</p>
       ) : (
-        <div className={`bg-white rounded-xl border border-slate-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+        <>
+          {/* Mobile (<640px) : cards empilées — un <table> à 9 colonnes force un scroll horizontal
+              qui cache le statut et l'action, cf QA 2026-08-07. */}
+          <div className={`sm:hidden bg-white rounded-xl border border-slate-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+            {initial.map((a) => {
+              const displayStatus = statusOverrides[a.id] ?? a.status;
+              return (
+                <AmbassadeurCard
+                  key={a.id}
+                  a={a}
+                  displayStatus={displayStatus}
+                  isExpanded={expandedId === a.id}
+                  isLoading={actionLoading === a.id}
+                  onToggleExpand={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                  onAction={(action) => handleAction(a.id, action)}
+                  onOpenLightbox={(photos, index) => setLightbox({ photos, index })}
+                />
+              );
+            })}
+          </div>
+
+        <div className={`hidden sm:block bg-white rounded-xl border border-slate-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -286,25 +587,45 @@ export default function AmbassadeursTable({
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{HOST_TYPE_LABELS[a.host_type] ?? a.host_type}</td>
                         <td className="px-4 py-3 text-slate-500">{a.capacity ?? '—'}</td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
-                            {s.label}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>
+                              {s.label}
+                            </span>
+                            {displayStatus === 'enrichment_pending' && questionnaireGaps(a).length > 0 && (
+                              <span
+                                title={`À relancer : ${questionnaireGaps(a).join(', ')}`}
+                                className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-amber-100"
+                              >
+                                <AlertCircle className="w-2.5 h-2.5" />
+                                {questionnaireGaps(a).length} manquant{questionnaireGaps(a).length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
                           {new Date(a.created_at).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5 flex-wrap">
-                            {(STATUS_ACTIONS[displayStatus] ?? []).map((act) => (
+                            {displayStatus === 'enrichment_pending' ? (
                               <button
-                                key={act.action}
-                                onClick={() => handleAction(a.id, act.action)}
-                                disabled={isLoading}
-                                className={`text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap ${act.className}`}
+                                onClick={() => setExpandedId(isExpanded ? null : a.id)}
+                                className="text-xs px-2.5 py-1 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors whitespace-nowrap"
                               >
-                                {isLoading ? '…' : act.label}
+                                {isExpanded ? 'Réduire' : 'Voir ↓'}
                               </button>
-                            ))}
+                            ) : (
+                              (STATUS_ACTIONS[displayStatus] ?? []).map((act) => (
+                                <button
+                                  key={act.action}
+                                  onClick={() => handleAction(a.id, act.action)}
+                                  disabled={isLoading}
+                                  className={`text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap ${act.className}`}
+                                >
+                                  {isLoading ? '…' : act.label}
+                                </button>
+                              ))
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -312,60 +633,60 @@ export default function AmbassadeursTable({
                         <tr>
                           <td colSpan={9} className="px-6 pb-5 pt-3 bg-slate-50/60 border-b border-slate-100">
                             <div className="max-w-2xl space-y-5">
-                              {(a.profile_photo_signed_url || a.room_photo_signed_urls.length > 0) && (
-                                <div>
-                                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Photos</p>
-                                  <div className="flex flex-wrap gap-3">
-                                    {a.profile_photo_signed_url && (
-                                      <a
-                                        href={a.profile_photo_signed_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block group"
-                                        title="Photo de profil — ouvrir en grand"
-                                      >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                          src={a.profile_photo_signed_url}
-                                          alt="Photo de profil"
-                                          className="w-24 h-24 rounded-lg object-cover bg-slate-100 ring-2 ring-indigo-200 group-hover:ring-indigo-400 transition"
-                                        />
-                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Profil</p>
-                                      </a>
-                                    )}
-                                    {a.room_photo_signed_urls.map((url, idx) => (
-                                      <a
-                                        key={url}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block group"
-                                        title={`Vue ${idx + 1} du lieu d'accueil — ouvrir en grand`}
-                                      >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                          src={url}
-                                          alt={`Vue ${idx + 1} du lieu d'accueil`}
-                                          className="w-24 h-24 rounded-lg object-cover bg-slate-100 ring-1 ring-slate-200 group-hover:ring-indigo-400 transition"
-                                        />
-                                        <p className="text-[10px] text-slate-400 mt-1 text-center">Vue {idx + 1}</p>
-                                      </a>
-                                    ))}
+                              {(() => {
+                                const photos = [
+                                  ...(a.profile_photo_signed_url ? [{ url: a.profile_photo_signed_url, label: 'Photo de profil' }] : []),
+                                  ...a.room_photo_signed_urls.map((url, idx) => ({ url, label: `Vue ${idx + 1} du lieu d'accueil` })),
+                                ];
+                                if (photos.length === 0) return null;
+                                return (
+                                  <div>
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Photos</p>
+                                    <div className="flex flex-wrap gap-3">
+                                      {photos.map((photo, idx) => (
+                                        <button
+                                          key={photo.url}
+                                          type="button"
+                                          onClick={() => setLightbox({ photos, index: idx })}
+                                          className="block group text-left"
+                                          title={`${photo.label} — agrandir`}
+                                        >
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img
+                                            src={photo.url}
+                                            alt={photo.label}
+                                            className={`w-32 h-32 rounded-lg object-cover bg-slate-100 transition ${
+                                              idx === 0 ? 'ring-2 ring-indigo-200 group-hover:ring-indigo-400' : 'ring-1 ring-slate-200 group-hover:ring-indigo-400'
+                                            }`}
+                                          />
+                                          <p className="text-[10px] text-slate-400 mt-1 text-center">
+                                            {photo.label === 'Photo de profil' ? 'Profil' : photo.label.replace(" du lieu d'accueil", '')}
+                                          </p>
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })()}
                               <div>
                                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Questionnaire ambassadeur</p>
                                 <QuestionnairPanel a={a} />
                               </div>
                               {displayStatus === 'enrichment_pending' && (
-                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                <div className="sticky bottom-0 mt-4 pt-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-sm flex gap-2">
                                   <button
                                     onClick={() => handleAction(a.id, 'validated')}
                                     disabled={isLoading}
                                     className="px-4 py-2 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
                                   >
                                     {isLoading ? '…' : 'Valider le questionnaire'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleAction(a.id, 'rejected')}
+                                    disabled={isLoading}
+                                    className="px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors font-medium"
+                                  >
+                                    {isLoading ? '…' : 'Refuser'}
                                   </button>
                                 </div>
                               )}
@@ -380,6 +701,7 @@ export default function AmbassadeursTable({
             </table>
           </div>
         </div>
+        </>
       )}
 
       {totalPages > 1 && (
@@ -400,6 +722,15 @@ export default function AmbassadeursTable({
             Suivant
           </button>
         </div>
+      )}
+
+      {lightbox && (
+        <PhotoLightbox
+          photos={lightbox.photos}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onNavigate={(index) => setLightbox((prev) => (prev ? { ...prev, index } : prev))}
+        />
       )}
     </div>
   );
