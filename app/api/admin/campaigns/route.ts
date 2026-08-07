@@ -105,3 +105,45 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: campaign.id, recipients: recipients.length }, { status: 201 });
 }
+
+// Annulation d'une campagne encore en attente (audit admin 2026-08-07, 4.7) —
+// sans cette route, une erreur de date ou de destinataire était définitive.
+// Restreint à `pending` : une campagne déjà envoyée ne peut pas être reprise,
+// et supprimer sa trace masquerait un envoi réel.
+export async function DELETE(req: NextRequest) {
+  const ctx = await requireAdmin(req);
+  if (ctx instanceof NextResponse) return ctx;
+
+  const { id } = await req.json();
+  if (!id) {
+    return NextResponse.json({ error: 'id requis' }, { status: 400 });
+  }
+
+  const { supabase } = ctx;
+
+  const { data: campaign } = await supabase
+    .from('scheduled_campaigns')
+    .select('id, status')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!campaign) {
+    return NextResponse.json({ error: 'Campagne introuvable' }, { status: 404 });
+  }
+  if (campaign.status !== 'pending') {
+    return NextResponse.json(
+      { error: 'Seule une campagne en attente peut être annulée.' },
+      { status: 400 }
+    );
+  }
+
+  // Les destinataires snapshottés partent avec la campagne.
+  await supabase.from('campaign_recipients').delete().eq('campaign_id', id);
+
+  const { error } = await supabase.from('scheduled_campaigns').delete().eq('id', id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

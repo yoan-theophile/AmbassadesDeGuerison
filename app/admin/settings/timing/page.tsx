@@ -5,6 +5,11 @@ import { DEFAULTS } from '@/lib/timing-config';
 
 export const dynamic = 'force-dynamic';
 
+// Les colonnes retirées de l'UI (host_reminder_days_before,
+// visitor_auto_decline_days_before, queue_aging_days) restent sélectionnées par
+// `select('*')` et transmises telles quelles — TimingConfigClient ne les
+// affiche simplement plus. Voir la note dans ce composant (audit 9.1).
+
 export default async function TimingSettingsPage() {
   const supabase = createServiceClient();
 
