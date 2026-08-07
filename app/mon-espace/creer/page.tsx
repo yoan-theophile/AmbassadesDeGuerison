@@ -1,12 +1,13 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Camera, Loader2, X } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import PhoneInput from '@/components/ui/PhoneInput';
 import { isValidPhoneNumber } from 'react-phone-number-input';
+import { createClient } from '@/lib/supabase/browser';
 
 type EmailStatus = 'idle' | 'checking' | 'new' | 'visitor_existing' | 'collision';
 
@@ -16,6 +17,24 @@ function CreerCompteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
+
+  // Un visiteur déjà connecté qui atterrit ici (lien partagé, retour en
+  // arrière) n'a rien à créer — le renvoyer directement plutôt que de lui
+  // montrer un formulaire dont la soumission échouerait sur son propre
+  // e-mail (trouvé en QA 2026-07-29, TODO-24).
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.user_metadata?.role === 'visitor') {
+        const target = redirect && redirect.startsWith('/') ? redirect : '/mon-espace';
+        router.replace(target);
+        return;
+      }
+      setCheckingSession(false);
+    });
+  }, [redirect, router]);
 
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -116,6 +135,17 @@ function CreerCompteContent() {
   const canSubmit =
     firstName.trim() && email.trim() && isValidPhoneNumber(phone) &&
     emailStatus !== 'collision' && emailStatus !== 'visitor_existing' && !submitting;
+
+  if (checkingSession) {
+    return (
+      <>
+        <AppHeader />
+        <main className="flex-1 flex items-center justify-center bg-slate-50">
+          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
