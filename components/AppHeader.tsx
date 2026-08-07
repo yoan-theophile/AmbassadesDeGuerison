@@ -1,8 +1,14 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import { UserPlus, MessageSquare } from 'lucide-react';
 import MonEspaceLink from '@/components/MonEspaceLink';
 
 export default function AppHeader() {
+  const [isHost, setIsHost] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+
   return (
     <header className="sticky top-0 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0 z-10">
       <Link href="/" className="flex items-center gap-2 min-w-0">
@@ -25,14 +31,30 @@ export default function AppHeader() {
           <MessageSquare className="w-4 h-4" />
           <span className="hidden sm:inline">Témoignages</span>
         </Link>
-        <Link
-          href="/inscription"
-          className="flex items-center gap-1.5 text-sm px-3 py-2.5 sm:py-1.5 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span className="hidden sm:inline">Devenir ambassadeur</span>
-        </Link>
-        <MonEspaceLink />
+        <div className="w-px h-5 bg-slate-200 mx-2" />
+        {!isHost && (
+          <Link
+            href="/inscription"
+            className="flex items-center gap-1.5 text-sm px-3 py-2.5 sm:py-1.5 rounded-lg font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Devenir ambassadeur</span>
+          </Link>
+        )}
+        {showLogin && (
+          <Link
+            href="/auth"
+            className="flex items-center text-sm px-3 py-2.5 sm:py-1.5 rounded-lg font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          >
+            Se connecter
+          </Link>
+        )}
+        <MonEspaceLink
+          onRoleResolved={(role) => {
+            setIsHost(role === 'host');
+            setShowLogin(role === null);
+          }}
+        />
       </nav>
     </header>
   );

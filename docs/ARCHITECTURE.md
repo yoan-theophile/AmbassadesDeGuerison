@@ -38,7 +38,7 @@
                      │ API HTTP
 ┌────────────────────▼────────────────────────────────────────┐
 │  Resend                                                     │
-│  19 templates TSX (React Email v6) — emails transactionnels │
+│  20 templates TSX (React Email v6) — emails transactionnels │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -108,8 +108,13 @@ MapWrapper (Client Component, SSR:false pour Leaflet)
 ```
 
 **`liveInProgress`** est calculé côté server :
-`lastEvent.event_date ≥ now - NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`
-(défaut 4h). Pas de requête DB supplémentaire.
+`!lastEvent.closed_at && lastEvent.event_date ≥ now - NEXT_PUBLIC_LIVE_SIGNAL_WINDOW_HOURS`
+(fenêtre par défaut 4h). Pas de requête DB supplémentaire — `closed_at` est sélectionné dans
+la même requête `lastEvent` de `getHomepageData()`. Le check `closed_at` a été ajouté en
+août 2026 (v0.1.9.0) : sans lui, un live clôturé via `/admin/live` (« Clôturer le live »)
+continuait d'afficher le bandeau "Live en cours" sur la homepage jusqu'à la fin de la fenêtre
+horaire, alors que `GET /api/host-activations` (pins carte) excluait déjà ce cas via
+`getCurrentEvent()`.
 
 ---
 
@@ -132,7 +137,7 @@ Pipeline self-service jusqu'au questionnaire — l'admin n'intervient qu'à la f
 /dashboard/questionnaire (ambassadeur, accessible dès pre_approved)
   │  Upload photos via POST /api/upload/ambassador-photo (type=profile|room)
   │   - Photo de profil : requise (path stocké dans profile_photo_url)
-  │   - Photos du lieu : optionnel, max 5 (paths dans room_photo_urls[])
+  │   - Photos du lieu : requise (au moins 1), max 5 (paths dans room_photo_urls[])
   │  Suppression d'une photo : DELETE /api/upload/ambassador-photo
   │   (ownership check par préfixe profile.id/)
   │  PATCH /api/ambassadeur/enrichissement
@@ -153,9 +158,9 @@ Hôte visible sur la carte au prochain live
 Transitions admin valides (`PATCH /api/admin/ambassadeurs/[id]/status`) :
 - `validated` (depuis enrichment_pending uniquement)
 - `validated_bypass` (escape hatch API uniquement — plus de bouton UI ; usage support/script SQL)
-- `rejected` (depuis n'importe quel statut)
+- `rejected` (depuis n'importe quel statut) — envoie `sendRefusCandidature` au candidat si `profile.user_id` a un email associé (message sobre + raison optionnelle reprise du champ `notes` du payload)
 - `suspended` (depuis validated)
-- `reactiver` (depuis suspended ou rejected, → validated)
+- `reactiver` (depuis suspended ou rejected) — restaure `validated` (+ email) **uniquement si le dossier est complet** (`profile_photo_url` non NULL et `room_photo_urls` non vide) ; sinon route vers `enrichment_pending` sans email. Empêche de valider silencieusement un candidat refusé avant d'avoir jamais complété son questionnaire (même risque que `validated_bypass`, sans le bouton dédié pour s'en prémunir).
 
 L'action `pre_approve` n'existe **plus** côté admin — la transition `pending_review → pre_approved` est exclusivement self-service.
 
@@ -366,7 +371,7 @@ en JS — le guard utilise `=== 'true'`).
 | `app/admin/*` | Server Components + Client Components mixtes | Données init en SSR, interactions en client |
 | `TemoignageCard` | Client Component | "Lire la suite" (expand/collapse état local) |
 | `MissionDuMoment` | Client Component | Carte contextuelle prioritaire — 5 états selon live/demandes/agenda ; `null` si calme |
-| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`) |
+| `StatusTimeline` | Client Component | Stepper 4-étapes — **uniquement pour non-validés** (`pending_review`, `pre_approved`, `enrichment_pending`). Revérifie `profilePhotoUrl`/`roomPhotoUrls` avant d'afficher l'étape "Profil enrichi" comme atteinte — un `status='enrichment_pending'` sans dossier complet (possible seulement via donnée créée hors du flux API, ex. script/test) retombe visuellement sur l'étape précédente plutôt que d'afficher un faux "en cours d'examen" (trouvé 2026-08-07, cf `app/dashboard/page.tsx` où l'encart "Ton dossier est en cours d'examen" applique la même garde). |
 | `DashboardTabs` | Client Component | Navigation `/dashboard` par onglets (Accueil/Demandes/Profil/Formation) — **uniquement pour validés**, bottom tabs mobile + tabs sticky desktop. Badge compteur sur "Demandes". Onboarding reste linéaire (pas d'onglets). |
 | `MesInfosSection` | Client Component | Formulaire édition profil (ville + adresse précise + consignes + tel) |
 | `AddressInput` | Client Component | Autocomplétion Nominatim `mode=address` — calqué sur `CityInput` |
@@ -485,7 +490,7 @@ Mis à jour manuellement à chaque PR significative.
 | Inscription ambassadeur | ✅ | `POST /api/inscriptions` | Double validation lat/lng : frontend (`form.lat == null`) + API 400. `host-activations` filtre silencieusement `hp.lat && hp.lng`. Champ optionnel `quartier` (texte libre). |
 | Champ quartier (profil ambassadeur) | ✅ | `host_profiles.quartier`, `PATCH /api/ambassadeur/profile` | Texte libre optionnel (ex : "Paris 15e"). Saisissable à l'inscription et modifiable dans `MesInfosSection`. Affiché dans les popups carte + fiche publique `/ambassade/[id]` + fiche live `/live/[event_id]/ambassade/[host_id]` sous la ligne ville/pays. |
 | Onboarding self-service | ✅ | `PATCH /api/onboarding/complete` | Gate inline dans `/dashboard` pour `pending_review` : vidéo + PDF + CGU + bouton. Idempotent. Aucune action admin requise. |
-| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected`, `suspended`, `reactiver`. L'action `pre_approved` a été retirée — transition self-service. |
+| Validation finale ambassadeur (admin) | ✅ | `PATCH /api/admin/ambassadeurs/[id]/status` | Actions : `validated` (depuis enrichment_pending), `validated_bypass` (escape hatch API — plus de bouton UI), `rejected` (email `sendRefusCandidature` au candidat), `suspended`, `reactiver` (→ `validated` + email uniquement si dossier complet, sinon → `enrichment_pending` sans email). L'action `pre_approved` a été retirée — transition self-service. |
 | Activation via lien email campagne | ✅ | `POST /api/campaign-activations` | |
 | Self-activation toggle (dashboard hôte) | ✅ | `PATCH /api/host-activations/[id]` | CTA "Je participe à ce live" / badge "Vous participez" dans `/dashboard` |
 | Édition profil ambassadeur | ✅ | `PATCH /api/ambassadeur/profile` | Ville (+ re-géocodage), adresse précise (`lat_precise`/`lng_precise` via `AddressInput`/Nominatim), consignes, téléphone. Email admin si ville change. |
@@ -507,7 +512,7 @@ Mis à jour manuellement à chaque PR significative.
 | Onboarding questionnaire | ✅ | `/dashboard/questionnaire` + `POST /api/ambassadeur/enrichissement` | |
 | Formulaire feedback visiteur | ✅ | `/feedback/[token]` | Route existante, jamais déclenchée automatiquement (cron non actif) |
 | Désabonnement email | ✅ | `GET /api/unsubscribe/[token]` | |
-| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo. Room = max 5 (append). Le questionnaire de validation expose les deux. |
+| Upload photo ambassadeur | ✅ | `POST /api/upload/ambassador-photo` (`type=profile\|room`) | Bucket `ambassador-photos` **privé** — stocke un chemin, signed URL via `lib/storage/photo-url.ts`. Profile = 1 photo (requise). Room = max 5, append, au moins 1 requise (garde côté API `PATCH /api/ambassadeur/enrichissement`, 2026-08-07). Le questionnaire de validation expose les deux. |
 | Signalement photo visiteur (côté hôte) | ⚠️ | `POST /api/dashboard/report-visitor-photo` | **Bouton masqué dans `/dashboard`** (2026-08-05, TODO-25) — la route met `visitor_profiles.photo_reported = true` mais aucun flux ne l'exploite (pas de page admin, pas de blocage auto). Réactiver le bouton une fois qu'un flux admin (page dédiée ou intégration à `/admin/blacklist`) consomme ce flag. |
 | Suppression photo ambassadeur | ✅ | `DELETE /api/upload/ambassador-photo` | Ownership check (path doit commencer par `<profile.id>/`). Retire l'entrée DB + supprime le fichier du bucket. |
 | Blacklist | ✅ | `/admin/blacklist` + filtre dans `/api/visit-requests` et `/api/visitor-help-request` | Choix éthique : refus honnête (403) avec message neutre + voie de recours, pas de shadow-ban (faux 201 silencieux). Voir « Modération anti-abus visiteur » dans CLAUDE.md. |

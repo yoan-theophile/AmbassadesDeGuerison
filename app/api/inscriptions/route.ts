@@ -146,8 +146,12 @@ export async function POST(req: NextRequest) {
   const profileId = profileData?.id;
 
   if (FEATURES.EMAIL_NOTIFICATIONS) {
-    await sendRegistrationConfirmation(email, first_name).catch(() => {});
-    await sendNouvelleInscriptionAdmin(first_name, city, country).catch(() => {});
+    await sendRegistrationConfirmation(email, first_name).catch((e) => {
+      console.error('[inscriptions] Échec envoi confirmation candidat:', e);
+    });
+    await sendNouvelleInscriptionAdmin(first_name, city, country).catch((e) => {
+      console.error('[inscriptions] Échec envoi notification admin:', e);
+    });
   }
 
   return NextResponse.json({ success: true, id: profileId }, { status: 201 });

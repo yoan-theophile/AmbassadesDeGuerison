@@ -6,6 +6,7 @@ import MagicLink from '@/emails/magic-link';
 import NouvelleInscriptionAdmin from '@/emails/nouvelle-inscription-admin';
 import AideVisiteurAdmin from '@/emails/aide-visiteur-admin';
 import ValidationFinale from '@/emails/validation-finale';
+import RefusCandidature from '@/emails/refus-candidature';
 import RegistrationConfirmation from '@/emails/registration-confirmation';
 import CampagneAmbassadeurs from '@/emails/campagne-ambassadeurs';
 import FeedbackPostLive from '@/emails/feedback-post-live';
@@ -53,6 +54,14 @@ export async function sendValidationFinale(to: string, firstName: string) {
       dashboardUrl: `${APP_URL()}/dashboard`,
       carteUrl: APP_URL(),
     }),
+  });
+}
+
+export async function sendRefusCandidature(to: string, firstName: string, reason?: string) {
+  return getMailer().emails.send({
+    from: FROM(), to,
+    subject: 'Votre candidature d\'ambassadeur — mise à jour',
+    react: React.createElement(RefusCandidature, { firstName, reason }),
   });
 }
 

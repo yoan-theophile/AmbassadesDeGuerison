@@ -62,7 +62,7 @@ Ajouter/modifier les variables : `vercel env add NAME production` ou via l'API R
 
 ### Emails
 
-19 templates dans `emails/*.tsx` (React Email v6). `lib/email/templates.ts` contient les fonctions `sendXxx`.
+20 templates dans `emails/*.tsx` (React Email v6). `lib/email/templates.ts` contient les fonctions `sendXxx`.
 
 - **Preview visuelle** (données mock) : `/dev/emails`, nécessite `EMAIL_PREVIEW=true` dans `.env.local` (404 en prod sans cette variable).
 - **Test du vrai chemin d'envoi** (Mailhog, capture SMTP locale) : `npm run mailhog` puis `USE_MAILHOG=true` dans `.env.local` → tous les envois `lib/email/send.ts` sont routés vers http://localhost:8025 au lieu de Resend. `npm run mailhog:stop` pour arrêter.
@@ -85,7 +85,8 @@ Flux self-service jusqu'au questionnaire (voir ARCHITECTURE.md § Cycle de vie d
 - **Transition `pending_review → pre_approved`** est exclusivement self-service (`PATCH /api/onboarding/complete`, pas d'email, idempotente). L'action admin `pre_approve` n'existe plus.
 - **Video gate** : la checkbox d'engagement reste désactivée tant que le candidat n'a pas cliqué dans la vidéo YouTube (détection via `blur` + `document.activeElement instanceof HTMLIFrameElement`, helper `buildVideoUrl` dans `lib/youtube.ts`).
 - **`validated_bypass`** reste accepté par l'API comme escape hatch (support/SQL) mais le bouton dédié a été retiré de `/admin/ambassadeurs` — un bypass produit un ambassadeur sans photo ni questionnaire, visible publiquement avec un profil incomplet.
-- `enrichment_pending` requiert `profile_photo_url` non NULL (garde côté API).
+- **`reactiver`** (bouton "Réintégrer"/"Réactiver", depuis `rejected`/`suspended`) route vers `validated` uniquement si le dossier est complet (photo profil + ≥1 photo lieu) — sinon vers `enrichment_pending`, sans email. Sans cette garde, réintégrer un candidat refusé avant d'avoir jamais rempli le questionnaire produisait le même profil incomplet publiquement visible que `validated_bypass`, mais accessible depuis un bouton UI standard (trouvé 2026-08-07).
+- `enrichment_pending` requiert `profile_photo_url` non NULL et `room_photo_urls` non vide (garde côté API, `PATCH /api/ambassadeur/enrichissement`). Cet invariant n'est garanti que pour les profils passés par ce chemin — une donnée créée directement en base (script, test) peut avoir `enrichment_pending` sans dossier complet. `/dashboard` (encart + `StatusTimeline`) et `/admin/ambassadeurs` (`questionnaireGaps()`) revérifient tous deux les colonnes réelles plutôt que de faire confiance au seul statut (trouvé 2026-08-07 : un profil de test avec cet état affichait "en cours d'examen" côté ambassadeur et "3 manquants" côté admin simultanément). `/dashboard/questionnaire` reste volontairement strict (`status !== 'pre_approved'` → accès refusé) — pas de chemin de récupération UI pour un `enrichment_pending` incomplet, cet état ne devrait jamais survenir hors données de test.
 
 ## Formulaire d'inscription (`/inscription`)
 

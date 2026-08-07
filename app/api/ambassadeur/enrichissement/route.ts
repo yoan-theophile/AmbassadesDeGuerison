@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('host_profiles')
-    .select('id, status, first_name, profile_photo_url')
+    .select('id, status, first_name, profile_photo_url, room_photo_urls')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -34,6 +34,14 @@ export async function PATCH(req: NextRequest) {
   if (!profile.profile_photo_url) {
     return NextResponse.json(
       { error: 'Une photo de profil est requise pour soumettre votre profil.' },
+      { status: 400 }
+    );
+  }
+
+  // Vérifier qu'au moins une photo du lieu a bien été uploadée avant soumission
+  if (!profile.room_photo_urls || profile.room_photo_urls.length === 0) {
+    return NextResponse.json(
+      { error: 'Au moins une photo du lieu d\'accueil est requise pour soumettre votre profil.' },
       { status: 400 }
     );
   }

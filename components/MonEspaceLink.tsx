@@ -7,7 +7,7 @@ import Avatar from '@/components/ui/Avatar';
 
 type Role = 'admin' | 'visitor' | 'host';
 
-export default function MonEspaceLink() {
+export default function MonEspaceLink({ onRoleResolved }: { onRoleResolved?: (role: Role | null) => void }) {
   // null = pas encore résolu (rien affiché) ; '' = pas de session, aucun
   // espace personnel à proposer → lien masqué. Sans cette distinction, le
   // lien pointait par défaut vers /dashboard pour un visiteur anonyme, qui
@@ -26,11 +26,13 @@ export default function MonEspaceLink() {
       if (userRole === 'admin') {
         setHref('/admin/stats');
         setRole('admin');
+        onRoleResolved?.('admin');
         return;
       }
       if (userRole === 'visitor') {
         setHref('/mon-espace');
         setRole('visitor');
+        onRoleResolved?.('visitor');
         const res = await fetch('/api/visitor/profile');
         if (res.ok) {
           const profile = await res.json();
@@ -42,6 +44,7 @@ export default function MonEspaceLink() {
       if (data.user) {
         setHref('/dashboard');
         setRole('host');
+        onRoleResolved?.('host');
         const { data: host } = await supabase
           .from('host_profiles')
           .select('first_name, profile_photo_url')
@@ -59,6 +62,7 @@ export default function MonEspaceLink() {
         return;
       }
       setHref('');
+      onRoleResolved?.(null);
     });
   }, []);
 

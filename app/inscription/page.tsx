@@ -143,13 +143,13 @@ export default function InscriptionPage() {
           {step === 1 && (
             <>
               <Field label="Prénom" required>
-                <input type="text" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required className={inputCls} placeholder="Marie" />
+                <input type="text" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required className={inputCls} placeholder="Votre prénom" />
               </Field>
               <Field label="Nom" required>
-                <input type="text" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required className={inputCls} placeholder="Dupont" />
+                <input type="text" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required className={inputCls} placeholder="Votre nom" />
               </Field>
               <Field label="E-mail" required>
-                <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="marie@exemple.com" />
+                <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required className={inputCls} placeholder="Votre e-mail" />
                 <p className="text-xs text-slate-400 mt-1">Sert à vous connecter (lien de connexion, sans mot de passe) et à recevoir les notifications de demandes de visite.</p>
               </Field>
               <Field label="Téléphone" required>
@@ -247,7 +247,7 @@ export default function InscriptionPage() {
                 )}
               </Field>
               <Field label="Détails utiles pour vos visiteurs (optionnel)">
-                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder="Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30." />
+                <textarea value={form.consignes} onChange={(e) => set('consignes', e.target.value)} rows={3} className={inputCls} placeholder={form.type === 'church' ? "Ex. : entrée par la porte latérale. Parking sur le parvis. Préférable d'arriver entre 14h et 14h30." : "Ex. : code interphone B12. Parking libre rue Pasteur. Wifi : invité2024. Préférable d'arriver entre 14h et 14h30."} />
                 <p className="text-xs text-slate-400 mt-1">Sera transmis aux visiteurs acceptés. Tout détail qui facilite leur arrivée.</p>
               </Field>
               {form.type === 'individual' && (

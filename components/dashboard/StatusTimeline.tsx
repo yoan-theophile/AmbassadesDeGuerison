@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Circle, Clock } from 'lucide-react';
+import { isDossierComplet } from '@/lib/host-profile';
 
 type Step = {
   label: string;
@@ -35,8 +36,25 @@ const STATUS_TO_STEP: Record<string, number> = {
   rejected: 4,
 };
 
-export default function StatusTimeline({ status }: { status: string }) {
-  const activeStep = STATUS_TO_STEP[status] ?? 1;
+export default function StatusTimeline({
+  status,
+  profilePhotoUrl,
+  roomPhotoUrls,
+}: {
+  status: string;
+  profilePhotoUrl?: string | null;
+  roomPhotoUrls?: string[] | null;
+}) {
+  // enrichment_pending devrait garantir un dossier complet (garde API sur
+  // PATCH /api/ambassadeur/enrichissement), mais une donnée créée hors de ce
+  // chemin (test, script, migration) peut violer l'invariant. Sans cette
+  // revérification, un ambassadeur au dossier vide verrait "Profil enrichi ✓"
+  // alors que David n'a rien à examiner.
+  const dossierComplet = isDossierComplet(profilePhotoUrl, roomPhotoUrls);
+  const effectiveStatus = status === 'enrichment_pending' && !dossierComplet
+    ? 'pre_approved'
+    : status;
+  const activeStep = STATUS_TO_STEP[effectiveStatus] ?? 1;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-5">

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { sendValidationFinale, sendNouvelleActivationAdmin } from '@/lib/email/templates';
+import { sendValidationFinale, sendNouvelleActivationAdmin, sendRefusCandidature } from '@/lib/email/templates';
 import { FEATURES } from '@/config/features';
+import { isDossierComplet } from '@/lib/host-profile';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -10,12 +11,11 @@ interface Props {
 const VALID_ACTIONS = ['validated', 'validated_bypass', 'rejected', 'suspended', 'reactiver'] as const;
 type Action = typeof VALID_ACTIONS[number];
 
-const ACTION_STATUS: Record<Action, string> = {
+const ACTION_STATUS: Record<Exclude<Action, 'reactiver'>, string> = {
   validated: 'validated',
   validated_bypass: 'validated',
   rejected: 'rejected',
   suspended: 'suspended',
-  reactiver: 'validated',
 };
 
 export async function POST(req: NextRequest, { params }: Props) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Props) {
 
   const { data: profile } = await supabase
     .from('host_profiles')
-    .select('id, status, first_name, user_id, city, country')
+    .select('id, status, first_name, user_id, city, country, profile_photo_url, room_photo_urls')
     .eq('id', id)
     .maybeSingle();
 
@@ -50,7 +50,14 @@ export async function POST(req: NextRequest, { params }: Props) {
     );
   }
 
-  const newStatus = ACTION_STATUS[action as Action];
+  // 'reactiver' (depuis suspended ou rejected) ne doit jamais sauter l'enrichissement :
+  // un candidat refusé avant d'avoir complété son questionnaire (photos) n'a pas de dossier
+  // à restaurer. Si le dossier est complet → validated direct (comme une ré-activation réelle).
+  // Sinon → renvoyé à enrichment_pending, pas d'email (rien à annoncer, le dossier reste à finir).
+  const dossierComplet = isDossierComplet(profile.profile_photo_url, profile.room_photo_urls);
+  const newStatus = action === 'reactiver'
+    ? (dossierComplet ? 'validated' : 'enrichment_pending')
+    : ACTION_STATUS[action as Exclude<Action, 'reactiver'>];
 
   const { error } = await supabase
     .from('host_profiles')
@@ -73,7 +80,7 @@ export async function POST(req: NextRequest, { params }: Props) {
   if (FEATURES.EMAIL_NOTIFICATIONS && profile.user_id) {
     const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
     const email = authUser?.user?.email;
-    if (email && (action === 'validated' || action === 'validated_bypass')) {
+    if (email && (action === 'validated' || action === 'validated_bypass' || (action === 'reactiver' && newStatus === 'validated'))) {
       // sendNouvelleActivationAdmin était défini dans templates.ts mais
       // jamais appelé (trouvé par /qa, 2026-07-29) — documenté comme envoyé
       // ici dans CLAUDE.md et la checklist QA manuelle, mais code mort.
@@ -81,6 +88,9 @@ export async function POST(req: NextRequest, { params }: Props) {
         sendValidationFinale(email, profile.first_name),
         sendNouvelleActivationAdmin(profile.first_name, profile.city, profile.country),
       ]);
+    }
+    if (email && action === 'rejected') {
+      Promise.allSettled([sendRefusCandidature(email, profile.first_name, notes?.trim() || undefined)]);
     }
   }
 
