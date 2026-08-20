@@ -116,6 +116,19 @@ continuait d'afficher le bandeau "Live en cours" sur la homepage jusqu'à la fin
 horaire, alors que `GET /api/host-activations` (pins carte) excluait déjà ce cas via
 `getCurrentEvent()`.
 
+**Panne Supabase indiscernable d'une carte vide (corrigé août 2026).** `getHomepageData()`
+et `GET /api/host-activations` ne lisaient que `.data` sur leurs requêtes Supabase, jamais
+`.error` — une panne DB (ex : projet Supabase en pause après 7 jours d'inactivité, cf
+knowledge-transfer.md) produisait exactement la même forme de données qu'un état
+légitimement calme (`nextEvent=null`, `[]` pins), sans aucun log serveur. Trouvé en
+investigant pourquoi la carte publique affichait "Pas encore de live prévu" pendant une
+pause du projet. Désormais : `GET /api/host-activations` distingue "0 lignes" de "requêtes
+en échec" et retourne `503 {"error":"db_unreachable"}` + log serveur dans ce dernier cas ;
+`getHomepageData()` logge toute requête en échec sans casser le rendu SSR ; `MapPublique.tsx`
+affiche un état `dbError` dédié ("Carte momentanément indisponible") prioritaire sur tous
+les autres états de `EmptyMapContent`, pour ne jamais montrer le CTA "Devenir ambassadeur"
+pendant une panne.
+
 ---
 
 ## Cycle de vie d'un ambassadeur
