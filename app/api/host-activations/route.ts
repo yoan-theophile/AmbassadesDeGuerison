@@ -14,16 +14,27 @@ export async function GET() {
   const windowStart = new Date(now.getTime() - windowHours * 3_600_000).toISOString();
 
   // Priorité : live en cours (non clôturé) → prochain event → dernier event passé (carte vide)
-  let referenceEvent =
-    (await supabase.from('events').select('id')
-      .lte('event_date', nowISO).gte('event_date', windowStart).is('closed_at', null)
-      .order('event_date', { ascending: false }).limit(1).maybeSingle()).data ??
-    (await supabase.from('events').select('id')
-      .gt('event_date', nowISO)
-      .order('event_date', { ascending: true }).limit(1).maybeSingle()).data ??
-    (await supabase.from('events').select('id')
-      .lte('event_date', nowISO)
-      .order('event_date', { ascending: false }).limit(1).maybeSingle()).data;
+  const inProgressRes = await supabase.from('events').select('id')
+    .lte('event_date', nowISO).gte('event_date', windowStart).is('closed_at', null)
+    .order('event_date', { ascending: false }).limit(1).maybeSingle();
+  const upcomingRes = inProgressRes.data ? null : await supabase.from('events').select('id')
+    .gt('event_date', nowISO)
+    .order('event_date', { ascending: true }).limit(1).maybeSingle();
+  const pastRes = inProgressRes.data || upcomingRes?.data ? null : await supabase.from('events').select('id')
+    .lte('event_date', nowISO)
+    .order('event_date', { ascending: false }).limit(1).maybeSingle();
+
+  const referenceEvent = inProgressRes.data ?? upcomingRes?.data ?? pastRes?.data;
+
+  // Si les trois requêtes ont échoué (plutôt que "légitimement aucune ligne"),
+  // c'est un signal de panne DB (ex: projet Supabase en pause) — pas un vrai
+  // 0 event. Distinguer explicitement pour ne pas retourner [] comme si la
+  // carte était légitimement vide (cf investigation 2026-08-20).
+  const queryErrors = [inProgressRes.error, upcomingRes?.error, pastRes?.error].filter(Boolean);
+  if (!referenceEvent && queryErrors.length > 0) {
+    console.error('GET /api/host-activations: échec requête events (DB injoignable ?)', queryErrors);
+    return NextResponse.json({ error: 'db_unreachable' }, { status: 503 });
+  }
 
   if (!referenceEvent) {
     return NextResponse.json([]);
@@ -44,6 +55,7 @@ export async function GET() {
     .eq('event_id', lastEvent.id);
 
   if (error) {
+    console.error('GET /api/host-activations: échec requête host_activations', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

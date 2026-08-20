@@ -81,6 +81,23 @@ export async function getHomepageData(): Promise<HomepageData> {
       .maybeSingle(),
   ]);
 
+  // Aucune de ces requêtes n'est vérifiée sur .error ailleurs — sans ce log,
+  // une panne DB (ex: projet Supabase en pause) produit silencieusement la
+  // même forme de données qu'un état "vraiment calme" (0 event, 0 ambassadeur),
+  // indiscernable côté page et invisible dans les logs Vercel (cf investigation
+  // 2026-08-20 — carte publique vide sans indication de la cause réelle).
+  const queryErrors = [
+    ['nextEvent', nextEventRes.error],
+    ['lastEvent', lastEventRes.error],
+    ['totalAmbassadors', ambassadeursRes.error],
+    ['totalCountries', countriesRes.error],
+    ['topTestimonials', testimonialsRes.error],
+    ['timing', timingRes.error],
+  ].filter(([, err]) => err);
+  if (queryErrors.length > 0) {
+    console.error('getHomepageData: requêtes en échec (DB injoignable ?)', queryErrors);
+  }
+
   const nextEvent = (nextEventRes.data as LiveEvent | null) ?? null;
   const lastEvent = (lastEventRes.data as LiveEvent | null) ?? null;
   const liveInProgress = !!lastEvent && !lastEvent.closed_at && lastEvent.event_date >= windowStart;
