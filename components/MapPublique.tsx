@@ -22,6 +22,7 @@ interface Props {
   totalAmbassadors: number;
   totalCountries: number;
   soonThresholdDays: number;
+  dbError?: boolean;
 }
 
 interface HostPin {
@@ -371,11 +372,23 @@ function StatsLine({ totalAmbassadors, totalCountries }: { totalAmbassadors: num
   );
 }
 
-function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays }: Props) {
+function EmptyMapContent({ nextEvent, lastEvent, liveInProgress, totalAmbassadors, totalCountries, soonThresholdDays, dbError }: Props) {
   const tzLabel = useBrowserTimezone();
   const daysUntilNext = nextEvent
     ? Math.ceil((new Date(nextEvent.event_date).getTime() - Date.now()) / 86_400_000)
     : null;
+
+  // Panne de chargement (pas un vrai calme plat) — priorité sur tous les
+  // autres états, y compris "aucun event", pour ne jamais afficher un CTA
+  // "Devenir ambassadeur" trompeur pendant une indisponibilité de la carte.
+  if (dbError) {
+    return (
+      <>
+        <p className="text-slate-700 text-sm font-medium">Carte momentanément indisponible</p>
+        <p className="text-slate-400 text-xs mt-1">Réessayez dans quelques instants.</p>
+      </>
+    );
+  }
 
   // Live en cours mais aucun hôte confirmé (cas rare)
   if (liveInProgress) {
@@ -478,6 +491,11 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
   useEffect(() => { liveInProgressRef.current = liveInProgress; }, [liveInProgress]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Distinct de "carte vide" : la toute première requête a échoué (réseau ou
+  // 503 db_unreachable) et on n'a encore aucune donnée à afficher à la place —
+  // sans cet état, ça retombait dans le même overlay "Pas encore de live prévu"
+  // qu'un vrai calme plat, invisible pour quiconque diagnostique une panne DB.
+  const [dbError, setDbError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [mapZoom, setMapZoom] = useState(3);
   const [searchQuery, setSearchQuery] = useState('');
@@ -515,9 +533,15 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
           const data = await res.json();
           hostsRef.current = data;
           setHosts(data);
+          setDbError(false);
+        } else {
+          console.error('MapPublique: /api/host-activations a échoué', res.status);
+          if (hostsRef.current.length === 0) setDbError(true);
         }
-      } catch {
-        // réseau indisponible — on garde les données précédentes
+      } catch (e) {
+        console.error('MapPublique: /api/host-activations injoignable', e);
+        // Réseau indisponible — on garde les données précédentes si on en a déjà
+        if (hostsRef.current.length === 0) setDbError(true);
       } finally {
         setRefreshing(false);
         setLoaded(true);
@@ -792,6 +816,7 @@ export default function MapPublique({ nextEvent, lastEvent, liveInProgress, tota
               totalAmbassadors={totalAmbassadors}
               totalCountries={totalCountries}
               soonThresholdDays={soonThresholdDays}
+              dbError={dbError}
             />
           </div>
         </div>

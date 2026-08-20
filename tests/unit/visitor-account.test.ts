@@ -21,9 +21,13 @@ vi.mock('@/lib/email/templates', () => ({
 }));
 
 describe('POST /api/visitor/account — import du module', () => {
+  // Timeout élargi : l'import dynamique prend <200ms isolé, mais peut dépasser
+  // le défaut vitest de 5000ms sous la contention CPU/IO d'une full suite
+  // (40 fichiers en parallèle) — flaky observé en suite complète, jamais en
+  // isolation (cf investigation 2026-08-20).
   it("charge le module sans lever d'exception (import isValidPhoneNumber côté serveur)", async () => {
     await expect(import('@/app/api/visitor/account/route')).resolves.toBeDefined();
-  });
+  }, 20000);
 
   it('rejette un numéro de téléphone invalide avec un 400 propre (pas un crash)', async () => {
     const { POST } = await import('@/app/api/visitor/account/route');
